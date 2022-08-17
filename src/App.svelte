@@ -18,11 +18,11 @@
         if (onto.length === 0 || from[0] === onto[0]) {
           data.update((vials) => {
             onto.unshift(from.shift());
+            stack = [];
             return vials;
           });
         }
       }
-      stack = [];
     }
   };
 
@@ -34,12 +34,9 @@
    * @param {number} iterations number of shuffle operations
    */
   const shuffle = (data, iterations = 10) => {
-    // 1. pick a random vial
+    // 1. pick a random vial, non-empty
     // 2. only take a ball if it's on a same-color or solo.
     // 3. place onto any other non-full vial
-    // TODO could log operations and not allow "2-cycle undo" by checking for
-    //  a => b,..., b => a  && no x => a || b  or a || b  => x in between
-    // But simpler to just add more iterations and maybe do a check at the end for pre-solved
 
     let prev = [null, null];
     bigLoop: for (let i = 0; i < iterations; i++) {
@@ -90,7 +87,7 @@
 </script>
 
 <main>
-  <button id="newPuzzle" on:click={() => newPuzzle(3, 4, 1)}>
+  <button id="newPuzzle" on:click={() => newPuzzle(5, 5, 3)}>
     New Puzzle
   </button>
   <div class="holder">
