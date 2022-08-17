@@ -47,7 +47,7 @@
     }
   };
 
-  const permutation = (n) => {
+  const permutation = (/** @type {number} */ n) => {
     let perm = [];
     for (let i = 0; i < n; i++) {
       perm.splice(Math.floor(Math.random() * (i + 1)), 0, i);
@@ -74,7 +74,7 @@
         from.length <= 0 || // can't take from empty
         (from.length > 1 && from[from.length - 1] !== from[from.length - 2]) // don't take if non-reversible
       ) {
-        if (!perm.length) continue bigLoop;
+        if (!perm.length) break bigLoop;
         fromIndex = perm.pop();
         from = data2d[fromIndex];
       }
@@ -82,7 +82,7 @@
       perm = permutation(data2d.length);
       let toIndex = perm.pop();
       while (toIndex === fromIndex || data2d[toIndex].length >= capacity) {
-        if (!perm.length) continue bigLoop;
+        if (!perm.length) break bigLoop;
         toIndex = perm.pop();
       }
       if (prev[0] === toIndex && prev[1] === fromIndex) continue bigLoop;
@@ -124,12 +124,12 @@
     data.set(ordered);
   };
 
-  newPuzzle(3, 4, 1);
+  newPuzzle(3, 3, 1);
 </script>
 
 <main>
   <!-- <button id="newPuzzle" on:click={() => newPuzzle(5, 5, 3)}> -->
-  <button id="newPuzzle" on:click={() => newPuzzle(3, 4, 1)}>
+  <button id="newPuzzle" on:click={() => newPuzzle(3, 3, 1)}>
     New Puzzle
   </button>
   <button id="resetPuzzle" on:click={resetPuzzle}> Reset </button>
