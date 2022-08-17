@@ -1,10 +1,29 @@
 <script>
+  import { flip } from "svelte/animate";
+  import { crossfade } from "svelte/transition";
   import Ball from "./lib/Ball.svelte";
   import { data } from "./lib/store.js";
   import Vial from "./lib/Vial.svelte";
 
   let stack = [];
   let capacity = 4;
+  let uid = 0;
+
+  const [send, receive] = crossfade({
+    duration: (d) => Math.sqrt(d * 200),
+
+    fallback(node, params) {
+      const style = getComputedStyle(node);
+      const transform = style.transform === "none" ? "" : style.transform;
+
+      return {
+        duration: 600,
+        css: (t) => `
+					transform: ${transform} scale(${t});
+				`,
+      };
+    },
+  });
 
   /**
    * @param {number} i the index of the vial clicked
@@ -15,10 +34,11 @@
       let [onto, from] = stack.map((i) => $data[i]);
 
       if (from.length && onto.length < capacity) {
-        if (onto.length === 0 || from[0] === onto[0]) {
+        if (onto.length === 0 || from[0].value === onto[0].value) {
           data.update((vials) => {
             onto.unshift(from.shift());
             stack = [];
+            console.log(JSON.stringify($data)); // TODO remove
             return vials;
           });
         }
@@ -79,6 +99,10 @@
     ];
 
     shuffle(ordered, 1000);
+    // wrap each value in an object with an id
+    ordered = ordered.map((vial) =>
+      vial.map((ball) => ({ id: uid++, value: ball }))
+    );
 
     data.set(ordered);
   };
@@ -87,14 +111,21 @@
 </script>
 
 <main>
-  <button id="newPuzzle" on:click={() => newPuzzle(5, 5, 3)}>
+  <!-- <button id="newPuzzle" on:click={() => newPuzzle(5, 5, 3)}> -->
+  <button id="newPuzzle" on:click={() => newPuzzle(3, 4, 1)}>
     New Puzzle
   </button>
   <div class="holder">
     {#each $data as vial, index}
       <Vial {capacity} clickHandler={() => vialClicked(index)}>
-        {#each vial as ball}
-          <Ball value={ball} />
+        {#each vial as ball (ball.id)}
+          <div
+            in:receive={{ key: ball.id }}
+            out:send={{ key: ball.id }}
+            animate:flip
+          >
+            <Ball value={ball.value} />
+          </div>
         {/each}
       </Vial>
     {/each}

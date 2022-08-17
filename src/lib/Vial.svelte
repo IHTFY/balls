@@ -13,7 +13,7 @@
     border-color: #12259280;
     border-width: 0.3vw;
     border-radius: 1vw 1vw 10vw 10vw;
-    overflow: hidden;
+    /* overflow: hidden; */
 
     display: flex;
     justify-content: flex-end;
