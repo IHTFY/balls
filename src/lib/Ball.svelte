@@ -6,16 +6,17 @@
 </script>
 
 <div class="ball" style="background-color: hsl({colors(value)}, 100%, 50%);">
-  {value}
+  <div class="ballLabel">
+    {value}
+  </div>
 </div>
 
 <style>
   .ball {
-    display: block;
-    width: 100%;
+    display: flex;
+    justify-content: center;
     aspect-ratio: 1;
-    text-align: center;
+    align-items: center;
     border-radius: 50%;
-    line-height: 10vw;
   }
 </style>
