@@ -19,4 +19,12 @@
     align-items: center;
     border-radius: 50%;
   }
+
+  .ballLabel {
+    font-size: 3em;
+    font-weight: 800;
+    color: #ffffffaa;
+    -webkit-text-stroke-width: 1px;
+    -webkit-text-stroke-color: black;
+  }
 </style>
