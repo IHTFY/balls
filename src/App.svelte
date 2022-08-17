@@ -1,6 +1,6 @@
 <script>
   import { flip } from "svelte/animate";
-  import { quintInOut } from "svelte/easing";
+  import { quadInOut } from "svelte/easing";
   import { crossfade } from "svelte/transition";
   import Ball from "./lib/Ball.svelte";
   import { data } from "./lib/store.js";
@@ -12,14 +12,15 @@
 
   const [send, receive] = crossfade({
     duration: (d) => Math.sqrt(d * 200),
+    easing: quadInOut,
 
     fallback(node, params) {
       const style = getComputedStyle(node);
       const transform = style.transform === "none" ? "" : style.transform;
 
       return {
-        // duration: 600,
-        easing: quintInOut,
+        duration: 200,
+        easing: quadInOut,
         css: (t) => `
 					transform: ${transform} scale(${t});
 				`,
@@ -55,17 +56,41 @@
     return perm;
   };
 
-  /**
-   *
-   * @param {number[][]} data2d 2d array
-   * @param {number} iterations number of shuffle operations
-   */
-  const shuffle = (data2d, iterations = 10) => {
-    // 1. pick a random vial, non-empty
-    // 2. only take a ball if it's on a same-color or solo.
-    // 3. place onto any other non-full vial
+  const checkHistory = (hist, candidate) => {
+    if (!hist.length) return true;
+    for (let i = hist.length - 1; i >= 0; i--) {
+      let past = hist[i];
+      if (
+        past[0] === candidate[0] ||
+        past[1] === candidate[1] ||
+        (past[0] === candidate[1] && past[1] !== candidate[0]) ||
+        (past[1] === candidate[0] && past[0] !== candidate[1])
+      ) {
+        return true;
+      }
+    }
+    return false;
+  };
 
-    let prev = [null, null];
+  const getEntropy = (/** @type {number[][]} */ data) => {
+    let leftHome = 0; // ball is not in original vial
+    let newNeighbor = 0; // ball has a different number next to it
+    for (let i = 0; i < data.length; i++) {
+      let vial = data[i];
+      for (let j = 0; j < vial.length; j++) {
+        let ball = vial[j];
+        if (ball !== i) leftHome++;
+        if (vial[j + 1] && vial[j + 1] !== ball) newNeighbor++;
+      }
+    }
+    // weight newNeighbor more, since a solution permutation could still have a max leftHome
+    return leftHome + newNeighbor * 10;
+  };
+
+  const move = (/** @type {Object[][]} */ data2d, iterations = 20) => {
+    // let successes = 0;
+    let history = [];
+
     bigLoop: for (let i = 0; i < iterations; i++) {
       let perm = permutation(data2d.length);
       let fromIndex = perm.pop();
@@ -81,18 +106,51 @@
 
       perm = permutation(data2d.length);
       let toIndex = perm.pop();
+      // must be a different destination, and can't place into full
       while (toIndex === fromIndex || data2d[toIndex].length >= capacity) {
         if (!perm.length) break bigLoop;
         toIndex = perm.pop();
       }
-      if (prev[0] === toIndex && prev[1] === fromIndex) continue bigLoop;
 
-      prev = [fromIndex, toIndex];
+      if (!checkHistory(history, [fromIndex, toIndex])) continue bigLoop;
+
+      history.push([fromIndex, toIndex]);
       let onto = data2d[toIndex];
-      console.log(from, onto);
       onto.unshift(from.shift());
     }
-    return data2d;
+
+    let entropy = getEntropy(data2d);
+
+    return {
+      entropy: entropy,
+      shuffled: data2d,
+    };
+  };
+
+  /**
+   *
+   * @param {number[][]} data 2d array
+   * @param {number} iterations number of shuffle operations
+   */
+  const shuffle = (data, iterations = 20) => {
+    // save initial state
+    const unmixed = structuredClone(data);
+
+    let bestEntropy = 0;
+    let bestShuffled = null;
+
+    let { entropy, shuffled } = move(data, iterations);
+    let tries = 0;
+    while (tries++ < 50) {
+      // use initial state
+      data = structuredClone(unmixed);
+      ({ entropy, shuffled } = move(data, iterations));
+      if (entropy > bestEntropy) {
+        bestEntropy = entropy;
+        bestShuffled = shuffled;
+      }
+    }
+    return bestShuffled;
   };
 
   let startingState;
@@ -102,6 +160,7 @@
   };
 
   const newPuzzle = (
+    //**
     /** @type {number} */ n,
     /** @type {number} */ cap,
     /** @type {number} */ blank
@@ -114,22 +173,22 @@
       ...[...Array(blank)].map(() => []),
     ];
 
-    shuffle(ordered, 100);
+    let mixed = shuffle(structuredClone(ordered), 20);
 
     // wrap each value in an object with an id
-    ordered = ordered.map((vial) =>
+    let wrapped = mixed.map((/** @type {number[]} */ vial) =>
       vial.map((ball) => ({ id: uid++, value: ball }))
     );
 
-    startingState = structuredClone(ordered);
-    data.set(ordered);
+    startingState = structuredClone(wrapped);
+    data.set(wrapped);
   };
 
-  newPuzzle(5, 5, 3);
+  newPuzzle(4, 5, 2);
 </script>
 
 <main>
-  <button id="newPuzzle" on:click={() => newPuzzle(5, 5, 3)}>
+  <button id="newPuzzle" on:click={() => newPuzzle(4, 5, 2)}>
     New Puzzle
   </button>
   <button id="resetPuzzle" on:click={resetPuzzle}> Reset </button>
