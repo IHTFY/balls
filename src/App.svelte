@@ -1,5 +1,6 @@
 <script>
   import { flip } from "svelte/animate";
+  import { quintInOut } from "svelte/easing";
   import { crossfade } from "svelte/transition";
   import Ball from "./lib/Ball.svelte";
   import { data } from "./lib/store.js";
@@ -17,7 +18,8 @@
       const transform = style.transform === "none" ? "" : style.transform;
 
       return {
-        duration: 600,
+        // duration: 600,
+        easing: quintInOut,
         css: (t) => `
 					transform: ${transform} scale(${t});
 				`,
@@ -38,7 +40,6 @@
           data.update((vials) => {
             onto.unshift(from.shift());
             stack = [];
-            console.log(JSON.stringify($data)); // TODO remove
             return vials;
           });
         }
@@ -46,50 +47,64 @@
     }
   };
 
-  const randIndex = (arr) => Math.floor(Math.random() * arr.length);
+  const permutation = (n) => {
+    let perm = [];
+    for (let i = 0; i < n; i++) {
+      perm.splice(Math.floor(Math.random() * (i + 1)), 0, i);
+    }
+    return perm;
+  };
 
   /**
    *
-   * @param {number[][]} data 2d array
+   * @param {number[][]} data2d 2d array
    * @param {number} iterations number of shuffle operations
    */
-  const shuffle = (data, iterations = 10) => {
+  const shuffle = (data2d, iterations = 10) => {
     // 1. pick a random vial, non-empty
     // 2. only take a ball if it's on a same-color or solo.
     // 3. place onto any other non-full vial
 
     let prev = [null, null];
     bigLoop: for (let i = 0; i < iterations; i++) {
-      3;
-      let fromIndex = randIndex(data);
-      let from = data[fromIndex];
-      // if it's empty or there's a different color right below
-      let tries = 0;
+      let perm = permutation(data2d.length);
+      let fromIndex = perm.pop();
+      let from = data2d[fromIndex];
       while (
-        from.length === 0 ||
-        (from.length > 1 && from[from.length - 1] !== from[from.length - 2])
+        from.length <= 0 || // can't take from empty
+        (from.length > 1 && from[from.length - 1] !== from[from.length - 2]) // don't take if non-reversible
       ) {
-        if (tries++ > 1000) continue bigLoop;
-        from = data[randIndex(data)];
+        if (!perm.length) continue bigLoop;
+        fromIndex = perm.pop();
+        from = data2d[fromIndex];
       }
 
-      // could check for from !== to
-      let toIndex = randIndex(data);
-      tries = 0;
-      while (toIndex === fromIndex || data[toIndex].length >= capacity) {
-        if (tries++ > 1000) continue bigLoop;
-        toIndex = randIndex(data);
+      perm = permutation(data2d.length);
+      let toIndex = perm.pop();
+      while (toIndex === fromIndex || data2d[toIndex].length >= capacity) {
+        if (!perm.length) continue bigLoop;
+        toIndex = perm.pop();
       }
       if (prev[0] === toIndex && prev[1] === fromIndex) continue bigLoop;
 
       prev = [fromIndex, toIndex];
-      let onto = data[toIndex];
+      let onto = data2d[toIndex];
       onto.unshift(from.shift());
     }
-    return data;
+    return data2d;
   };
 
-  const newPuzzle = (n, cap, blank) => {
+  let startingState;
+
+  const resetPuzzle = () => {
+    data.set(structuredClone(startingState));
+  };
+
+  const newPuzzle = (
+    /** @type {number} */ n,
+    /** @type {number} */ cap,
+    /** @type {number} */ blank
+  ) => {
     // TODO manage this global capacity, n, blank elsewhere
     capacity = cap;
 
@@ -98,12 +113,14 @@
       ...[...Array(blank)].map(() => []),
     ];
 
-    shuffle(ordered, 1000);
+    shuffle(ordered, 100);
+
     // wrap each value in an object with an id
     ordered = ordered.map((vial) =>
       vial.map((ball) => ({ id: uid++, value: ball }))
     );
 
+    startingState = structuredClone(ordered);
     data.set(ordered);
   };
 
@@ -115,6 +132,7 @@
   <button id="newPuzzle" on:click={() => newPuzzle(3, 4, 1)}>
     New Puzzle
   </button>
+  <button id="resetPuzzle" on:click={resetPuzzle}> Reset </button>
   <div class="holder">
     {#each $data as vial, index}
       <Vial {capacity} clickHandler={() => vialClicked(index)}>
