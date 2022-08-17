@@ -72,7 +72,7 @@
       let from = data2d[fromIndex];
       while (
         from.length <= 0 || // can't take from empty
-        (from.length > 1 && from[from.length - 1] !== from[from.length - 2]) // don't take if non-reversible
+        (from.length > 1 && from[0] !== from[1]) // don't take if non-reversible
       ) {
         if (!perm.length) break bigLoop;
         fromIndex = perm.pop();
@@ -89,6 +89,7 @@
 
       prev = [fromIndex, toIndex];
       let onto = data2d[toIndex];
+      console.log(from, onto);
       onto.unshift(from.shift());
     }
     return data2d;
