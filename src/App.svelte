@@ -125,12 +125,11 @@
     data.set(ordered);
   };
 
-  newPuzzle(3, 3, 1);
+  newPuzzle(5, 5, 3);
 </script>
 
 <main>
-  <!-- <button id="newPuzzle" on:click={() => newPuzzle(5, 5, 3)}> -->
-  <button id="newPuzzle" on:click={() => newPuzzle(3, 3, 1)}>
+  <button id="newPuzzle" on:click={() => newPuzzle(5, 5, 3)}>
     New Puzzle
   </button>
   <button id="resetPuzzle" on:click={resetPuzzle}> Reset </button>
