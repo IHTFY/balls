@@ -9,6 +9,9 @@ const SETTINGS = {
 	haptics: true,
 	symbols: false,
 	stacks: false,
+	targets: true,
+	autoMove: false,
+	autoFinish: false,
 	deadEnd: true,
 	reducedMotion: false
 };

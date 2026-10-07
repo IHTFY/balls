@@ -3,6 +3,7 @@
 	import { fly } from 'svelte/transition';
 	import { backOut } from 'svelte/easing';
 	import { dismiss, toasts } from '../state/toasts.svelte.js';
+	import Icon from './Icon.svelte';
 </script>
 
 <div class="toasts" role="status" aria-live="polite">
@@ -14,7 +15,7 @@
 			out:fly={{ y: -30, duration: 200 }}
 			onclick={() => dismiss(t.id)}
 		>
-			<span class="icon">{t.icon}</span>
+			<span class="icon"><Icon name={t.icon} size={22} /></span>
 			<span class="text">
 				<strong>{t.title}</strong>
 				{#if t.body}<small>{t.body}</small>{/if}
@@ -50,8 +51,14 @@
 		cursor: pointer;
 	}
 	.icon {
-		font-size: 28px;
-		filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.3));
+		display: grid;
+		place-items: center;
+		flex: none;
+		width: 40px;
+		height: 40px;
+		border-radius: 12px;
+		background: color-mix(in srgb, var(--accent), transparent 82%);
+		color: var(--accent);
 	}
 	.text {
 		display: grid;

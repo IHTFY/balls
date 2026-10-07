@@ -1,5 +1,6 @@
 <script>
 	import { profile } from '../state/profile.svelte.js';
+	import Coin from './Coin.svelte';
 	import RollingNumber from './RollingNumber.svelte';
 
 	let bump = $state(0);
@@ -11,7 +12,7 @@
 </script>
 
 <div class="coins" aria-label="{profile.coins} coins">
-	{#key bump}<span class="coin">🪙</span>{/key}
+	{#key bump}<span class="coin"><Coin size={20} /></span>{/key}
 	<RollingNumber value={profile.coins} />
 </div>
 
@@ -27,7 +28,7 @@
 		font-size: 16px;
 	}
 	.coin {
-		display: inline-block;
+		display: inline-flex;
 		animation: spin-coin 0.6s ease-out;
 	}
 	@keyframes spin-coin {

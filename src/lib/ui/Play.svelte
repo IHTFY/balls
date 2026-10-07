@@ -7,9 +7,14 @@
 	import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 	import Lightbulb from '@lucide/svelte/icons/lightbulb';
 	import Plus from '@lucide/svelte/icons/plus';
+	import FastForward from '@lucide/svelte/icons/fast-forward';
 	import Settings from '@lucide/svelte/icons/settings';
+	import Timer from '@lucide/svelte/icons/timer';
+	import Coin from './Coin.svelte';
+	import Icon from './Icon.svelte';
 	import { skinById } from '../game/cosmetics.js';
 	import { clock } from '../game/format.js';
+	import { canMove } from '../game/rules.js';
 	import { starsFor } from '../game/scoring.js';
 	import { sound } from '../fx/audio.js';
 	import { buzz } from '../fx/haptics.js';
@@ -20,6 +25,7 @@
 	import {
 		addTube,
 		checkDeadEnd,
+		findFinish,
 		finish,
 		game,
 		HINT_PRICE,
@@ -73,6 +79,7 @@
 				buzz(10);
 				save();
 				checkDeadEnd();
+				if (!finishing) findFinish().then((moves) => moves && playFinish(moves));
 			} else if (e.type === 'complete') {
 				setTimeout(() => sound.complete(e.combo), reduced ? 0 : 330);
 				buzz(e.combo > 1 ? [20, 30, 40] : 25);
@@ -125,22 +132,33 @@
 	);
 
 	// A short card announcing a level's twist as the board drops in.
-	/** @type {{ icon: string, title: string, text: string } | null} */
+	/** @typedef {{ icon: import('./icons.js').IconName, title: string, text: string }} IntroCard */
+	/** @type {IntroCard | null} */
 	let intro = $state(null);
 	$effect(() => {
 		if (session.loading || !game.start.length) return;
-		const card = untrack(() => {
-			if (game.moves > 0) return null;
-			if (session.mode === 'daily')
-				return { icon: '📅', title: 'Daily Challenge', text: 'The same puzzle for everyone today' };
-			if (session.boss)
-				return { icon: '👑', title: 'Boss level', text: 'A big board for double points' };
-			if (session.mystery)
-				return { icon: '🔮', title: 'Mystery', text: 'Balls stay hidden until you uncover them' };
-			if (game.capacity === 5 && session.mode === 'level')
-				return { icon: '📏', title: 'Tall tubes', text: 'Five balls to a tube' };
-			return null;
-		});
+		const card = untrack(
+			/** @returns {IntroCard | null} */ () => {
+				if (game.moves > 0) return null;
+				if (session.mode === 'daily')
+					return {
+						icon: 'calendar-days',
+						title: 'Daily Challenge',
+						text: 'The same puzzle for everyone today'
+					};
+				if (session.boss)
+					return { icon: 'crown', title: 'Boss level', text: 'A big board for double points' };
+				if (session.mystery)
+					return {
+						icon: 'eye',
+						title: 'Mystery',
+						text: 'Balls stay hidden until you uncover them'
+					};
+				if (game.capacity === 5 && session.mode === 'level')
+					return { icon: 'ruler', title: 'Tall tubes', text: 'Five balls to a tube' };
+				return null;
+			}
+		);
 		intro = card;
 		if (!card) return;
 		const timer = setTimeout(() => (intro = null), 1900);
@@ -151,24 +169,28 @@
 		const outcome = await requestHint();
 		if (outcome === 'ok') sound.hint();
 		else if (outcome === 'empty')
-			notify({ icon: '🪙', title: 'Not enough coins', body: `A hint costs ${HINT_PRICE} coins` });
+			notify({
+				icon: 'coins',
+				title: 'Not enough coins',
+				body: `A hint costs ${HINT_PRICE} coins`
+			});
 		else if (outcome === 'deadEnd')
-			notify({ icon: '🧱', title: 'Dead end', body: 'Undo a few moves to find a way out' });
+			notify({ icon: 'brick-wall', title: 'Dead end', body: 'Undo a few moves to find a way out' });
 		else if (outcome === 'unknown')
-			notify({ icon: '🤔', title: 'Too tangled to tell', body: 'Try a few more moves first' });
+			notify({ icon: 'brain', title: 'Too tangled to tell', body: 'Try a few more moves first' });
 	}
 
 	function tube() {
 		const outcome = addTube();
 		if (outcome === 'empty')
 			notify({
-				icon: '🪙',
+				icon: 'coins',
 				title: 'Not enough coins',
 				body: `An extra tube costs ${TUBE_PRICE} coins`
 			});
 		else if (outcome === 'max')
 			notify({
-				icon: '🧪',
+				icon: 'test-tube',
 				title: 'That’s plenty',
 				body: `Up to ${MAX_ADDED_TUBES} extra tubes per puzzle`
 			});
@@ -178,9 +200,39 @@
 		if (!game.undo()) sound.invalid();
 	}
 
+	// Auto-finish: once only matching moves remain, the board plays itself out.
+	let finishing = $state(false);
+	/** @type {ReturnType<typeof setTimeout> | undefined} */
+	let finishTimer;
+	// The search can answer after the player has left the puzzle.
+	let left = false;
+	$effect(() => () => {
+		left = true;
+		clearTimeout(finishTimer);
+	});
+
+	/** @param {[number, number][]} moves single-ball moves that win from here */
+	function playFinish(moves) {
+		if (left || finishing || game.won) return;
+		finishing = true;
+		game.selected = -1;
+		const step = () => {
+			if (!moves.length || !canMove(game.colorTubes, ...moves[0], game.capacity)) {
+				finishing = false;
+				return;
+			}
+			game.move(...moves[0]);
+			// With move stacks on, one move can carry several of the solver's single-ball moves.
+			moves = moves.slice(game.history[game.history.length - 1].count);
+			if (game.won) finishing = false;
+			else finishTimer = setTimeout(step, reduced ? 120 : 380);
+		};
+		finishTimer = setTimeout(step, reduced ? 300 : 700);
+	}
+
 	/** @param {KeyboardEvent} e */
 	function onKey(e) {
-		if (nav.dialog || session.result || e.metaKey || e.altKey) return;
+		if (nav.dialog || session.result || finishing || e.metaKey || e.altKey) return;
 		const key = e.key.toLowerCase();
 		if (e.ctrlKey && key !== 'z') return;
 		if (/^[0-9]$/.test(key)) {
@@ -210,9 +262,10 @@
 			<h1>{title()}</h1>
 			<div class="tags">
 				{#if subtitle()}<span>{subtitle()}</span>{/if}
-				{#if session.boss}<span class="tag boss-tag">👑 Boss</span>{/if}
-				{#if session.mystery}<span class="tag">🔮 Mystery</span>{/if}
-				{#if game.capacity === 5}<span class="tag">📏 Tall</span>{/if}
+				{#if session.boss}<span class="tag boss-tag"><Icon name="crown" size={12} /> Boss</span
+					>{/if}
+				{#if session.mystery}<span class="tag"><Icon name="eye" size={12} /> Mystery</span>{/if}
+				{#if game.capacity === 5}<span class="tag"><Icon name="ruler" size={12} /> Tall</span>{/if}
 			</div>
 		</div>
 		<CoinChip />
@@ -221,7 +274,8 @@
 	{#if blitz}
 		<div class="stats blitz-stats">
 			<div class="blitz-clock" class:hurry={session.blitz.left <= 10}>
-				⏱ {clock(session.blitz.left)}
+				<Timer size={24} />
+				{clock(session.blitz.left)}
 			</div>
 			<div><small>Solved</small><strong>{session.blitz.solved}</strong></div>
 			<div><small>Score</small><strong>{session.blitz.score.toLocaleString()}</strong></div>
@@ -250,9 +304,10 @@
 				{game}
 				{skin}
 				symbols={profile.settings.symbols}
+				targets={profile.settings.targets && !finishing}
 				{reduced}
 				{pointer}
-				onTap={(i) => game.tap(i)}
+				onTap={(i) => !finishing && game.tap(i)}
 			/>
 		{/if}
 		{#if coaching && !session.loading && !game.won}
@@ -269,7 +324,7 @@
 				in:scale={{ start: 0.6, duration: 450, easing: backOut }}
 				out:fade={{ duration: 300 }}
 			>
-				<span>{intro.icon}</span>
+				<span class="intro-icon"><Icon name={intro.icon} size={40} /></span>
 				<b>{intro.title}</b>
 				<small>{intro.text}</small>
 			</div>
@@ -281,7 +336,11 @@
 		{/if}
 	</div>
 
-	{#if (game.deadEnd || game.stuck) && !game.won && !session.loading}
+	{#if finishing}
+		<div class="finishing" role="status" transition:fly={{ y: 40, duration: 300, easing: backOut }}>
+			<FastForward size={20} /><strong>Only moves left</strong>
+		</div>
+	{:else if (game.deadEnd || game.stuck) && !game.won && !session.loading}
 		<div class="stuck" role="alert" transition:fly={{ y: 40, duration: 300, easing: backOut }}>
 			<strong>{game.stuck ? 'No moves left!' : 'Dead end ahead'}</strong>
 			<span
@@ -293,37 +352,41 @@
 	{/if}
 
 	<nav class="toolbar">
-		<button class="tool" onclick={undo} disabled={!game.history.length || game.won}>
+		<button class="tool" onclick={undo} disabled={!game.history.length || game.won || finishing}>
 			<Undo2 size={22} /><span>Undo</span>
 		</button>
-		<button class="tool" onclick={() => game.restart()} disabled={!game.history.length || game.won}>
+		<button
+			class="tool"
+			onclick={() => game.restart()}
+			disabled={!game.history.length || game.won || finishing}
+		>
 			<RotateCcw size={22} /><span>Restart</span>
 		</button>
 		{#if !blitz}
 			<button
 				class="tool"
 				onclick={hint}
-				disabled={session.hintBusy || game.won}
+				disabled={session.hintBusy || game.won || finishing}
 				aria-label={profile.hints > 0
 					? `Hint, ${profile.hints} left`
 					: `Hint for ${HINT_PRICE} coins`}
 			>
 				<Lightbulb size={22} /><span>Hint</span>
 				<b class="badge" class:price={profile.hints <= 0}
-					>{profile.hints > 0 ? profile.hints : `🪙${HINT_PRICE}`}</b
+					>{#if profile.hints > 0}{profile.hints}{:else}<Coin size={11} />{HINT_PRICE}{/if}</b
 				>
 			</button>
 			<button
 				class="tool"
 				onclick={tube}
-				disabled={game.won || game.tubesAdded >= MAX_ADDED_TUBES}
+				disabled={game.won || finishing || game.tubesAdded >= MAX_ADDED_TUBES}
 				aria-label={profile.tubes > 0
 					? `Add tube, ${profile.tubes} left`
 					: `Add tube for ${TUBE_PRICE} coins`}
 			>
 				<Plus size={22} /><span>Tube</span>
 				<b class="badge" class:price={profile.tubes <= 0}
-					>{profile.tubes > 0 ? profile.tubes : `🪙${TUBE_PRICE}`}</b
+					>{#if profile.tubes > 0}{profile.tubes}{:else}<Coin size={11} />{TUBE_PRICE}{/if}</b
 				>
 			</button>
 		{/if}
@@ -384,6 +447,9 @@
 		color: var(--muted);
 	}
 	.tag {
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
 		padding: 0 8px;
 		border-radius: 999px;
 		background: var(--surface-strong);
@@ -442,6 +508,9 @@
 		text-shadow: 0 0 10px rgb(255 207 63 / 0.6);
 	}
 	.blitz-clock {
+		display: flex;
+		align-items: center;
+		gap: 6px;
 		font-size: 26px;
 		font-weight: 700;
 		font-family: var(--display);
@@ -505,8 +574,11 @@
 		z-index: 4;
 		text-align: center;
 	}
-	.intro span {
-		font-size: 44px;
+	.intro-icon {
+		color: var(--accent);
+	}
+	.boss-intro .intro-icon {
+		color: #ffcf3f;
 	}
 	.intro b {
 		font-family: var(--display);
@@ -533,7 +605,8 @@
 		text-shadow: 0 4px 20px rgb(0 0 0 / 0.4);
 		pointer-events: none;
 	}
-	.stuck {
+	.stuck,
+	.finishing {
 		position: absolute;
 		left: 50%;
 		bottom: calc(86px + env(safe-area-inset-bottom));
@@ -549,6 +622,17 @@
 		width: max-content;
 		max-width: calc(100% - 24px);
 		z-index: 5;
+	}
+	.finishing {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		background: linear-gradient(
+			135deg,
+			var(--accent-2),
+			color-mix(in oklab, var(--accent-2), #000 25%)
+		);
+		box-shadow: 0 10px 30px color-mix(in srgb, var(--accent-2), transparent 55%);
 	}
 	.toolbar {
 		display: flex;
@@ -584,6 +668,9 @@
 		background: var(--accent-2);
 		color: #fff;
 		font-size: 11px;
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
 	}
 	.badge.price {
 		background: var(--accent);

@@ -189,7 +189,8 @@ test('a returning player opens a daily gift', async ({ page }) => {
 	});
 	await expect(page.getByRole('dialog', { name: 'Daily gift' })).toBeVisible();
 	await page.getByRole('button', { name: 'Open gift' }).click();
-	await expect(page.getByText('🪙 30')).toHaveCount(2);
+	// Day 1 in the week strip and the reward itself.
+	await expect(page.getByRole('dialog').getByLabel('30 coins', { exact: true })).toHaveCount(2);
 	await page.getByRole('button', { name: 'Collect' }).click();
 	await expect(page.locator('.coins').first()).toContainText('30');
 });
@@ -315,4 +316,105 @@ test('finishing a tube reveals the hidden balls inside it', async ({ page }) => 
 	// The uncovered ball in tube 1 and both hidden balls in the finished tube 2.
 	await expect(page.locator('.ball.hidden')).toHaveCount(2);
 	expect((await readBoard(page)).tubes[1]).toEqual([0, 0, 0, 0]);
+});
+
+/**
+ * A saved game on level 18 with every ball in view.
+ * @param {number[][]} board colors, bottom to top
+ */
+function openSave(board) {
+	const tubes = board.map((tube) => tube.map((c) => /** @type {[number, boolean]} */ ([c, false])));
+	return { ...mysterySave(tubes), mystery: false };
+}
+
+test('the back button steps back through the app instead of leaving it', async ({ page }) => {
+	// A page before the game, for Back to leave to.
+	await page.goto('/icons/icon-192.png');
+	await open(page, { unlocked: 4 });
+	const url = page.url();
+	await page.getByRole('button', { name: /Levels/ }).click();
+	await page.getByRole('button', { name: /^Level 3,/ }).click();
+	await waitForBoard(page);
+	await page.getByRole('button', { name: 'Settings' }).click();
+	await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+
+	await page.goBack();
+	await expect(page.getByRole('dialog')).toHaveCount(0);
+	await expect(page.getByRole('heading', { name: 'Level 3' })).toBeVisible();
+	await page.goBack();
+	await expect(page.getByRole('heading', { name: 'Levels' })).toBeVisible();
+	await page.goBack();
+	await expect(page.getByRole('button', { name: /Play.*Level 4/ })).toBeVisible();
+	expect(page.url()).toBe(url);
+
+	// Coming home with the app's own buttons leaves no extra step behind.
+	await page.getByRole('button', { name: 'Shop' }).click();
+	// Let the app drop its own history entry before pressing Back.
+	const dropped = page.evaluate(
+		() => new Promise((resolve) => addEventListener('popstate', resolve, { once: true }))
+	);
+	await page.getByRole('button', { name: 'Back' }).click();
+	await dropped;
+	await expect(page.getByRole('button', { name: /Play.*Level 4/ })).toBeVisible();
+	await page.goBack();
+	await expect(page).toHaveURL(/icon-192\.png$/);
+});
+
+test('a picked-up ball lights up the tubes it can go to', async ({ page }) => {
+	await open(page, { unlocked: 18, saved: openSave([[0, 1], [1, 1, 1], [0, 0], []]) });
+	await page.getByRole('button', { name: /Level 18/ }).click();
+	await waitForBoard(page);
+	await expect(page.locator('.tube.target')).toHaveCount(0);
+	await tap(page, 0);
+	await expect(page.locator('.tube.target')).toHaveCount(2);
+	await expect(page.locator('[data-tube="1"]')).toHaveClass(/target/);
+	await expect(page.locator('[data-tube="3"]')).toHaveClass(/target/);
+});
+
+test('with only-move drop on, a ball with one place to go drops there', async ({ page }) => {
+	await open(page, {
+		unlocked: 18,
+		settings: { music: false, autoMove: true },
+		saved: openSave([
+			[0, 1],
+			[1, 1, 1],
+			[0, 0, 0]
+		])
+	});
+	await page.getByRole('button', { name: /Level 18/ }).click();
+	await waitForBoard(page);
+	await tap(page, 0);
+	await expect(page.getByText('Only move')).toBeVisible();
+	expect((await readBoard(page)).tubes[1]).toEqual([1, 1, 1, 1]);
+	await tap(page, 0);
+	await expect(page.getByRole('dialog')).toContainText('Level 18');
+});
+
+test('only-move drop ignores an empty tube a one-color tube has no reason to use', async ({
+	page
+}) => {
+	await open(page, {
+		unlocked: 18,
+		settings: { music: false, autoMove: true },
+		saved: openSave([[1], [1, 1, 1], [0, 0, 0, 0], []])
+	});
+	await page.getByRole('button', { name: /Level 18/ }).click();
+	await waitForBoard(page);
+	await tap(page, 0);
+	await expect(page.getByRole('dialog')).toContainText('Level 18');
+});
+
+test('with auto-finish on, the game plays out the matching moves left', async ({ page }) => {
+	await open(page, {
+		unlocked: 18,
+		settings: { music: false, autoFinish: true },
+		saved: openSave([[0, 1], [1, 1, 1], [0, 0, 0], []])
+	});
+	await page.getByRole('button', { name: /Level 18/ }).click();
+	await waitForBoard(page);
+	await tap(page, 0);
+	await tap(page, 3);
+	await expect(page.getByText('Only moves left')).toBeVisible();
+	await expect(page.getByRole('dialog')).toContainText('Level 18');
+	await expect(page.getByRole('dialog').getByText('Moves').locator('..')).toContainText('3');
 });

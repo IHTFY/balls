@@ -1,8 +1,11 @@
 <script>
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
-	import { ACHIEVEMENTS } from '../game/achievements.js';
+	import Check from '@lucide/svelte/icons/check';
+	import { ACHIEVEMENTS, earnedCount } from '../game/achievements.js';
 	import { go } from '../state/nav.svelte.js';
 	import { profile } from '../state/profile.svelte.js';
+	import Coin from './Coin.svelte';
+	import Icon from './Icon.svelte';
 
 	const sorted = $derived(
 		[...ACHIEVEMENTS].sort((a, b) => {
@@ -11,7 +14,7 @@
 			return done(a) - done(b) || progress(b) - progress(a);
 		})
 	);
-	const earned = $derived(Object.keys(profile.achievements).length);
+	const earned = $derived(earnedCount(profile));
 </script>
 
 <section class="trophies">
@@ -27,18 +30,18 @@
 			{@const done = !!profile.achievements[a.id]}
 			{@const value = Math.min(a.value(profile), a.goal)}
 			<div class="trophy" class:done>
-				<span class="icon">{a.icon}</span>
+				<span class="icon"><Icon name={a.icon} size={26} /></span>
 				<div class="body">
 					<b>{a.title}</b>
 					<small>{a.description}</small>
 					{#if done}
-						<small class="when">✓ Unlocked {profile.achievements[a.id]}</small>
+						<small class="when"><Check size={12} /> Unlocked {profile.achievements[a.id]}</small>
 					{:else}
 						<div class="bar"><span style:width="{(value / a.goal) * 100}%"></span></div>
 						<small>{value.toLocaleString()} / {a.goal.toLocaleString()}</small>
 					{/if}
 				</div>
-				<span class="reward">🪙 {a.reward}</span>
+				<span class="reward"><Coin size={16} /> {a.reward}</span>
 			</div>
 		{/each}
 	</div>
@@ -83,8 +86,8 @@
 		background: var(--surface);
 	}
 	.trophy:not(.done) .icon {
-		filter: grayscale(1);
-		opacity: 0.55;
+		background: var(--surface-strong);
+		color: var(--muted);
 	}
 	.trophy.done {
 		background: linear-gradient(
@@ -94,7 +97,13 @@
 		);
 	}
 	.icon {
-		font-size: 34px;
+		display: grid;
+		place-items: center;
+		width: 48px;
+		height: 48px;
+		border-radius: 14px;
+		background: linear-gradient(135deg, var(--accent), var(--accent-2));
+		color: #fff;
 	}
 	.body {
 		display: grid;
@@ -104,6 +113,9 @@
 		color: var(--muted);
 	}
 	.when {
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
 		color: var(--accent);
 	}
 	.bar {
@@ -118,6 +130,9 @@
 		background: linear-gradient(90deg, var(--accent-2), var(--accent));
 	}
 	.reward {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
 		font-weight: 700;
 		white-space: nowrap;
 	}

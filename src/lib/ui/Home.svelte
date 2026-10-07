@@ -1,8 +1,21 @@
 <script>
 	import { fly } from 'svelte/transition';
 	import { backOut } from 'svelte/easing';
+	import CalendarDays from '@lucide/svelte/icons/calendar-days';
+	import ChartColumn from '@lucide/svelte/icons/chart-column';
+	import CircleHelp from '@lucide/svelte/icons/circle-help';
+	import Crown from '@lucide/svelte/icons/crown';
+	import Flame from '@lucide/svelte/icons/flame';
+	import Gift from '@lucide/svelte/icons/gift';
+	import Heart from '@lucide/svelte/icons/heart';
+	import Leaf from '@lucide/svelte/icons/leaf';
+	import Map from '@lucide/svelte/icons/map';
 	import Settings from '@lucide/svelte/icons/settings';
-	import { ACHIEVEMENTS } from '../game/achievements.js';
+	import ShoppingBag from '@lucide/svelte/icons/shopping-bag';
+	import Star from '@lucide/svelte/icons/star';
+	import Trophy from '@lucide/svelte/icons/trophy';
+	import Zap from '@lucide/svelte/icons/zap';
+	import { ACHIEVEMENTS, earnedCount } from '../game/achievements.js';
 	import { skinById } from '../game/cosmetics.js';
 	import { chapterName, chapterOf, isBoss } from '../game/levels.js';
 	import { dateKey, isNextDay, totalStars } from '../game/profile.js';
@@ -32,7 +45,7 @@
 	const streakAlive = $derived(
 		!!profile.daily.last && (profile.daily.last === today || isNextDay(profile.daily.last, today))
 	);
-	const earned = $derived(Object.keys(profile.achievements).length);
+	const earned = $derived(earnedCount(profile));
 	const gift = $derived(giftReady());
 
 	let untilTomorrow = $state('');
@@ -78,8 +91,7 @@
 	<div class="logo" aria-label="Balls">
 		{#each LETTERS as letter, i (i)}
 			<span class="letter" style:--i={i} aria-hidden="true">
-				<Ball color={i} {skin} size={64} />
-				<b>{letter}</b>
+				<Ball color={i} {skin} size={64} label={letter} />
 			</span>
 		{/each}
 	</div>
@@ -93,27 +105,28 @@
 		>
 		<span class="play-sub">
 			Level {level} · {chapterName(chapterOf(level))}
-			{#if isBoss(level)}· 👑 Boss{/if}
+			{#if isBoss(level)}· <Crown size={14} /> Boss{/if}
 		</span>
 	</button>
 
 	<div class="modes">
 		<button class="mode daily" class:done={dailyDone} onclick={() => play(startDaily)}>
-			<span class="emoji">📅</span>
+			<span class="mode-icon"><CalendarDays size={26} /></span>
 			<b>Daily</b>
 			<small>
 				{#if dailyDone}✓ Done · next in {untilTomorrow}{:else}New puzzle today!{/if}
 			</small>
-			{#if profile.daily.streak && streakAlive}<span class="pill">🔥 {profile.daily.streak}</span
+			{#if profile.daily.streak && streakAlive}<span class="pill"
+					><Flame size={12} /> {profile.daily.streak}</span
 				>{/if}
 		</button>
 		<button class="mode" onclick={() => (nav.dialog = 'zen')}>
-			<span class="emoji">🧘</span>
+			<span class="mode-icon"><Leaf size={26} /></span>
 			<b>Zen</b>
 			<small>Endless and relaxed</small>
 		</button>
 		<button class="mode" onclick={() => play(startBlitz)}>
-			<span class="emoji">⚡</span>
+			<span class="mode-icon"><Zap size={26} /></span>
 			<b>Blitz</b>
 			<small
 				>{profile.stats.blitzBest
@@ -122,18 +135,20 @@
 			>
 		</button>
 		<button class="mode" onclick={() => go('levels')}>
-			<span class="emoji">🗺️</span>
+			<span class="mode-icon"><Map size={26} /></span>
 			<b>Levels</b>
-			<small>⭐ {totalStars(profile)}</small>
+			<small class="stars"><Star size={13} fill="currentColor" /> {totalStars(profile)}</small>
 		</button>
 	</div>
 
 	<nav class="links">
-		<button onclick={() => go('shop')}><span>🛍️</span>Shop</button>
-		<button onclick={() => go('trophies')}><span>🏆</span>{earned}/{ACHIEVEMENTS.length}</button>
-		<button onclick={() => go('stats')}><span>📊</span>Stats</button>
-		<button onclick={() => (nav.dialog = 'howto')}><span>❓</span>Help</button>
-		<a href={SUPPORT_URL} target="_blank" rel="noopener"><span>❤️</span>Support</a>
+		<button onclick={() => go('shop')}><ShoppingBag size={22} />Shop</button>
+		<button onclick={() => go('trophies')}
+			><Trophy size={22} />{earned}/{ACHIEVEMENTS.length}</button
+		>
+		<button onclick={() => go('stats')}><ChartColumn size={22} />Stats</button>
+		<button onclick={() => (nav.dialog = 'howto')}><CircleHelp size={22} />Help</button>
+		<a href={SUPPORT_URL} target="_blank" rel="noopener"><Heart size={22} />Support</a>
 	</nav>
 
 	{#if gift}
@@ -143,7 +158,7 @@
 			in:fly={{ y: 80, duration: 600, delay: 400, easing: backOut }}
 			onclick={() => (nav.dialog = 'gift')}
 		>
-			🎁
+			<Gift size={30} />
 		</button>
 	{/if}
 </section>
@@ -218,22 +233,7 @@
 		margin-top: clamp(4px, 4vh, 40px);
 	}
 	.letter {
-		position: relative;
-		display: grid;
-		place-items: center;
 		animation: bounce 2.4s cubic-bezier(0.3, 0, 0.3, 1) calc(var(--i) * 0.12s) infinite;
-	}
-	.letter > :global(*) {
-		grid-area: 1 / 1;
-	}
-	.letter b {
-		font-family: var(--display);
-		font-size: 36px;
-		color: #fff;
-		text-shadow:
-			0 2px 0 rgb(0 0 0 / 0.35),
-			0 0 8px rgb(0 0 0 / 0.3);
-		z-index: 1;
 	}
 	.tagline {
 		margin: -4px 0 4px;
@@ -254,6 +254,10 @@
 		line-height: 1;
 	}
 	.play-sub {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 4px;
 		font-size: 14px;
 		font-weight: 600;
 		opacity: 0.85;
@@ -287,8 +291,23 @@
 		border-color: var(--accent);
 		box-shadow: 0 0 20px color-mix(in srgb, var(--accent), transparent 70%);
 	}
-	.mode .emoji {
-		font-size: 28px;
+	.mode-icon {
+		display: grid;
+		place-items: center;
+		width: 44px;
+		height: 44px;
+		margin-bottom: 4px;
+		border-radius: 14px;
+		background: color-mix(in srgb, var(--accent), transparent 82%);
+		color: var(--accent);
+	}
+	.stars {
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
+	}
+	.stars :global(svg) {
+		color: #ffcf3f;
 	}
 	.mode b {
 		font-size: 18px;
@@ -297,6 +316,9 @@
 		color: var(--muted);
 	}
 	.pill {
+		display: inline-flex;
+		align-items: center;
+		gap: 3px;
 		position: absolute;
 		top: 10px;
 		right: 10px;
@@ -326,17 +348,19 @@
 		font-weight: 600;
 		text-decoration: none;
 	}
-	.links span {
-		font-size: 22px;
+	.links :global(svg) {
+		color: var(--accent);
 	}
 	.gift {
+		display: grid;
+		place-items: center;
+		color: #fff;
 		position: fixed;
 		right: 18px;
 		bottom: calc(18px + env(safe-area-inset-bottom));
 		width: 64px;
 		height: 64px;
 		border-radius: 50%;
-		font-size: 34px;
 		background: radial-gradient(circle, var(--accent) 0%, var(--accent-2) 100%);
 		box-shadow: 0 10px 30px color-mix(in srgb, var(--accent-2), transparent 40%);
 		animation: wiggle 2.5s ease-in-out infinite;

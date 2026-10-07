@@ -9,10 +9,10 @@ Play at [balls.ihtfy.com](https://balls.ihtfy.com). Install it from the browser 
 - **Endless levels** in named chapters of 20. Boards grow from 2 to 14 colors, with boss levels every tenth level, mystery levels that hide balls until they are uncovered, tall five-ball tubes, and tight one-spare-tube boards.
 - **Every puzzle is proven solvable.** A solver checks each generated board and sets its par. Finish near par for three stars; beat it for a bonus.
 - **Modes:** a daily challenge that is the same for everyone (with streaks and sharing), relaxed Zen puzzles at four difficulties, and 90-second Blitz runs where each solve adds time.
-- **Progress:** points, ranks, coins, 27 trophies, stats with a daily calendar, and a daily gift with a seven-day streak.
+- **Progress:** points, ranks, coins, 30 trophies, stats with a daily calendar, and a daily gift with a seven-day streak.
 - **Shop:** 10 themes with animated backgrounds and 9 ball sets (glossy, billiards, neon, gems, marbles, fruit, sports, critters, pastel), plus hints and extra tubes.
-- **Helpers:** free undo and restart, hints from the solver, extra tubes, dead-end warnings, stack moves, and color-blind symbols.
-- Synthesized sound effects and generative music, vibration, keyboard controls (`1`–`0`, `Z`, `R`, `H`, `Esc`), and a reduced-motion setting.
+- **Helpers:** free undo and restart, hints from the solver, extra tubes, dead-end warnings, stack moves, color-blind symbols, highlighted target tubes, and optional settings that drop a ball with only one place to go and play out the last matching moves.
+- Synthesized sound effects and generative music, vibration, keyboard controls (`1`–`0`, `Z`, `R`, `H`, `Esc`), a reduced-motion setting, and an Android back button that steps back through the app.
 
 ## Offline play and updates
 

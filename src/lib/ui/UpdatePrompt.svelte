@@ -1,11 +1,12 @@
 <script>
+	import Sparkles from '@lucide/svelte/icons/sparkles';
 	import { slide } from 'svelte/transition';
 	import { updates } from '../state/updates.svelte.js';
 </script>
 
 {#if updates.waiting && !updates.dismissed}
 	<div class="update" role="status" transition:slide={{ duration: 300 }}>
-		<span>✨ A new version is ready</span>
+		<span class="message"><Sparkles size={18} /> A new version is ready</span>
 		<button class="later" onclick={() => (updates.dismissed = true)}>Later</button>
 		<button class="primary" onclick={() => updates.apply()}>Update</button>
 	</div>
@@ -22,7 +23,10 @@
 		background: var(--surface-strong);
 		border: 1px solid var(--accent);
 	}
-	span {
+	.message {
+		display: flex;
+		align-items: center;
+		gap: 6px;
 		flex: 1;
 		font-weight: 600;
 	}

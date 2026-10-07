@@ -1,21 +1,20 @@
 <script>
+	import Gift from '@lucide/svelte/icons/gift';
+	import Lightbulb from '@lucide/svelte/icons/lightbulb';
+	import Sparkles from '@lucide/svelte/icons/sparkles';
+	import TestTube from '@lucide/svelte/icons/test-tube';
 	import { scale } from 'svelte/transition';
 	import { elasticOut } from 'svelte/easing';
 	import { burst } from '../fx/particles.js';
 	import { sound } from '../fx/audio.js';
 	import { nav } from '../state/nav.svelte.js';
 	import { claimGift, giftDay, GIFTS } from '../state/session.svelte.js';
+	import Coin from './Coin.svelte';
 	import Modal from './Modal.svelte';
 
 	const day = giftDay();
 	/** @type {(typeof GIFTS)[number] | null} */
 	let opened = $state(null);
-
-	/** @param {(typeof GIFTS)[number]} g */
-	const describe = (g) =>
-		[g.coins && `🪙 ${g.coins}`, g.hints && `💡 ${g.hints}`, g.tubes && `🧪 ${g.tubes}`]
-			.filter(Boolean)
-			.join(' + ');
 
 	/** @param {MouseEvent} event */
 	function open(event) {
@@ -28,25 +27,41 @@
 	}
 </script>
 
+{#snippet items(/** @type {(typeof GIFTS)[number]} */ g, /** @type {number} */ size)}
+	{#if g.coins}<span class="item" role="img" aria-label="{g.coins} coins"
+			><Coin {size} />{g.coins}</span
+		>{/if}
+	{#if g.hints}<span
+			class="item"
+			role="img"
+			aria-label="{g.hints} {g.hints === 1 ? 'hint' : 'hints'}"><Lightbulb {size} />{g.hints}</span
+		>{/if}
+	{#if g.tubes}<span
+			class="item"
+			role="img"
+			aria-label="{g.tubes} {g.tubes === 1 ? 'tube' : 'tubes'}"><TestTube {size} />{g.tubes}</span
+		>{/if}
+{/snippet}
+
 <Modal title="Daily gift" onclose={() => (nav.dialog = '')}>
 	<div class="gift">
 		<div class="week">
 			{#each GIFTS as g, i (i)}
 				<div class="day" class:today={i + 1 === day} class:past={i + 1 < day}>
 					<small>Day {i + 1}</small>
-					<span>{describe(g)}</span>
+					<span class="items">{@render items(g, 12)}</span>
 				</div>
 			{/each}
 		</div>
 		{#if opened}
 			<div class="reward" in:scale={{ duration: 700, easing: elasticOut }}>
-				<span class="big">✨</span>
-				<b>{describe(opened)}</b>
+				<span class="big"><Sparkles size={56} /></span>
+				<b class="items">{@render items(opened, 26)}</b>
 				<small>Come back tomorrow for day {(day % GIFTS.length) + 1}!</small>
 			</div>
 			<button class="primary" onclick={() => (nav.dialog = '')}>Collect</button>
 		{:else}
-			<button class="chest" onclick={open} aria-label="Open gift">🎁</button>
+			<button class="chest" onclick={open} aria-label="Open gift"><Gift size={96} /></button>
 			<p>Tap to open · Day {day} of your streak</p>
 		{/if}
 	</div>
@@ -86,8 +101,19 @@
 	.day.today small {
 		color: #fff;
 	}
+	.items {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 2px 6px;
+	}
+	.item {
+		display: inline-flex;
+		align-items: center;
+		gap: 2px;
+	}
 	.chest {
-		font-size: 96px;
+		color: var(--accent);
 		background: none;
 		padding: 0;
 		animation: shake 1.6s ease-in-out infinite;
@@ -101,7 +127,7 @@
 		font-size: 28px;
 	}
 	.big {
-		font-size: 60px;
+		color: #ffcf3f;
 	}
 	small,
 	p {

@@ -4,7 +4,7 @@ import { ACHIEVEMENTS, newlyEarned } from '../src/lib/game/achievements.js';
 import { generatePuzzle } from '../src/lib/game/generator.js';
 import { dailySeed, dailySpec, levelSeed, levelSpec, MAX_COLORS } from '../src/lib/game/levels.js';
 import { canMove, isSolved, usefulMoves } from '../src/lib/game/rules.js';
-import { levelCoins, rankFor, scoreFor, starsFor } from '../src/lib/game/scoring.js';
+import { dailyCoins, levelCoins, rankFor, scoreFor, starsFor } from '../src/lib/game/scoring.js';
 import { solve } from '../src/lib/game/solver.js';
 import { PALETTE, SKINS, SYMBOLS } from '../src/lib/game/cosmetics.js';
 import { defaultProfile } from '../src/lib/game/profile.js';
@@ -86,6 +86,18 @@ test('solver proves small dead ends unsolvable', () => {
 		).status,
 		'solved'
 	);
+});
+
+test('a merges-only search never drops a ball into an empty tube', () => {
+	// Sorting these two needs the spare tube, so only a full search can.
+	const swapped = [[0, 1], [1, 0], []];
+	assert.equal(solve(swapped, 2).status, 'solved');
+	assert.equal(solve(swapped, 2, { merges: true }).status, 'unsolvable');
+
+	const tubes = [[0], [1, 1], [0, 0, 0], [], [1, 1]];
+	const result = solve(tubes, 4, { merges: true, weight: 1 });
+	assert.equal(result.status, 'solved');
+	assert.ok(result.moves?.every(([, to]) => to !== 3));
 });
 
 test('solver reports unknown when the budget runs out', () => {
@@ -202,6 +214,64 @@ test('achievement ids are unique and each can be earned', () => {
 		newlyEarned(p).map((a) => a.id),
 		['first']
 	);
+});
+
+test('a steady player unlocks trophies a few at a time, not in bursts', () => {
+	// Plays levels 1–60 near par, a daily challenge and gift every eight levels,
+	// and counts how many trophies arrive with each level.
+	const p = defaultProfile();
+	const earn = (/** @type {number} */ n) => {
+		p.coins += n;
+		p.stats.coinsEarned += n;
+	};
+	let most = 0;
+	for (let level = 1; level <= 60; level++) {
+		const spec = levelSpec(level);
+		const par = Math.round(spec.colors * spec.capacity * 0.9);
+		const sloppy = level % 5 === 2;
+		const moves = sloppy ? Math.ceil(par * 1.4) : par + 1;
+		const seconds = spec.colors * spec.capacity * 3;
+		const bestCombo = spec.colors >= 4 ? 2 : 1;
+		const stars = starsFor(moves, par);
+		const s = p.stats;
+		s.solved++;
+		s.moves += moves;
+		s.bestCombo = Math.max(s.bestCombo, bestCombo);
+		if (!sloppy) s.flawless++;
+		if (spec.mystery) s.mysterySolved++;
+		if (stars === 3) s.perfect++;
+		if (spec.boss) s.bossesBeaten++;
+		s.tubesCompleted += spec.colors;
+		s.seconds += seconds;
+		p.score += scoreFor({
+			...spec,
+			moves,
+			par,
+			seconds,
+			bestCombo,
+			undos: sloppy ? 2 : 0,
+			hints: 0
+		}).total;
+		earn(levelCoins(stars, 0, spec.boss));
+		p.stars[level] = stars;
+		p.unlocked = level + 1;
+		if (level % 8 === 1) {
+			const day = (level - 1) / 8 + 1;
+			p.daily.streak = p.daily.best = day;
+			s.dailySolved++;
+			earn(dailyCoins(day) + 50);
+		}
+		let count = 0;
+		for (let found = newlyEarned(p); found.length; found = newlyEarned(p))
+			for (const a of found) {
+				p.achievements[a.id] = 'today';
+				earn(a.reward);
+				count++;
+			}
+		most = Math.max(most, count);
+	}
+	assert.ok(most <= 2, `${most} trophies arrived with one level`);
+	assert.ok(Object.keys(p.achievements).length >= 15, 'trophies keep coming through level 60');
 });
 
 test('solver agrees with exhaustive search on small boards', () => {

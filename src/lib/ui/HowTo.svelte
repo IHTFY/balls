@@ -1,4 +1,10 @@
 <script>
+	import Flame from '@lucide/svelte/icons/flame';
+	import Keyboard from '@lucide/svelte/icons/keyboard';
+	import Lightbulb from '@lucide/svelte/icons/lightbulb';
+	import Star from '@lucide/svelte/icons/star';
+	import TestTube from '@lucide/svelte/icons/test-tube';
+	import WandSparkles from '@lucide/svelte/icons/wand-sparkles';
 	import { skinById } from '../game/cosmetics.js';
 	import { nav } from '../state/nav.svelte.js';
 	import { profile } from '../state/profile.svelte.js';
@@ -38,13 +44,15 @@
 			<p><b>Fill every tube with one color</b> to win. Finished tubes get a lid.</p>
 		</section>
 		<section>
-			<div class="art"><span class="big">⭐⭐⭐</span></div>
+			<div class="art big stars">
+				{#each [1, 2, 3] as n (n)}<Star size={26} fill="currentColor" />{/each}
+			</div>
 			<p>
 				Finish close to <b>par</b> (the fewest moves we found) for three stars. Beat par for a big bonus.
 			</p>
 		</section>
 		<section>
-			<div class="art"><span class="big">🔥×3</span></div>
+			<div class="art big"><Flame size={26} /><b>×3</b></div>
 			<p>Complete tubes in quick succession to build a <b>combo</b> for extra points.</p>
 		</section>
 		<section>
@@ -52,14 +60,21 @@
 			<p><b>Mystery levels</b> hide every ball under the top one until you uncover it.</p>
 		</section>
 		<section>
-			<div class="art"><span class="big">💡🧪</span></div>
+			<div class="art big"><Lightbulb size={26} /><TestTube size={26} /></div>
 			<p>
 				Stuck? A <b>hint</b> shows a winning move; an <b>extra tube</b> gives you room. Undo and restart
 				are always free.
 			</p>
 		</section>
 		<section>
-			<div class="art"><span class="big">⌨️</span></div>
+			<div class="art big"><WandSparkles size={26} /></div>
+			<p>
+				In <b>Settings</b>, you can light up the tubes a ball fits in, let a ball drop when only one
+				tube fits, and let the game finish once only matching moves remain.
+			</p>
+		</section>
+		<section>
+			<div class="art big"><Keyboard size={26} /></div>
 			<p>
 				Keys: <kbd>1</kbd>–<kbd>0</kbd> pick tubes, <kbd>Z</kbd> undo, <kbd>R</kbd> restart,
 				<kbd>H</kbd>
@@ -110,7 +125,12 @@
 		color: #ff4d5e;
 	}
 	.big {
+		align-items: center;
 		font-size: 24px;
+		color: var(--accent);
+	}
+	.stars {
+		color: #ffcf3f;
 	}
 	kbd {
 		padding: 0 5px;

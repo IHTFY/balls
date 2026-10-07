@@ -1,10 +1,12 @@
 <script>
 	import { fly, scale } from 'svelte/transition';
 	import { backOut, elasticOut } from 'svelte/easing';
+	import Flame from '@lucide/svelte/icons/flame';
 	import Share2 from '@lucide/svelte/icons/share-2';
 	import { sound } from '../fx/audio.js';
 	import { clock } from '../game/format.js';
 	import { notify } from '../state/toasts.svelte.js';
+	import Coin from './Coin.svelte';
 	import RollingNumber from './RollingNumber.svelte';
 	import Modal from './Modal.svelte';
 
@@ -37,7 +39,7 @@
 		if (result.rankAfter.level > result.rankBefore.level)
 			at(tallyAt + 1100, () =>
 				notify({
-					icon: '🎖️',
+					icon: 'medal',
 					title: `Rank up: ${result.rankAfter.title}`,
 					body: `You reached rank ${result.rankAfter.level}`
 				})
@@ -65,11 +67,15 @@
 			if (navigator.share) await navigator.share({ text, url });
 			else {
 				await navigator.clipboard.writeText(`${text}\n${url}`);
-				notify({ icon: '📋', title: 'Copied!', body: 'Paste it anywhere to share' });
+				notify({ icon: 'clipboard-check', title: 'Copied!', body: 'Paste it anywhere to share' });
 			}
 		} catch (error) {
 			if (/** @type {Error} */ (error).name !== 'AbortError')
-				notify({ icon: '⚠️', title: 'Couldn’t share', body: 'Your browser blocked it' });
+				notify({
+					icon: 'triangle-alert',
+					title: 'Couldn’t share',
+					body: 'Your browser blocked it'
+				});
 		}
 	}
 </script>
@@ -89,7 +95,10 @@
 				<div><small>Moves</small><strong>{result.moves}</strong><em>par {result.par}</em></div>
 				<div><small>Time</small><strong>{clock(result.seconds)}</strong></div>
 				{#if result.streak}
-					<div><small>Streak</small><strong>🔥 {result.streak}</strong><em>days</em></div>
+					<div>
+						<small>Streak</small><strong class="streak"><Flame size={20} /> {result.streak}</strong
+						><em>days</em>
+					</div>
 				{/if}
 			</div>
 			{#if result.newBest && result.previousStars}
@@ -126,7 +135,8 @@
 				class="coins"
 				in:scale={{ delay: 900 + result.stars * 320, duration: 500, easing: elasticOut }}
 			>
-				+{result.coins} 🪙
+				+{result.coins}
+				<Coin size={24} />
 			</div>
 		{/if}
 
@@ -220,6 +230,14 @@
 	.facts strong {
 		font-size: 22px;
 	}
+	.streak {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+	}
+	.streak :global(svg) {
+		color: #ff8a1f;
+	}
 	.best {
 		margin: 0;
 		padding: 2px 12px;
@@ -260,6 +278,9 @@
 		font-family: var(--display);
 	}
 	.coins {
+		display: flex;
+		align-items: center;
+		gap: 6px;
 		font-size: 24px;
 		font-weight: 700;
 		color: var(--accent);

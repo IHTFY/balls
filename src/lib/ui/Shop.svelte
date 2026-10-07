@@ -1,6 +1,11 @@
 <script>
 	import ChevronLeft from '@lucide/svelte/icons/chevron-left';
 	import Check from '@lucide/svelte/icons/check';
+	import CircleDot from '@lucide/svelte/icons/circle-dot';
+	import Lightbulb from '@lucide/svelte/icons/lightbulb';
+	import Palette from '@lucide/svelte/icons/palette';
+	import Rocket from '@lucide/svelte/icons/rocket';
+	import TestTube from '@lucide/svelte/icons/test-tube';
 	import { BOOSTERS, SKINS, skinById, THEMES } from '../game/cosmetics.js';
 	import { burst } from '../fx/particles.js';
 	import { sound } from '../fx/audio.js';
@@ -8,14 +13,16 @@
 	import { checkAchievements, profile, spend } from '../state/profile.svelte.js';
 	import { notify } from '../state/toasts.svelte.js';
 	import Ball from './Ball.svelte';
+	import Coin from './Coin.svelte';
 	import CoinChip from './CoinChip.svelte';
+	import Icon from './Icon.svelte';
 
-	/** @type {['themes' | 'balls' | 'boosters', string][]} */
-	const TABS = [
-		['themes', '🎨 Themes'],
-		['balls', '🔮 Balls'],
-		['boosters', '🚀 Boosters']
-	];
+	const TABS = /** @type {const} */ ([
+		['themes', Palette, 'Themes'],
+		['balls', CircleDot, 'Balls'],
+		['boosters', Rocket, 'Boosters']
+	]);
+	/** @type {(typeof TABS)[number][0]} */
 	let tab = $state(TABS[0][0]);
 	const equipped = $derived(skinById(profile.skin));
 	/** The item awaiting a second tap to confirm the purchase. */
@@ -39,7 +46,7 @@
 		if (profile.coins < price) {
 			sound.invalid();
 			notify({
-				icon: '🪙',
+				icon: 'coins',
 				title: 'Not enough coins',
 				body: `You need ${price - profile.coins} more`
 			});
@@ -87,13 +94,14 @@
 	</header>
 
 	<div class="tabs" role="tablist">
-		{#each TABS as [id, label] (id)}
+		{#each TABS as [id, TabIcon, label] (id)}
 			<button
 				role="tab"
 				aria-selected={tab === id}
 				class:active={tab === id}
 				onclick={() => (tab = id)}
 			>
+				<TabIcon size={18} />
 				{label}
 			</button>
 		{/each}
@@ -131,7 +139,8 @@
 										profile.theme = theme.id;
 									})}
 							>
-								{confirming === theme.id ? 'Tap to confirm' : `🪙 ${theme.price}`}
+								{#if confirming === theme.id}Tap to confirm{:else}<Coin size={16} />
+									{theme.price}{/if}
 							</button>
 						{/if}
 					</div>
@@ -163,7 +172,8 @@
 										profile.skin = skin.id;
 									})}
 							>
-								{confirming === skin.id ? 'Tap to confirm' : `🪙 ${skin.price}`}
+								{#if confirming === skin.id}Tap to confirm{:else}<Coin size={16} />
+									{skin.price}{/if}
 							</button>
 						{/if}
 					</div>
@@ -171,13 +181,14 @@
 			</div>
 		{:else}
 			<p class="have">
-				You have <b>💡 {profile.hints}</b> hints and <b>🧪 {profile.tubes}</b> extra tubes.
+				You have <b><Lightbulb size={16} /> {profile.hints}</b> hints and
+				<b><TestTube size={16} /> {profile.tubes}</b> extra tubes.
 			</p>
 			<div class="boosters">
 				{#each BOOSTERS as booster, i (i)}
 					{@const key = `booster-${i}`}
 					<div class="booster">
-						<span class="booster-icon">{booster.icon}</span>
+						<span class="booster-icon"><Icon name={booster.icon} size={26} /></span>
 						<div>
 							<b>{booster.name}</b>
 							<small>{booster.description}</small>
@@ -190,7 +201,7 @@
 									profile[booster.id] += booster.count;
 								})}
 						>
-							{confirming === key ? 'Confirm' : `🪙 ${booster.price}`}
+							{#if confirming === key}Confirm{:else}<Coin size={16} /> {booster.price}{/if}
 						</button>
 					</div>
 				{/each}
@@ -230,6 +241,10 @@
 		padding: 0 14px 10px;
 	}
 	.tabs button {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
 		flex: 1;
 		padding: 10px;
 		border-radius: 14px;
@@ -304,6 +319,13 @@
 	.have {
 		text-align: center;
 	}
+	.have b {
+		white-space: nowrap;
+	}
+	.have :global(svg) {
+		vertical-align: -0.15em;
+		color: var(--accent);
+	}
 	.boosters {
 		display: grid;
 		gap: 10px;
@@ -325,7 +347,13 @@
 		color: var(--muted);
 	}
 	.booster-icon {
-		font-size: 32px;
+		display: grid;
+		place-items: center;
+		width: 48px;
+		height: 48px;
+		border-radius: 14px;
+		background: color-mix(in srgb, var(--accent), transparent 82%);
+		color: var(--accent);
 	}
 	.earn {
 		text-align: center;

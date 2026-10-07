@@ -42,7 +42,7 @@ const BLITZ_SECONDS = 90;
  * @property {number} [solved] blitz puzzles solved
  */
 
-export const game = new Game(() => profile.settings.stacks);
+export const game = new Game(() => profile.settings);
 
 export const session = $state({
 	/** @type {Mode} */
@@ -407,6 +407,23 @@ export function checkDeadEnd() {
 	search(game.colorTubes, game.capacity, { weight: 2, maxNodes: 15_000 }).then((r) => {
 		if (version === game.version && r.status === 'unsolvable') game.deadEnd = true;
 	});
+}
+
+/**
+ * With auto-finish on, finds a win from the current position that only drops
+ * balls onto matching ones, never into an empty tube.
+ * @returns {Promise<[number, number][] | null>} single-ball moves, or null
+ */
+export async function findFinish() {
+	// As with dead-end warnings, the solver must not act on hidden balls.
+	if (!profile.settings.autoFinish || game.won || game.hasHidden) return null;
+	const version = game.version;
+	const r = await search(game.colorTubes, game.capacity, {
+		merges: true,
+		weight: 1,
+		maxNodes: 3000
+	});
+	return version === game.version && r.status === 'solved' ? r.moves : null;
 }
 
 /** Daily gift rewards for days 1–7 of a login streak. */
