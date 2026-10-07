@@ -22,3 +22,10 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Uncommitted project files (screenshots, notes)
+.local/
+
+# Browser test output
+test-results
+playwright-report
