@@ -401,7 +401,8 @@ export function addTube() {
 
 /** Warns early when the position can no longer be solved. */
 export function checkDeadEnd() {
-	if (!profile.settings.deadEnd || game.won) return;
+	// The solver sees hidden balls, so a warning would give away what they are.
+	if (!profile.settings.deadEnd || game.won || game.hasHidden) return;
 	const version = game.version;
 	search(game.colorTubes, game.capacity, { weight: 2, maxNodes: 15_000 }).then((r) => {
 		if (version === game.version && r.status === 'unsolvable') game.deadEnd = true;

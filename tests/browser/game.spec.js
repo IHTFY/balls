@@ -227,3 +227,92 @@ test('other modes do not show the daily date', async ({ page }) => {
 	await waitForBoard(page);
 	await expect(page.locator('.tags')).not.toContainText(/\d{4}-\d{2}-\d{2}/);
 });
+
+/**
+ * A saved mystery game on level 18. Balls are [color, hidden] pairs, bottom to top.
+ * @param {[number, boolean][][]} board
+ */
+function mysterySave(board) {
+	let id = 0;
+	const start = board.map((tube) => tube.map(([color, hidden]) => ({ id: id++, color, hidden })));
+	return {
+		mode: 'level',
+		level: 18,
+		seed: 1,
+		colors: 2,
+		boss: false,
+		mystery: true,
+		game: {
+			start,
+			tubes: start,
+			history: [],
+			capacity: 4,
+			par: 6,
+			moves: 0,
+			seconds: 0,
+			undos: 0,
+			hintsUsed: 0,
+			tubesAdded: 0,
+			bestCombo: 0
+		}
+	};
+}
+
+test('move stacks never lifts hidden balls, even when they match', async ({ page }) => {
+	await open(page, {
+		unlocked: 18,
+		settings: { music: false, stacks: true },
+		saved: mysterySave([
+			[
+				[1, true],
+				[0, true],
+				[0, true],
+				[0, false]
+			],
+			[
+				[1, true],
+				[1, true],
+				[1, true],
+				[0, false]
+			],
+			[]
+		])
+	});
+	await page.getByRole('button', { name: /Level 18/ }).click();
+	await waitForBoard(page);
+	await tap(page, 0);
+	await expect(page.locator('.ball-slot.up')).toHaveCount(1);
+	await tap(page, 2);
+	expect((await readBoard(page)).tubes[2]).toEqual([0]);
+});
+
+test('finishing a tube reveals the hidden balls inside it', async ({ page }) => {
+	await open(page, {
+		unlocked: 18,
+		saved: mysterySave([
+			[
+				[1, true],
+				[0, false]
+			],
+			[
+				[0, true],
+				[0, true],
+				[0, false]
+			],
+			[
+				[1, true],
+				[1, true],
+				[1, false]
+			],
+			[]
+		])
+	});
+	await page.getByRole('button', { name: /Level 18/ }).click();
+	await waitForBoard(page);
+	await expect(page.locator('.ball.hidden')).toHaveCount(5);
+	await tap(page, 0);
+	await tap(page, 1);
+	// The uncovered ball in tube 1 and both hidden balls in the finished tube 2.
+	await expect(page.locator('.ball.hidden')).toHaveCount(2);
+	expect((await readBoard(page)).tubes[1]).toEqual([0, 0, 0, 0]);
+});
