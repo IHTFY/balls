@@ -1,8 +1,11 @@
 <script>
 	import { SYMBOLS } from '../game/cosmetics.js';
 
-	/** @type {{ color: number, hidden?: boolean, skin: import('../game/cosmetics.js').Skin, symbols?: boolean, size: number }} */
-	let { color, hidden = false, skin, symbols = false, size } = $props();
+	/**
+	 * @type {{ color: number, hidden?: boolean, skin: import('../game/cosmetics.js').Skin,
+	 *   symbols?: boolean, size: number, label?: string }}
+	 */
+	let { color, hidden = false, skin, symbols = false, size, label = '' } = $props();
 
 	const fill = $derived(skin.colors[color % skin.colors.length]);
 	const striped = $derived(skin.style === 'billiard' && color >= 7);
@@ -17,12 +20,15 @@
 >
 	{#if hidden}
 		<span class="glyph">?</span>
+	{:else if label}
+		<!-- Billiard balls carry the letter on their white disc, where white text would vanish. -->
+		<span class={skin.style === 'billiard' ? 'number letter' : 'label'}>{label}</span>
 	{:else if skin.style === 'emoji'}
 		<span class="emoji">{skin.emoji?.[color]}</span>
 	{:else if skin.style === 'billiard'}
 		<span class="number">{color + 1}</span>
 	{/if}
-	{#if symbols && !hidden && skin.style !== 'emoji' && skin.style !== 'billiard'}
+	{#if symbols && !hidden && !label && skin.style !== 'emoji' && skin.style !== 'billiard'}
 		<span class="symbol">{SYMBOLS[color]}&#xFE0E;</span>
 	{/if}
 </div>
@@ -128,6 +134,24 @@
 		color: #141414;
 		font-size: calc(var(--size) * 0.28);
 		font-weight: 800;
+	}
+	.number.letter {
+		width: 64%;
+		height: 64%;
+		font-size: calc(var(--size) * 0.44);
+	}
+	.label {
+		font-size: calc(var(--size) * 0.56);
+		color: #fff;
+		-webkit-text-stroke: calc(var(--size) * 0.07) rgb(0 0 0 / 0.6);
+		paint-order: stroke fill;
+		text-shadow: 0 calc(var(--size) * 0.03) calc(var(--size) * 0.06) rgb(0 0 0 / 0.4);
+	}
+	/* Pastel balls are too light for white letters. */
+	.matte .label {
+		color: color-mix(in oklab, var(--c), #000 70%);
+		-webkit-text-stroke: 0;
+		text-shadow: 0 1px 0 rgb(255 255 255 / 0.5);
 	}
 	.emoji {
 		background: radial-gradient(

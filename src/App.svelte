@@ -5,7 +5,7 @@
 	import { setMusic, setSound, suspendAudio, unlockAudio } from './lib/fx/audio.js';
 	import { setHaptics } from './lib/fx/haptics.js';
 	import { setReducedMotion } from './lib/fx/particles.js';
-	import { nav } from './lib/state/nav.svelte.js';
+	import { back, nav } from './lib/state/nav.svelte.js';
 	import { persist, profile } from './lib/state/profile.svelte.js';
 	import { giftReady } from './lib/state/session.svelte.js';
 	import Ambience from './lib/ui/Ambience.svelte';
@@ -58,13 +58,41 @@
 		}
 	});
 
+	// The phone's back button steps back through the app instead of closing it. Away
+	// from the home screen one extra history entry is kept; Back consumes it, the app
+	// takes one step back, and the entry is pushed again unless that step reached home.
+	const atHome = $derived(nav.screen === 'home' && !nav.dialog);
+	let guarded = false;
+	let skipPop = false;
+	$effect(() => {
+		if (!atHome && !guarded) {
+			history.pushState(null, '');
+			guarded = true;
+		} else if (atHome && guarded) {
+			// Reached home from inside the app: drop the entry so the next Back leaves.
+			guarded = false;
+			skipPop = true;
+			history.back();
+		}
+	});
+
+	function onpopstate() {
+		if (skipPop) {
+			skipPop = false;
+			return;
+		}
+		back();
+		if (atHome) guarded = false;
+		else history.pushState(null, '');
+	}
+
 	function wakeAudio() {
 		unlockAudio();
 		audioReady = true;
 	}
 </script>
 
-<svelte:window onpointerdown={wakeAudio} onkeydown={wakeAudio} onpagehide={persist} />
+<svelte:window onpointerdown={wakeAudio} onkeydown={wakeAudio} onpagehide={persist} {onpopstate} />
 <svelte:document
 	onvisibilitychange={() => {
 		const hidden = document.visibilityState === 'hidden';

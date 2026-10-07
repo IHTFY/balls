@@ -5,29 +5,31 @@
 	import { rankFor } from '../game/scoring.js';
 	import { go } from '../state/nav.svelte.js';
 	import { profile } from '../state/profile.svelte.js';
+	import Icon from './Icon.svelte';
 
 	const s = $derived(profile.stats);
 	const rank = $derived(rankFor(profile.score));
 
+	/** @type {[import('./icons.js').IconName, string, string | number][]} */
 	const tiles = $derived([
-		['🗺️', 'Levels cleared', profile.unlocked - 1],
-		['⭐', 'Stars', totalStars(profile)],
-		['💎', 'Three-star clears', s.perfect],
-		['🧩', 'Puzzles solved', s.solved],
-		['🏌️', 'Under par', s.underPar],
-		['🧊', 'Flawless', s.flawless],
-		['👆', 'Moves made', s.moves.toLocaleString()],
-		['🧪', 'Tubes completed', s.tubesCompleted.toLocaleString()],
-		['🔥', 'Best combo', s.bestCombo ? `×${s.bestCombo}` : '—'],
-		['⚡', 'Fastest solve', s.fastest ? duration(s.fastest) : '—'],
-		['⏳', 'Time played', duration(s.seconds)],
-		['📅', 'Dailies solved', s.dailySolved],
-		['📆', 'Best daily streak', profile.daily.best],
-		['🏁', 'Blitz best', s.blitzBest.toLocaleString()],
-		['🧘', 'Zen solved', s.zenSolved],
-		['💡', 'Hints used', s.hintsUsed],
-		['↩️', 'Undos', s.undos],
-		['🪙', 'Coins earned', s.coinsEarned.toLocaleString()]
+		['map', 'Levels cleared', profile.unlocked - 1],
+		['star', 'Stars', totalStars(profile)],
+		['gem', 'Three-star clears', s.perfect],
+		['puzzle', 'Puzzles solved', s.solved],
+		['flag', 'Under par', s.underPar],
+		['snowflake', 'Flawless', s.flawless],
+		['mouse-pointer-click', 'Moves made', s.moves.toLocaleString()],
+		['test-tube', 'Tubes completed', s.tubesCompleted.toLocaleString()],
+		['flame', 'Best combo', s.bestCombo ? `×${s.bestCombo}` : '—'],
+		['zap', 'Fastest solve', s.fastest ? duration(s.fastest) : '—'],
+		['hourglass', 'Time played', duration(s.seconds)],
+		['calendar-check', 'Dailies solved', s.dailySolved],
+		['calendar-days', 'Best daily streak', profile.daily.best],
+		['alarm-clock', 'Blitz best', s.blitzBest.toLocaleString()],
+		['leaf', 'Zen solved', s.zenSolved],
+		['lightbulb', 'Hints used', s.hintsUsed],
+		['undo-2', 'Undos', s.undos],
+		['coins', 'Coins earned', s.coinsEarned.toLocaleString()]
 	]);
 
 	// The last five weeks of daily challenges, oldest first.
@@ -75,7 +77,7 @@
 		<div class="tiles">
 			{#each tiles as [icon, label, value] (label)}
 				<div class="tile">
-					<span>{icon}</span>
+					<span><Icon name={icon} size={22} /></span>
 					<b>{value}</b>
 					<small>{label}</small>
 				</div>
@@ -196,7 +198,7 @@
 		background: var(--surface);
 	}
 	.tile span {
-		font-size: 22px;
+		color: var(--accent);
 	}
 	.tile b {
 		font-size: 22px;

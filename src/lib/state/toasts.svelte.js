@@ -1,6 +1,6 @@
 // Short notifications that slide in at the top of the screen.
 
-/** @typedef {{ id: number, icon: string, title: string, body?: string }} Toast */
+/** @typedef {{ id: number, icon: import('../ui/icons.js').IconName, title: string, body?: string }} Toast */
 
 /** @type {Toast[]} */
 export const toasts = $state([]);

@@ -1,4 +1,5 @@
 <script>
+	import ArrowBigDown from '@lucide/svelte/icons/arrow-big-down';
 	import { SvelteSet } from 'svelte/reactivity';
 	import { computeLayout, slotCenter } from '../game/layout.js';
 	import { burst, confetti, shimmer } from '../fx/particles.js';
@@ -9,12 +10,13 @@
 	 *   game: import('../state/game.svelte.js').Game,
 	 *   skin: import('../game/cosmetics.js').Skin,
 	 *   symbols: boolean,
+	 *   targets: boolean,
 	 *   reduced: boolean,
 	 *   pointer?: number,
 	 *   onTap: (tube: number) => void
 	 * }}
 	 */
-	let { game, skin, symbols, reduced, pointer = -1, onTap } = $props();
+	let { game, skin, symbols, targets, reduced, pointer = -1, onTap } = $props();
 
 	let width = $state(0);
 	let height = $state(0);
@@ -215,6 +217,15 @@
 							: PRAISE[Math.floor(Math.random() * PRAISE.length)],
 					big: event.combo > 1
 				});
+			} else if (event.type === 'only') {
+				const box = layout.tubes[event.to];
+				floats.push({
+					id: floatId++,
+					x: box.x + box.w / 2,
+					y: box.y - layout.ball * 0.9,
+					text: 'Only move',
+					big: false
+				});
 			} else if (event.type === 'reveal') {
 				setTimeout(() => shimmer(tubeRect(event.tube), '#fff', 8), 250);
 			} else if (event.type === 'win') {
@@ -263,6 +274,7 @@
 				<button
 					class="tube"
 					class:selected={game.selected === i}
+					class:target={targets && game.destinations.includes(i)}
 					class:complete={game.isComplete(i)}
 					class:popped={popped.has(i)}
 					class:hint-from={game.hint?.from === i}
@@ -294,7 +306,7 @@
 						style:top="{box.y - layout.ball * 1.6}px"
 						aria-hidden="true"
 					>
-						{pointer === i ? '👇' : '▼'}
+						{#if pointer === i}<ArrowBigDown size={34} fill="currentColor" />{:else}▼{/if}
 					</div>
 				{/if}
 			{/each}
@@ -397,6 +409,12 @@
 			0 0 calc(var(--ball) * 0.35) color-mix(in srgb, var(--accent), transparent 50%),
 			inset 0 0 calc(var(--ball) * 0.3) color-mix(in srgb, var(--accent), transparent 75%);
 	}
+	.target .glass {
+		border-color: color-mix(in srgb, var(--accent-2), transparent 15%);
+		box-shadow:
+			0 0 calc(var(--ball) * 0.3) color-mix(in srgb, var(--accent-2), transparent 55%),
+			inset 0 0 calc(var(--ball) * 0.25) color-mix(in srgb, var(--accent-2), transparent 80%);
+	}
 	.complete .glass {
 		border-color: var(--cap-color);
 		box-shadow:
@@ -473,8 +491,9 @@
 		z-index: 2;
 	}
 	.arrow.hand {
-		font-size: 34px;
+		line-height: 0;
 		text-shadow: none;
+		filter: drop-shadow(0 0 8px var(--accent-2));
 	}
 	.float {
 		position: absolute;

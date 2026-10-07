@@ -67,7 +67,7 @@ export const generate = (spec, seed) => call({ type: 'generate', spec, seed });
 /**
  * @param {number[][]} tubes
  * @param {number} capacity
- * @param {{ maxNodes?: number, weight?: number }} options
+ * @param {import('./game/solver.js').SolveOptions} options
  * @returns {Promise<SolveResult>}
  */
 export const search = (tubes, capacity, options) =>

@@ -309,12 +309,12 @@ export const skinById = (id) => SKINS.find((s) => s.id === id) ?? SKINS[0];
 /** Boosters sold in bundles. */
 const HINT = {
 	id: /** @type {const} */ ('hints'),
-	icon: '💡',
+	icon: /** @type {const} */ ('lightbulb'),
 	description: 'Shows your next best move'
 };
 const TUBE = {
 	id: /** @type {const} */ ('tubes'),
-	icon: '🧪',
+	icon: /** @type {const} */ ('test-tube'),
 	description: 'An empty tube when you’re stuck'
 };
 export const BOOSTERS = [

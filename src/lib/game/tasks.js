@@ -5,7 +5,7 @@ import { solve } from './solver.js';
 /**
  * @typedef {{ type: 'generate', spec: import('./generator.js').PuzzleSpec, seed: number }
  *   | { type: 'solve', tubes: number[][], capacity: number,
- *       options: { maxNodes?: number, weight?: number } }} Task
+ *       options: import('./solver.js').SolveOptions }} Task
  */
 
 /** @param {Task} task */

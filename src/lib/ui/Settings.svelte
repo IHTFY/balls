@@ -1,20 +1,38 @@
 <script>
+	import CircleCheck from '@lucide/svelte/icons/circle-check';
+	import Download from '@lucide/svelte/icons/download';
+	import Heart from '@lucide/svelte/icons/heart';
+	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import { sound } from '../fx/audio.js';
 	import { nav } from '../state/nav.svelte.js';
 	import { install, promptInstall } from '../state/install.svelte.js';
 	import { profile, resetProfile } from '../state/profile.svelte.js';
 	import { updates } from '../state/updates.svelte.js';
+	import Icon from './Icon.svelte';
 	import Modal from './Modal.svelte';
 	import { SUPPORT_URL } from '../support.js';
 
 	const OPTIONS = /** @type {const} */ ([
-		['sound', '🔊', 'Sound effects', ''],
-		['music', '🎵', 'Music', 'Gentle generated melodies'],
-		['haptics', '📳', 'Vibration', 'On supported phones'],
-		['symbols', '🔷', 'Color symbols', 'Shapes on balls for color-blind play'],
-		['stacks', '🧲', 'Move stacks', 'Move matching top balls together'],
-		['deadEnd', '🧱', 'Dead-end warnings', 'Tell me when a position can’t be solved'],
-		['reducedMotion', '🐢', 'Reduce motion', 'Calmer animations']
+		['sound', 'volume-2', 'Sound effects', ''],
+		['music', 'music', 'Music', 'Gentle generated melodies'],
+		['haptics', 'vibrate', 'Vibration', 'On supported phones'],
+		['symbols', 'shapes', 'Color symbols', 'Shapes on balls for color-blind play'],
+		['stacks', 'layers', 'Move stacks', 'Move matching top balls together'],
+		['targets', 'target', 'Show where it fits', 'Light up the tubes a picked-up ball can go to'],
+		[
+			'autoMove',
+			'wand-sparkles',
+			'Only-move drop',
+			'Drop the ball by itself when only one tube fits'
+		],
+		[
+			'autoFinish',
+			'fast-forward',
+			'Auto-finish',
+			'Play out the end once only matching moves remain'
+		],
+		['deadEnd', 'brick-wall', 'Dead-end warnings', 'Tell me when a position can’t be solved'],
+		['reducedMotion', 'turtle', 'Reduce motion', 'Calmer animations']
 	]);
 
 	let resetStep = $state(0);
@@ -53,7 +71,7 @@
 	<div class="options">
 		{#each OPTIONS as [key, icon, label, help] (key)}
 			<label class="option">
-				<span class="icon">{icon}</span>
+				<span class="icon"><Icon name={icon} size={20} /></span>
 				<span class="text"
 					><b>{label}</b>{#if help}<small>{help}</small>{/if}</span
 				>
@@ -70,7 +88,11 @@
 	<h3>App</h3>
 	<div class="app">
 		<p>
-			{offlineReady ? '✅ Ready to play offline' : '⏳ Preparing offline play…'}
+			<span class="offline">
+				{#if offlineReady}<CircleCheck size={18} /> Ready to play offline{:else}<LoaderCircle
+						size={18}
+					/> Preparing offline play…{/if}
+			</span>
 			{#if updates.version}<small>Build {updates.version}</small>{/if}
 		</p>
 		<button
@@ -82,10 +104,12 @@
 		</button>
 		{#if updateStatus}<small class="status" role="status">{updateStatus}</small>{/if}
 		{#if install.prompt && !install.installed}
-			<button class="primary" onclick={promptInstall}>📲 Install app</button>
+			<button class="primary" onclick={promptInstall}><Download size={20} /> Install app</button>
 		{/if}
 		<button class="secondary" onclick={() => (nav.dialog = 'howto')}>How to play</button>
-		<a class="secondary" href={SUPPORT_URL} target="_blank" rel="noopener">❤️ Support the game</a>
+		<a class="secondary" href={SUPPORT_URL} target="_blank" rel="noopener"
+			><Heart size={20} /> Support the game</a
+		>
 		<button class="danger" onclick={reset}>
 			{['Reset progress', 'Erase everything?', 'Really? Tap once more'][resetStep]}
 		</button>
@@ -110,7 +134,13 @@
 		background: var(--surface);
 	}
 	.icon {
-		font-size: 22px;
+		display: grid;
+		place-items: center;
+		width: 36px;
+		height: 36px;
+		border-radius: 10px;
+		background: var(--surface);
+		color: var(--accent);
 	}
 	.text {
 		display: grid;
@@ -169,6 +199,12 @@
 	.app p {
 		display: flex;
 		justify-content: space-between;
+		align-items: center;
 		margin: 0;
+	}
+	.offline {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
 	}
 </style>

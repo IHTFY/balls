@@ -9,6 +9,7 @@ import { validSnapshot } from '../game/snapshot.js';
  * @typedef {{ type: 'select', tube: number }
  *   | { type: 'deselect', tube: number }
  *   | { type: 'invalid', tube: number }
+ *   | { type: 'only', from: number, to: number }
  *   | { type: 'move', from: number, to: number, balls: Ball[] }
  *   | { type: 'reveal', tube: number }
  *   | { type: 'complete', tube: number, color: number, combo: number }
@@ -73,6 +74,14 @@ export class Game {
 		!this.won && this.tubes.length > 0 && usefulMoves(this.knownTubes, this.capacity).length === 0
 	);
 	hasHidden = $derived(this.tubes.some((tube) => tube.some((b) => b.hidden)));
+	/** Tubes the held ball may drop into. */
+	destinations = $derived(
+		this.selected < 0
+			? []
+			: this.tubes.flatMap((_, i) =>
+					canMove(this.colorTubes, this.selected, i, this.capacity) ? [i] : []
+				)
+	);
 
 	/** @type {Ball[][]} */
 	start = $state.raw([]);
@@ -81,9 +90,12 @@ export class Game {
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- subscribers, not UI state
 	listeners = new Set();
 
-	/** @param {() => boolean} stacks whether whole same-color runs move at once */
-	constructor(stacks) {
-		this.stacks = stacks;
+	/**
+	 * @param {() => { stacks: boolean, autoMove: boolean }} settings whether whole
+	 *   same-color runs move at once, and whether a ball with one place to go drops there
+	 */
+	constructor(settings) {
+		this.settings = settings;
 	}
 
 	/** @param {(event: GameEvent) => void} listener */
@@ -144,7 +156,7 @@ export class Game {
 
 	/** How many balls lift from tube `i` when it is selected. */
 	liftCount(/** @type {number} */ i) {
-		return this.stacks() ? topRun(this.knownTubes[i]) : 1;
+		return this.settings().stacks ? topRun(this.knownTubes[i]) : 1;
 	}
 
 	/** @param {number} i */
@@ -164,6 +176,7 @@ export class Game {
 			if (this.canPick(i)) {
 				this.selected = i;
 				this.emit({ type: 'select', tube: i });
+				this.dropIfOnlyMove(i);
 			} else this.emit({ type: 'invalid', tube: i });
 			return;
 		}
@@ -182,7 +195,22 @@ export class Game {
 		if (this.canPick(i)) {
 			this.selected = i;
 			this.emit({ type: 'select', tube: i });
+			this.dropIfOnlyMove(i);
 		}
+	}
+
+	/**
+	 * With the setting on, a ball with exactly one useful place to go drops there
+	 * by itself.
+	 * @param {number} from
+	 */
+	dropIfOnlyMove(from) {
+		if (!this.settings().autoMove) return;
+		const moves = usefulMoves(this.knownTubes, this.capacity).filter(([f]) => f === from);
+		if (moves.length !== 1) return;
+		const [, to] = moves[0];
+		this.emit({ type: 'only', from, to });
+		this.move(from, to);
 	}
 
 	/**

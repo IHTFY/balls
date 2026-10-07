@@ -113,6 +113,8 @@ function isSolvedEncoded(tubes, capacity) {
 	);
 }
 
+/** @typedef {{ maxNodes?: number, weight?: number, merges?: boolean }} SolveOptions */
+
 /**
  * @typedef {{ status: 'solved', moves: Move[], nodes: number }
  *   | { status: 'unsolvable' | 'unknown', moves: null, nodes: number }} SolveResult
@@ -121,13 +123,14 @@ function isSolvedEncoded(tubes, capacity) {
 /**
  * Searches for a solution as single-ball moves. `unsolvable` means every
  * reachable position was explored; `unknown` means the node budget ran out.
- * With `weight` 1 the solution is optimal over whole-run moves.
+ * With `weight` 1 the solution is optimal over whole-run moves. With `merges`
+ * only moves onto a matching ball are tried, never into an empty tube.
  * @param {Tubes} start
  * @param {number} capacity
- * @param {{ maxNodes?: number, weight?: number }} [options]
+ * @param {SolveOptions} [options]
  * @returns {SolveResult}
  */
-export function solve(start, capacity, { maxNodes = 200_000, weight = 1.5 } = {}) {
+export function solve(start, capacity, { maxNodes = 200_000, weight = 1.5, merges = false } = {}) {
 	const tubes = encode(start);
 	if (isSolvedEncoded(tubes, capacity)) return { status: 'solved', moves: [], nodes: 0 };
 
@@ -164,6 +167,7 @@ export function solve(start, capacity, { maxNodes = 200_000, weight = 1.5 } = {}
 				const target = state[to];
 				if (target.length >= capacity) continue;
 				if (target.length === 0) {
+					if (merges) continue;
 					// Empty tubes are interchangeable; moving a one-color tube into one is pointless.
 					if (to !== firstEmpty || run === source.length) continue;
 				} else if (target[target.length - 1] !== color) continue;

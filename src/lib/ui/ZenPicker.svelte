@@ -3,6 +3,7 @@
 	import { sound } from '../fx/audio.js';
 	import { go, nav } from '../state/nav.svelte.js';
 	import { hasSave, startZen } from '../state/session.svelte.js';
+	import Icon from './Icon.svelte';
 	import Modal from './Modal.svelte';
 
 	const presets = /** @type {(keyof typeof ZEN_PRESETS)[]} */ (Object.keys(ZEN_PRESETS));
@@ -21,7 +22,7 @@
 		{#each presets as id (id)}
 			{@const p = ZEN_PRESETS[id]}
 			<button class="preset" onclick={() => pick(id)}>
-				<span class="icon">{p.icon}</span>
+				<span class="icon"><Icon name={p.icon} size={34} /></span>
 				<b>{p.label}</b>
 				<small>
 					{p.spec.colors} colors · {p.spec.capacity} tall{p.spec.mystery ? ' · mystery' : ''}
@@ -57,7 +58,7 @@
 		background: var(--surface-strong);
 	}
 	.icon {
-		font-size: 34px;
+		color: var(--accent);
 	}
 	small {
 		color: var(--muted);
