@@ -10,7 +10,7 @@ import { validSnapshot } from '../game/snapshot.js';
  *   | { type: 'deselect', tube: number }
  *   | { type: 'invalid', tube: number }
  *   | { type: 'move', from: number, to: number, balls: Ball[] }
- *   | { type: 'reveal', tube: number, ball: Ball }
+ *   | { type: 'reveal', tube: number }
  *   | { type: 'complete', tube: number, color: number, combo: number }
  *   | { type: 'win' }
  *   | { type: 'undo', from: number, to: number }
@@ -62,9 +62,17 @@ export class Game {
 	version = $state(0);
 
 	colorTubes = $derived(this.tubes.map(colorsOf));
-	stuck = $derived(
-		!this.won && this.tubes.length > 0 && usefulMoves(this.colorTubes, this.capacity).length === 0
+	/**
+	 * The board as the player sees it: each hidden ball counts as a color of its
+	 * own, so nothing the player does or is told depends on what is still hidden.
+	 */
+	knownTubes = $derived(
+		this.tubes.map((tube) => tube.map((b) => (b.hidden ? -1 - b.id : b.color)))
 	);
+	stuck = $derived(
+		!this.won && this.tubes.length > 0 && usefulMoves(this.knownTubes, this.capacity).length === 0
+	);
+	hasHidden = $derived(this.tubes.some((tube) => tube.some((b) => b.hidden)));
 
 	/** @type {Ball[][]} */
 	start = $state.raw([]);
@@ -136,7 +144,7 @@ export class Game {
 
 	/** How many balls lift from tube `i` when it is selected. */
 	liftCount(/** @type {number} */ i) {
-		return this.stacks() ? topRun(this.colorTubes[i]) : 1;
+		return this.stacks() ? topRun(this.knownTubes[i]) : 1;
 	}
 
 	/** @param {number} i */
@@ -190,9 +198,14 @@ export class Game {
 		const uncovered = rest[rest.length - 1];
 		if (uncovered?.hidden) rest[rest.length - 1] = { ...uncovered, hidden: false };
 
+		// A finished tube shows its true color, so its hidden balls are revealed too.
+		let filled = [...target, ...balls];
+		const sealed = isTubeComplete(colorsOf(filled), this.capacity) && filled.some((b) => b.hidden);
+		if (sealed) filled = filled.map((b) => (b.hidden ? { ...b, hidden: false } : b));
+
 		const tubes = [...this.tubes];
 		tubes[from] = rest;
-		tubes[to] = [...target, ...balls];
+		tubes[to] = filled;
 		this.tubes = tubes;
 		this.history = [...this.history, { from, to, count }];
 		this.moves += count;
@@ -202,7 +215,8 @@ export class Game {
 		this.version++;
 
 		this.emit({ type: 'move', from, to, balls });
-		if (uncovered?.hidden) this.emit({ type: 'reveal', tube: from, ball: rest[rest.length - 1] });
+		if (uncovered?.hidden) this.emit({ type: 'reveal', tube: from });
+		if (sealed) this.emit({ type: 'reveal', tube: to });
 		if (this.isComplete(to)) {
 			this.combo = this.moves - this.lastComplete <= COMBO_WINDOW + count ? this.combo + 1 : 1;
 			this.lastComplete = this.moves;
