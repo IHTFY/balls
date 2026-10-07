@@ -150,6 +150,9 @@ test('blitz ends when the clock runs out', async ({ page }) => {
 });
 
 test('the daily challenge pays once and builds a streak', async ({ page }) => {
+	// Daily boards grow to 12 colors on weekends: up to about 60 moves of taps, which
+	// WebKit runs slowly while balls are animating.
+	test.setTimeout(120_000);
 	await open(page, { coins: 0 });
 	await page.getByRole('button', { name: /Daily/ }).click();
 	await expect(page.getByRole('heading', { name: 'Daily Challenge' })).toBeVisible();
