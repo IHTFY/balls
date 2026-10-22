@@ -80,37 +80,55 @@ test.describe('updates', () => {
 	});
 });
 
-test('the page loads nothing from other sites and has no ads', async ({ page, baseURL }) => {
-	const origin = new URL(/** @type {string} */ (baseURL)).origin;
-	/** @type {string[]} */
-	const outside = [];
-	page.on('request', (request) => {
-		const url = new URL(request.url());
-		if (!['data:', 'blob:'].includes(url.protocol) && url.origin !== origin)
-			outside.push(request.url());
+test.describe('ads', () => {
+	// Once the service worker controls the page, WebKit's requests skip page.route
+	// and this test reached the real loader and AdSense.
+	test.use({ serviceWorkers: 'block' });
+
+	test('nothing loads from other sites until a game over, which asks only for the ad loader', async ({
+		page,
+		baseURL
+	}) => {
+		const origin = new URL(/** @type {string} */ (baseURL)).origin;
+		/** @type {string[]} */
+		const outside = [];
+		page.on('request', (request) => {
+			const url = new URL(request.url());
+			if (!['data:', 'blob:'].includes(url.protocol) && url.origin !== origin)
+				outside.push(request.url());
+		});
+		// Keep the test off the network: the loader fails, so the box stays empty.
+		await page.route('https://ihtfy.com/ads/v1.js', (route) => route.abort());
+		/** @type {string[]} */
+		const violations = [];
+		page.on('console', (m) => {
+			if (/Content Security Policy|Content-Security-Policy/i.test(m.text()))
+				violations.push(m.text());
+		});
+		const foreign = () =>
+			page
+				.locator('script[src], iframe, ins.adsbygoogle')
+				.evaluateAll((els) =>
+					els
+						.map((el) => el.getAttribute('src') ?? el.tagName)
+						.filter((src) => !src.startsWith('./') && !src.startsWith('/'))
+				);
+		await open(page, { unlocked: 3 });
+		await page.getByRole('button', { name: /Level 3/ }).click();
+		await waitForBoard(page);
+		expect(outside).toEqual([]);
+		expect(await foreign()).toEqual([]);
+		expect(await page.locator('.ad-box').count()).toBe(0);
+
+		await solveBoard(page);
+		await expect(page.getByRole('dialog')).toContainText('Level 3');
+		await expect(page.getByText('Advertisements', { exact: true })).toBeVisible();
+		await expect.poll(() => outside).toEqual(['https://ihtfy.com/ads/v1.js']);
+		expect(violations).toEqual([]);
+		// The failed loader's script tag is removed again.
+		await expect.poll(foreign).toEqual([]);
+		await expect(page.locator('.ad-box')).toBeEmpty();
 	});
-	/** @type {string[]} */
-	const violations = [];
-	page.on('console', (m) => {
-		if (/Content Security Policy|Content-Security-Policy/i.test(m.text()))
-			violations.push(m.text());
-	});
-	await open(page, { unlocked: 3 });
-	await page.getByRole('button', { name: /Level 3/ }).click();
-	await waitForBoard(page);
-	await solveBoard(page);
-	await expect(page.getByRole('dialog')).toContainText('Level 3');
-	expect(outside).toEqual([]);
-	expect(violations).toEqual([]);
-	expect(
-		await page
-			.locator('script[src], iframe, ins.adsbygoogle')
-			.evaluateAll((els) =>
-				els
-					.map((el) => el.getAttribute('src') ?? el.tagName)
-					.filter((src) => !src.startsWith('./') && !src.startsWith('/'))
-			)
-	).toEqual([]);
 });
 
 test('the support link opens the support page in a new tab', async ({ page }) => {

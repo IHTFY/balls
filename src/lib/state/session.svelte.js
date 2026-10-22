@@ -40,6 +40,7 @@ const BLITZ_SECONDS = 90;
  * @property {ReturnType<typeof rankFor>} rankAfter
  * @property {number} [streak]
  * @property {number} [solved] blitz puzzles solved
+ * @property {number} ended when the game ended (ms since epoch); names this game over
  */
 
 export const game = new Game(() => profile.settings);
@@ -300,7 +301,8 @@ export function finish() {
 		newBest,
 		rankBefore,
 		rankAfter: rankFor(profile.score),
-		streak
+		streak,
+		ended: Date.now()
 	};
 }
 
@@ -353,7 +355,8 @@ function endBlitz() {
 		newBest,
 		rankBefore,
 		rankAfter: rankFor(profile.score),
-		solved: b.solved
+		solved: b.solved,
+		ended: Date.now()
 	};
 }
 
