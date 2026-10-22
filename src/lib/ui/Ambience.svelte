@@ -1,9 +1,14 @@
 <script>
+	import { untrack } from 'svelte';
+	import { activity } from '../state/activity.svelte.js';
+
 	/** @type {{ kind: import('../game/cosmetics.js').Theme['ambience'], color: string, reduced: boolean }} */
 	let { kind, color, reduced } = $props();
 
 	/** @type {HTMLCanvasElement} */
 	let canvas;
+	/** Starts or stops the draw loop of the current effect run. @type {(run: boolean) => void} */
+	let setRunning = () => {};
 
 	$effect(() => {
 		if (kind === 'none') return;
@@ -110,22 +115,24 @@
 			ctx.globalAlpha = 1;
 			if (!reduced) frame = requestAnimationFrame(draw);
 		}
-		frame = requestAnimationFrame(draw);
-		const onVisibility = () => {
+		// The loop pauses (and keeps its last frame) while the player is idle or the tab is hidden.
+		setRunning = (run) => {
 			cancelAnimationFrame(frame);
-			if (document.visibilityState === 'visible') {
+			if (run) {
 				last = performance.now();
 				frame = requestAnimationFrame(draw);
 			}
 		};
-		document.addEventListener('visibilitychange', onVisibility);
+		untrack(() => setRunning(!activity.idle));
 		return () => {
+			setRunning = () => {};
 			cancelAnimationFrame(frame);
 			removeEventListener('resize', resize);
-			document.removeEventListener('visibilitychange', onVisibility);
 			ctx.clearRect(0, 0, w, h);
 		};
 	});
+
+	$effect(() => setRunning(!activity.idle));
 </script>
 
 <canvas bind:this={canvas} aria-hidden="true"></canvas>
