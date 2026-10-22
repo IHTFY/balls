@@ -3,6 +3,7 @@
 	import Download from '@lucide/svelte/icons/download';
 	import Heart from '@lucide/svelte/icons/heart';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
+	import Shield from '@lucide/svelte/icons/shield';
 	import { sound } from '../fx/audio.js';
 	import { nav } from '../state/nav.svelte.js';
 	import { install, promptInstall } from '../state/install.svelte.js';
@@ -109,6 +110,9 @@
 		<button class="secondary" onclick={() => (nav.dialog = 'howto')}>How to play</button>
 		<a class="secondary" href={SUPPORT_URL} target="_blank" rel="noopener"
 			><Heart size={20} /> Support the game</a
+		>
+		<a class="secondary" href="https://ihtfy.com/privacy" target="_blank" rel="noopener"
+			><Shield size={20} /> Privacy</a
 		>
 		<button class="danger" onclick={reset}>
 			{['Reset progress', 'Erase everything?', 'Really? Tap once more'][resetStep]}

@@ -20,6 +20,25 @@ The service worker precaches every built file, so after the first visit the game
 
 An installed copy keeps itself current without a visit to the website: it checks for a new version when it opens, whenever it comes back to the foreground, every hour, and from **Settings → Check for updates**. A new version downloads in the background; the home screen then offers **Update**, so a game in progress is never interrupted. The build adds a content hash of every file to `service-worker.js` (see `vite.config.js`), so any change to the app produces an update.
 
+## Ads
+
+The result dialog (after a solved level, daily challenge, or Zen puzzle, and at the end of a Blitz run) shows one 300×250 ad below its buttons, labeled "Advertisements", with a link to the [privacy page](https://ihtfy.com/privacy). Nothing ad-related loads before the first result: `src/lib/ads.js` then loads the shared IHTFY loader (`https://ihtfy.com/ads/v1.js`, source in the IHTFY/com.ihtfy repository), which loads Google AdSense and asks for one ad per game over. Offline, or when the loader fails, the box stays empty. The service worker only handles this site's own files, so ad and consent requests always go to the network. Any host other than `ihtfy.com` (local builds, previews) gets test ads.
+
+### Content Security Policy
+
+The policy is a `<meta>` tag in `index.html`, since GitHub Pages can't set headers, so it can't use the nonce-based policy Google recommends and lists hosts instead. Google publishes no host list, and creatives vary from ad to ad, so a host Google starts using is blocked silently and that ad doesn't show. Check the browser console for `Content Security Policy` errors on the result screen after a change.
+
+| Directive     | Allows                                                                                                                                                  | Why                                                                                                                               |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `script-src`  | `ihtfy.com/ads/`, `pagead2.googlesyndication.com`, `tpc.googlesyndication.com`, `ep2.adtrafficquality.google`, `fundingchoicesmessages.google.com`      | The loader, AdSense, AdSense's ad-quality script, and the consent message                                                         |
+| `connect-src` | `pagead2.googlesyndication.com`, `googleads.g.doubleclick.net`, `ep1.adtrafficquality.google`, `fundingchoicesmessages.google.com`                      | AdSense and consent-message requests                                                                                              |
+| `frame-src`   | `googleads.g.doubleclick.net`, `ep2.adtrafficquality.google`, `www.google.com`                                                                          | The ad and AdSense's helper frames                                                                                                |
+| `img-src`     | `pagead2.googlesyndication.com`, `tpc.googlesyndication.com`, `ep1.adtrafficquality.google`, `ep2.adtrafficquality.google`, `lh3.googleusercontent.com` | AdSense pixels; the consent message's site logo                                                                                   |
+| `style-src`   | `fonts.googleapis.com`                                                                                                                                  | The consent message's fonts (`'unsafe-inline'` is unchanged; AdSense also sets an inline style, though its ad renders without it) |
+| `font-src`    | `fonts.gstatic.com`                                                                                                                                     | The consent message's fonts                                                                                                       |
+
+`frame-src` replaces the old `'none'`. Everything else stays `'self'`.
+
 ## Development
 
 Use Node.js 24 and pnpm 12.8.1 (pinned in `package.json`).

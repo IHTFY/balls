@@ -3,6 +3,7 @@
 	import { backOut, elasticOut } from 'svelte/easing';
 	import Flame from '@lucide/svelte/icons/flame';
 	import Share2 from '@lucide/svelte/icons/share-2';
+	import { RESULT_AD_SLOT, showAd } from '../ads.js';
 	import { sound } from '../fx/audio.js';
 	import { clock } from '../game/format.js';
 	import { notify } from '../state/toasts.svelte.js';
@@ -17,6 +18,11 @@
 	let { result, onnext, onreplay, onhome } = $props();
 
 	const blitz = $derived(result.mode === 'blitz');
+
+	// One ad per game over; showing these results again asks for no new one.
+	/** @type {HTMLDivElement} */
+	let adBox;
+	$effect(() => showAd(adBox, `${result.mode}/${result.ended}`));
 	let shown = $state(0);
 	let total = $state(0);
 	let rankShown = $state(0);
@@ -163,6 +169,13 @@
 				<button class="primary" onclick={onnext}>{blitz ? 'Play again' : 'Next ›'}</button>
 			{/if}
 		</div>
+
+		<!-- Below the buttons, at least 150px away; the box keeps its size whether or not an ad fills it. -->
+		<aside class="ad">
+			<small>Advertisements</small>
+			<div class="ad-box" bind:this={adBox} data-ad-slot={RESULT_AD_SLOT}></div>
+			<a href="https://ihtfy.com/privacy" target="_blank" rel="noopener">Privacy</a>
+		</aside>
 	</div>
 </Modal>
 
@@ -318,6 +331,24 @@
 	}
 	.actions button {
 		flex: 1;
+	}
+	/* Spans the panel's padding so the 300px box fits on 360px-wide phones. */
+	.ad {
+		display: grid;
+		justify-items: center;
+		gap: 6px;
+		margin: 0 -20px;
+		padding-top: 150px;
+		color: var(--muted);
+		font-size: 12px;
+	}
+	.ad a {
+		color: inherit;
+	}
+	.ad-box {
+		width: 300px;
+		height: 250px;
+		min-height: 250px;
 	}
 	@keyframes star-pop {
 		0% {
