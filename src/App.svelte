@@ -5,6 +5,7 @@
 	import { setMusic, setSound, suspendAudio, unlockAudio } from './lib/fx/audio.js';
 	import { setHaptics } from './lib/fx/haptics.js';
 	import { setReducedMotion } from './lib/fx/particles.js';
+	import { activity, watchActivity } from './lib/state/activity.svelte.js';
 	import { back, nav } from './lib/state/nav.svelte.js';
 	import { persist, profile } from './lib/state/profile.svelte.js';
 	import { giftReady } from './lib/state/session.svelte.js';
@@ -44,6 +45,7 @@
 	$effect(() => setSound(profile.settings.sound));
 	$effect(() => setHaptics(profile.settings.haptics));
 	$effect(() => setReducedMotion(reduced));
+	$effect(watchActivity);
 	$effect(() => {
 		if (audioReady) setMusic(profile.settings.music);
 	});
@@ -102,7 +104,7 @@
 	}}
 />
 
-<div class="app" class:reduced>
+<div class="app" class:reduced class:idle={activity.idle}>
 	<Ambience kind={theme.ambience} color={theme.vars['--particle']} {reduced} />
 	{#key nav.screen}
 		<main class="screen" in:fade={{ duration: 180 }}>

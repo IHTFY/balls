@@ -366,6 +366,11 @@
 		animation: wiggle 2.5s ease-in-out infinite;
 		z-index: 5;
 	}
+	:global(.app.idle) .letter,
+	:global(.app.idle) .play-button,
+	:global(.app.idle) .gift {
+		animation-play-state: paused;
+	}
 	@keyframes bounce {
 		0%,
 		60%,

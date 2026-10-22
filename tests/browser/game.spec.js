@@ -418,3 +418,29 @@ test('with auto-finish on, the game plays out the matching moves left', async ({
 	await expect(page.getByRole('dialog')).toContainText('Level 18');
 	await expect(page.getByRole('dialog').getByText('Moves').locator('..')).toContainText('3');
 });
+
+test('decorative loops pause after 15 seconds without input and resume on input', async ({
+	page
+}) => {
+	await page.clock.install();
+	await page.goto('/');
+	const app = page.locator('.app');
+	const looping = () =>
+		page.evaluate(
+			() =>
+				document
+					.getAnimations()
+					.filter((a) => a.playState === 'running' && a.effect?.getTiming().iterations === Infinity)
+					.length
+		);
+	await expect(app).not.toHaveClass(/idle/);
+	expect(await looping()).toBeGreaterThan(0);
+
+	await page.clock.fastForward(16000);
+	await expect(app).toHaveClass(/idle/);
+	expect(await looping()).toBe(0);
+
+	await page.keyboard.press('Shift');
+	await expect(app).not.toHaveClass(/idle/);
+	expect(await looping()).toBeGreaterThan(0);
+});
