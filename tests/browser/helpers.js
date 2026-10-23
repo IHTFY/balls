@@ -63,12 +63,22 @@ export async function readBoard(page) {
 export const tap = (page, i) => page.locator(`[data-tube="${i}"]`).click();
 
 /**
- * Solves the current puzzle by tapping through a solver's moves.
+ * Solves the current puzzle by tapping through a solver's moves. A mystery board
+ * hides every ball below the top, so its test passes the dealt board as `start`;
+ * the balls the page shows must match it.
  * @param {import('@playwright/test').Page} page
+ * @param {number[][]} [start]
  */
-export async function solveBoard(page) {
-	const { tubes, capacity } = await readBoard(page);
-	const result = solve(tubes, capacity);
+export async function solveBoard(page, start) {
+	const shown = await readBoard(page);
+	const hidden = shown.tubes.some((t) => t.some((c) => Number.isNaN(c)));
+	if (hidden) expect(start, 'a mystery board needs its dealt tubes').toBeDefined();
+	const tubes = start ?? shown.tubes;
+	if (start)
+		expect(shown.tubes.map((t, i) => t.map((c, j) => (Number.isNaN(c) ? start[i][j] : c)))).toEqual(
+			start
+		);
+	const result = solve(tubes, shown.capacity);
 	expect(result.status).toBe('solved');
 	for (const [from, to] of result.moves ?? []) {
 		await tap(page, from);
