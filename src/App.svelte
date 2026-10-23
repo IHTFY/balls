@@ -16,6 +16,7 @@
 	import HowTo from './lib/ui/HowTo.svelte';
 	import LevelMap from './lib/ui/LevelMap.svelte';
 	import Play from './lib/ui/Play.svelte';
+	import PlayAd from './lib/ui/PlayAd.svelte';
 	import Settings from './lib/ui/Settings.svelte';
 	import Shop from './lib/ui/Shop.svelte';
 	import Stats from './lib/ui/Stats.svelte';
@@ -113,7 +114,7 @@
 			{:else if nav.screen === 'levels'}
 				<LevelMap />
 			{:else if nav.screen === 'play'}
-				<Play {reduced} />
+				<PlayAd><Play {reduced} /></PlayAd>
 			{:else if nav.screen === 'shop'}
 				<Shop />
 			{:else if nav.screen === 'trophies'}

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { setMaxListeners } from 'node:events';
 import { beforeEach, test } from 'node:test';
 
 /** Script tags the module added, recorded instead of fetched. */
@@ -13,7 +14,10 @@ let cookie = '';
 let cookieBlocked = false;
 let storageBlocked = false;
 
+let now = 0;
+
 Object.defineProperty(globalThis, 'navigator', { get: () => ({ onLine: online }) });
+Object.defineProperty(globalThis, 'performance', { configurable: true, value: { now: () => now } });
 Object.defineProperty(globalThis, 'localStorage', {
 	configurable: true,
 	get: () => ({
@@ -36,8 +40,14 @@ class FakeNode extends EventTarget {
 		body.delete(this);
 	}
 }
+/** The window's events: the module waits for the player's first tap or key press. */
+const events = new EventTarget();
+// Each fresh copy of the module adds its own listeners.
+setMaxListeners(Infinity, events);
+const press = () => events.dispatchEvent(new Event('keydown'));
 Object.assign(globalThis, {
 	window: globalThis,
+	addEventListener: events.addEventListener.bind(events),
 	document: {
 		get cookie() {
 			if (cookieBlocked) throw new Error('SecurityError');
@@ -71,6 +81,7 @@ beforeEach(() => {
 	cookie = '';
 	cookieBlocked = false;
 	storageBlocked = false;
+	now = 0;
 	Object.assign(globalThis, {
 		ihtfyAds: { show: (/** @type {unknown[]} */ ...args) => shown.push(args) }
 	});
@@ -179,4 +190,65 @@ test('with storage and cookies both unreadable, startup loads nothing and does n
 	const { loadForBuyer } = await loadAds();
 	assert.doesNotThrow(() => loadForBuyer());
 	assert.equal(added.length, 0);
+});
+
+test('mayBeAdFree finds a token in storage or a cookie', async () => {
+	const { mayBeAdFree } = await loadAds();
+	assert.equal(mayBeAdFree(), false);
+	storage['ihtfy-ad-free'] = 'x.y.z';
+	assert.equal(mayBeAdFree(), true);
+	storage = {};
+	cookie = 'ihtfy-ad-free=x.y.z';
+	assert.equal(mayBeAdFree(), true);
+});
+
+test('the ad beside the puzzle loads nothing before the first tap or key press', async () => {
+	const { playAdKey, showPlayAd } = await loadAds();
+	const a = box();
+	const key = playAdKey();
+	showPlayAd(a, key);
+	await tick();
+	assert.equal(added.length, 0);
+	press();
+	await tick();
+	assert.equal(added.length, 1);
+	added[0].dispatchEvent(new Event('load'));
+	await tick();
+	assert.deepEqual(shown, [[a, 'play/1']]);
+});
+
+test('a box beside the puzzle that left the page before the first tap gets no ad', async () => {
+	const { playAdKey, showPlayAd } = await loadAds();
+	const a = box();
+	showPlayAd(a, playAdKey());
+	a.remove();
+	press();
+	await tick();
+	assert.equal(added.length, 0);
+});
+
+test('a game started within a minute of the last ad keeps its key; a later one or a new size gets a new key', async () => {
+	const { playAdKey, showPlayAd } = await loadAds();
+	assert.equal(playAdKey(), 'play/1');
+	press();
+	now = 5_000;
+	showPlayAd(box(), 'play/1');
+	await tick();
+	now = 64_999;
+	assert.equal(playAdKey(), 'play/1');
+	now = 65_000;
+	assert.equal(playAdKey(), 'play/2');
+	assert.equal(playAdKey(true), 'play/3');
+});
+
+test('showing the same key again in a new box does not restart the minute', async () => {
+	const { playAdKey, showPlayAd } = await loadAds();
+	press();
+	showPlayAd(box(), playAdKey());
+	await tick();
+	now = 30_000;
+	showPlayAd(box(), playAdKey());
+	await tick();
+	now = 60_000;
+	assert.equal(playAdKey(), 'play/2');
 });

@@ -47,9 +47,10 @@
 </div>
 
 <style>
+	/* Stops short of the ad beside the puzzle (PlayAd sets the variable). */
 	.backdrop {
 		position: fixed;
-		inset: 0;
+		inset: 0 var(--play-ad-right, 0px) 0 0;
 		z-index: 50;
 		display: grid;
 		place-items: center;
