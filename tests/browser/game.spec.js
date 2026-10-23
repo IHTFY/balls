@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { generatePuzzle } from '../../src/lib/game/generator.js';
+import { dailySeed, dailySpec } from '../../src/lib/game/levels.js';
 import { open, readBoard, solveBoard, tap, waitForBoard } from './helpers.js';
 
 test('a new player solves level 1 and unlocks level 2', async ({ page }) => {
@@ -150,14 +152,15 @@ test('blitz ends when the clock runs out', async ({ page }) => {
 });
 
 test('the daily challenge pays once and builds a streak', async ({ page }) => {
-	// Daily boards grow to 12 colors on weekends: up to about 60 moves of taps, which
-	// WebKit runs slowly while balls are animating.
+	// Fridays are mystery boards, so the test needs the dealt board to solve it.
 	test.setTimeout(120_000);
+	const date = '2026-10-23';
+	await page.clock.setFixedTime(new Date(`${date}T12:00:00`));
 	await open(page, { coins: 0 });
 	await page.getByRole('button', { name: /Daily/ }).click();
 	await expect(page.getByRole('heading', { name: 'Daily Challenge' })).toBeVisible();
 	await waitForBoard(page);
-	await solveBoard(page);
+	await solveBoard(page, generatePuzzle(dailySpec(date), dailySeed(date)).tubes);
 	await expect(page.getByRole('dialog')).toContainText('Streak');
 	const saved = await page.evaluate(() =>
 		JSON.parse(localStorage.getItem('balls.profile.v1') ?? '{}')
