@@ -172,3 +172,11 @@ test('a failed startup load is tried again at the next game over', async () => {
 	showAd(box(), 'a');
 	assert.equal(added.length, 2);
 });
+
+test('with storage and cookies both unreadable, startup loads nothing and does not throw', async () => {
+	storageBlocked = true;
+	cookieBlocked = true;
+	const { loadForBuyer } = await loadAds();
+	assert.doesNotThrow(() => loadForBuyer());
+	assert.equal(added.length, 0);
+});
