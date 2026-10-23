@@ -65,7 +65,7 @@
 	{#if placement}
 		{#key key}
 			<aside class="ad" bind:this={aside}>
-				<div class="row">
+				<div class="row" class:stacked={width === '160'}>
 					<small>Advertisements</small>
 					<a href="https://ihtfy.com/privacy" target="_blank" rel="noopener">Privacy</a>
 				</div>
@@ -113,6 +113,11 @@
 		flex-wrap: wrap;
 		justify-content: space-between;
 		column-gap: 12px;
+	}
+	/* Two lines from the start in the narrow column, so the box stays put when the
+	   loader adds "Remove ads" beside the Privacy link. */
+	.row.stacked {
+		flex-direction: column;
 	}
 	.row a {
 		color: inherit;
