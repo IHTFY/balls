@@ -11,11 +11,17 @@ let online = true;
 let storage;
 let cookie = '';
 let cookieBlocked = false;
+let storageBlocked = false;
 
 Object.defineProperty(globalThis, 'navigator', { get: () => ({ onLine: online }) });
 Object.defineProperty(globalThis, 'localStorage', {
 	configurable: true,
-	get: () => ({ getItem: (/** @type {string} */ key) => storage[key] ?? null })
+	get: () => ({
+		getItem: (/** @type {string} */ key) => {
+			if (storageBlocked) throw new Error('SecurityError');
+			return storage[key] ?? null;
+		}
+	})
 });
 
 /** A minimal page: the module only creates script tags and adds them to `head`. */
@@ -64,6 +70,7 @@ beforeEach(() => {
 	storage = {};
 	cookie = '';
 	cookieBlocked = false;
+	storageBlocked = false;
 	Object.assign(globalThis, {
 		ihtfyAds: { show: (/** @type {unknown[]} */ ...args) => shown.push(args) }
 	});
@@ -146,4 +153,22 @@ test('a frame that cannot read cookies still starts', async () => {
 	const { loadForBuyer } = await loadAds();
 	assert.doesNotThrow(() => loadForBuyer());
 	assert.equal(added.length, 0);
+});
+
+test('with storage off, the cookie still loads the loader at startup', async () => {
+	storageBlocked = true;
+	cookie = 'ihtfy-ad-free=x.y.z';
+	const { loadForBuyer } = await loadAds();
+	assert.doesNotThrow(() => loadForBuyer());
+	assert.equal(added.length, 1);
+});
+
+test('a failed startup load is tried again at the next game over', async () => {
+	storage['ihtfy-ad-free'] = 'x.y.z';
+	const { loadForBuyer, showAd } = await loadAds();
+	loadForBuyer();
+	added[0].dispatchEvent(new Event('error'));
+	await tick();
+	showAd(box(), 'a');
+	assert.equal(added.length, 2);
 });
