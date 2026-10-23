@@ -2,6 +2,7 @@ import { mount } from 'svelte';
 import fredoka from '@fontsource-variable/fredoka/files/fredoka-latin-wght-normal.woff2?url';
 import './app.css';
 import App from './App.svelte';
+import { loadForBuyer } from './lib/ads.js';
 import { registerServiceWorker } from './lib/state/updates.svelte.js';
 
 // Only the Latin subset is bundled, so the offline cache stays small.
@@ -14,4 +15,5 @@ document.fonts.add(font);
 font.load().catch(() => {});
 
 registerServiceWorker();
+loadForBuyer();
 mount(App, { target: /** @type {HTMLElement} */ (document.getElementById('app')) });
