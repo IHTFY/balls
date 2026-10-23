@@ -40,6 +40,8 @@
 		const root = document.documentElement;
 		const ad = box;
 		const track = () => {
+			// The loader hides the aside once it confirms an ad-free purchase.
+			if (!ad.getClientRects().length) return root.style.removeProperty('--play-ad-right');
 			const px = root.clientWidth - ad.getBoundingClientRect().left + 150;
 			root.style.setProperty('--play-ad-right', `${Math.round(px)}px`);
 		};
