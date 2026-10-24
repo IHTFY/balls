@@ -1,7 +1,7 @@
 <script>
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import Download from '@lucide/svelte/icons/download';
-	import Heart from '@lucide/svelte/icons/heart';
+	import HandHeart from '@lucide/svelte/icons/hand-heart';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import Shield from '@lucide/svelte/icons/shield';
 	import { sound } from '../fx/audio.js';
@@ -109,7 +109,7 @@
 		{/if}
 		<button class="secondary" onclick={() => (nav.dialog = 'howto')}>How to play</button>
 		<a class="secondary" href={SUPPORT_URL} target="_blank" rel="noopener"
-			><Heart size={20} /> Support the game</a
+			><HandHeart size={20} /> Support ♥</a
 		>
 		<a class="secondary" href="https://ihtfy.com/privacy" target="_blank" rel="noopener"
 			><Shield size={20} /> Privacy</a
