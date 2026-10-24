@@ -7,7 +7,7 @@
 	import Crown from '@lucide/svelte/icons/crown';
 	import Flame from '@lucide/svelte/icons/flame';
 	import Gift from '@lucide/svelte/icons/gift';
-	import Heart from '@lucide/svelte/icons/heart';
+	import HandHeart from '@lucide/svelte/icons/hand-heart';
 	import Leaf from '@lucide/svelte/icons/leaf';
 	import Map from '@lucide/svelte/icons/map';
 	import Settings from '@lucide/svelte/icons/settings';
@@ -148,7 +148,7 @@
 		>
 		<button onclick={() => go('stats')}><ChartColumn size={22} />Stats</button>
 		<button onclick={() => (nav.dialog = 'howto')}><CircleHelp size={22} />Help</button>
-		<a href={SUPPORT_URL} target="_blank" rel="noopener"><Heart size={22} />Support</a>
+		<a href={SUPPORT_URL} target="_blank" rel="noopener"><HandHeart size={22} />Support ♥</a>
 	</nav>
 
 	{#if gift}
@@ -347,6 +347,10 @@
 		font-size: 13px;
 		font-weight: 600;
 		text-decoration: none;
+	}
+	.links a {
+		padding-inline: 0;
+		white-space: nowrap;
 	}
 	.links :global(svg) {
 		color: var(--accent);
