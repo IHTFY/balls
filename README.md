@@ -12,11 +12,11 @@ Play at [balls.ihtfy.com](https://balls.ihtfy.com). Install it from the browser 
 - **Progress:** points, ranks, coins, 30 trophies, stats with a daily calendar, and a daily gift with a seven-day streak.
 - **Shop:** 10 themes with animated backgrounds and 9 ball sets (glossy, billiards, neon, gems, marbles, fruit, sports, critters, pastel), plus hints and extra tubes.
 - **Helpers:** free undo and restart, hints from the solver, extra tubes, dead-end warnings, stack moves, color-blind symbols, highlighted target tubes, and optional settings that drop a ball with only one place to go and play out the last matching moves.
-- Synthesized sound effects and generative music, vibration, keyboard controls (`1`–`0`, `Z`, `R`, `H`, `Esc`), a reduced-motion setting, and an Android back button that steps back through the app.
+- Sound effects and two music loops played on recorded instruments (see `scripts/sounds`), vibration, keyboard controls (`1`–`0`, `Z`, `R`, `H`, `Esc`), a reduced-motion setting, and an Android back button that steps back through the app.
 
 ## Offline play and updates
 
-The service worker precaches every built file, so after the first visit the game loads and plays with no network. Progress is saved in local storage.
+The service worker precaches every built file except the audio, so after the first visit the game loads and plays with no network. Each audio file comes as Opus and AAC and a device plays only one, so the worker caches audio the first time it is played instead (sound effects on the first tap, each music loop when it first starts) and keeps it across updates until the file changes. Progress is saved in local storage.
 
 An installed copy keeps itself current without a visit to the website: it checks for a new version when it opens, whenever it comes back to the foreground, every hour, and from **Settings → Check for updates**. A new version downloads in the background; the home screen then offers **Update**, so a game in progress is never interrupted. The build adds a content hash of every file to `service-worker.js` (see `vite.config.js`), so any change to the app produces an update.
 

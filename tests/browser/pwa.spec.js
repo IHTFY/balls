@@ -22,6 +22,40 @@ test('every precached file is served', async ({ request }) => {
 	for (const asset of assets) expect((await request.get(asset)).status(), asset).toBe(200);
 });
 
+test('audio is cached on first use, not precached', async ({ page, browserName }) => {
+	test.skip(
+		browserName === 'webkit',
+		'Playwright cannot emulate offline service workers in WebKit'
+	);
+	await page.goto('/');
+	await waitForController(page);
+	const source = await (await page.request.get('/service-worker.js')).text();
+	const audio = JSON.parse(
+		/** @type {RegExpMatchArray} */ (source.match(/const AUDIO = (\[[^\]]*\]);/))[1]
+	);
+	expect(audio.filter((/** @type {string} */ a) => a.endsWith('.ogg'))).toHaveLength(3);
+	expect(source.match(/const ASSETS = (\[[^\]]*\]);/)?.[1]).not.toMatch(/\.(ogg|m4a)"/);
+	const ogg = audio.filter((/** @type {string} */ a) => a.endsWith('.ogg'));
+	const seconds = await page.evaluate(async (files) => {
+		const ctx = new OfflineAudioContext(2, 48000, 48000);
+		/** @type {number[]} */
+		const out = [];
+		for (const file of files) {
+			const data = await (await fetch(file)).arrayBuffer();
+			out.push((await ctx.decodeAudioData(data)).duration);
+		}
+		return out;
+	}, ogg);
+	// Music loops are 32 bars; the sprite holds every effect.
+	for (const s of seconds) expect(s).toBeGreaterThan(30);
+	const cached = await page.evaluate(async () => {
+		const name = (await caches.keys()).find((k) => k.startsWith('balls-audio-'));
+		if (!name) return [];
+		return (await (await caches.open(name)).keys()).map((r) => new URL(r.url).pathname);
+	});
+	expect(cached.map((p) => p.replace(/^.*\//, './assets/')).sort()).toEqual([...ogg].sort());
+});
+
 test('the game installs, then loads and plays with no network', async ({
 	page,
 	context,

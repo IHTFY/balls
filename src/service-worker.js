@@ -1,15 +1,22 @@
-// The build fills in VERSION and ASSETS (see vite.config.js). Every built file
-// is precached on install, so the game loads and plays with no network at all.
+// The build fills in VERSION, ASSETS, and AUDIO (see vite.config.js). Every built
+// file but the audio is precached on install, so the game loads and plays with no
+// network at all. Audio is cached the first time it plays: its file names carry a
+// content hash, so one cache serves every version and unchanged files stay.
 /// <reference lib="webworker" />
 const sw = /** @type {ServiceWorkerGlobalScope} */ (/** @type {unknown} */ (self));
 
 const VERSION = '__VERSION__';
 /** @type {string[]} */
 const ASSETS = [/* __ASSETS__ */];
+/** @type {string[]} */
+const AUDIO = [/* __AUDIO__ */];
 const CACHE_PREFIX = `balls-${sw.registration.scope}-`;
 const CACHE = `${CACHE_PREFIX}${VERSION}`;
+// Outside CACHE_PREFIX, so switching versions keeps it.
+const AUDIO_CACHE = `balls-audio-${sw.registration.scope}`;
 const SHELL = new URL('./', sw.registration.scope).href;
 const PRECACHED = new Set(ASSETS.map((a) => new URL(a, sw.registration.scope).href));
+const AUDIO_FILES = new Set(AUDIO.map((a) => new URL(a, sw.registration.scope).href));
 
 sw.addEventListener('install', (event) => {
 	// No skipWaiting: the page asks the new worker to take over when the player
@@ -27,6 +34,10 @@ sw.addEventListener('activate', (event) => {
 		(async () => {
 			for (const key of await caches.keys()) {
 				if (key.startsWith(CACHE_PREFIX) && key !== CACHE) await caches.delete(key);
+			}
+			const audio = await caches.open(AUDIO_CACHE);
+			for (const request of await audio.keys()) {
+				if (!AUDIO_FILES.has(request.url)) await audio.delete(request);
 			}
 			await sw.clients.claim();
 		})()
@@ -57,5 +68,21 @@ sw.addEventListener('fetch', (event) => {
 		event.respondWith(
 			caches.match(url.href, { cacheName: CACHE }).then((hit) => hit ?? fetch(request))
 		);
+	} else if (AUDIO_FILES.has(url.href)) {
+		event.respondWith(cacheAudio(url.href, request));
 	}
 });
+
+/**
+ * @param {string} href
+ * @param {Request} request
+ */
+async function cacheAudio(href, request) {
+	const cache = await caches.open(AUDIO_CACHE);
+	const hit = await cache.match(href);
+	if (hit) return hit;
+	const response = await fetch(request);
+	// Only whole files: a ranged 206 reply would cache a fragment.
+	if (response.status === 200) await cache.put(href, response.clone());
+	return response;
+}

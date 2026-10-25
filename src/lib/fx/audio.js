@@ -1,4 +1,33 @@
-// Every sound is synthesized with Web Audio, so there are no files to download.
+// Sounds and music are recordings of sampled instruments, rendered by scripts/sounds.
+// The effects share one sprite file; sfx-sprite.json says where each one starts.
+import SPRITE from './sfx-sprite.json';
+
+/** Each file in Ogg Opus, with AAC for browsers that can't decode Opus. */
+const FILES = {
+	sfx: {
+		ogg: new URL('../../assets/audio/sfx.ogg', import.meta.url).href,
+		m4a: new URL('../../assets/audio/sfx.m4a', import.meta.url).href
+	},
+	menu: {
+		ogg: new URL('../../assets/audio/music-menu.ogg', import.meta.url).href,
+		m4a: new URL('../../assets/audio/music-menu.m4a', import.meta.url).href
+	},
+	play: {
+		ogg: new URL('../../assets/audio/music-play.ogg', import.meta.url).href,
+		m4a: new URL('../../assets/audio/music-play.m4a', import.meta.url).href
+	}
+};
+/** @typedef {keyof typeof FILES} AudioFile */
+/** @typedef {'menu' | 'play'} Scene */
+
+const SFX_GAIN = 0.9;
+// The loops are mastered to -20 LUFS; this keeps them well under the effects.
+const MUSIC_GAIN = 0.4;
+const FADE_OUT = 1.2;
+const FADE_IN = 0.8;
+// Each loop is exactly 32 bars (at 96 and 78 BPM), its tails already mixed into its
+// start. Looping at the bar line keeps any padding a decoder adds out of the seam.
+const LOOP_SECONDS = { menu: (32 * 4 * 60) / 96, play: (32 * 4 * 60) / 78 };
 
 /** @type {AudioContext | null} */
 let ctx = null;
@@ -8,25 +37,30 @@ let sfxBus;
 let musicBus;
 let sfxOn = true;
 let musicOn = false;
+/** @type {Scene} */
+let scene = 'menu';
 
-/** C major pentatonic, so any mix of notes sounds pleasant. */
-const PENTATONIC = [0, 2, 4, 7, 9];
-const midiToHz = (/** @type {number} */ m) => 440 * 2 ** ((m - 69) / 12);
-/** A note for a scale step, counting up from middle C. */
-const step = (/** @type {number} */ n) =>
-	midiToHz(60 + 12 * Math.floor(n / 5) + PENTATONIC[((n % 5) + 5) % 5]);
+/** @type {Map<AudioFile, Promise<AudioBuffer | null>>} */
+const buffers = new Map();
+/** @type {AudioBuffer | null} */
+let sfxBuffer = null;
 
 function audio() {
 	if (!ctx) {
 		ctx = new AudioContext();
+		// A safety net for many sounds at once; single sounds peak below its threshold.
 		const limiter = ctx.createDynamicsCompressor();
-		limiter.threshold.value = -10;
+		limiter.threshold.value = -3;
+		limiter.knee.value = 0;
+		limiter.ratio.value = 20;
+		limiter.attack.value = 0.003;
+		limiter.release.value = 0.1;
 		limiter.connect(ctx.destination);
 		sfxBus = ctx.createGain();
-		sfxBus.gain.value = 0.55;
+		sfxBus.gain.value = SFX_GAIN;
 		sfxBus.connect(limiter);
 		musicBus = ctx.createGain();
-		musicBus.gain.value = 0;
+		musicBus.gain.value = MUSIC_GAIN;
 		musicBus.connect(limiter);
 	}
 	// Resuming fails until the first user gesture; the next sound tries again.
@@ -34,127 +68,82 @@ function audio() {
 	return ctx;
 }
 
+const prefersOpus = () =>
+	typeof Audio !== 'undefined' && new Audio().canPlayType('audio/ogg; codecs="opus"') !== '';
+
 /**
- * @param {{ freq: number, type?: OscillatorType, gain?: number, attack?: number,
- *   decay?: number, at?: number, slide?: number, bus?: AudioNode }} o
+ * Downloads and decodes a file once. Some browsers claim Opus support and then
+ * fail to decode it, so a failure falls back to AAC. Resolves null offline.
+ * @param {AudioFile} name
  */
-function tone({
-	freq,
-	type = 'sine',
-	gain = 0.3,
-	attack = 0.005,
-	decay = 0.25,
-	at = 0,
-	slide,
-	bus
-}) {
-	const c = audio();
-	const t = c.currentTime + at;
-	const osc = c.createOscillator();
-	const amp = c.createGain();
-	osc.type = type;
-	osc.frequency.setValueAtTime(freq, t);
-	if (slide) osc.frequency.exponentialRampToValueAtTime(slide, t + attack + decay);
-	amp.gain.setValueAtTime(0.0001, t);
-	amp.gain.exponentialRampToValueAtTime(gain, t + attack);
-	amp.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay);
-	osc.connect(amp).connect(bus ?? sfxBus);
-	osc.start(t);
-	osc.stop(t + attack + decay + 0.05);
-}
-
-/** A bell: a few inharmonic partials that ring out. */
-function bell(/** @type {number} */ freq, at = 0, gain = 0.18, decay = 0.9) {
-	tone({ freq, gain, decay, at });
-	tone({ freq: freq * 2.76, gain: gain * 0.35, decay: decay * 0.5, at });
-	tone({ freq: freq * 5.4, gain: gain * 0.15, decay: decay * 0.3, at });
-}
-
-/** A short filtered noise burst for clicks and clacks. */
-function noise(/** @type {number} */ cutoff, gain = 0.2, decay = 0.06, at = 0) {
-	const c = audio();
-	const t = c.currentTime + at;
-	const length = Math.ceil(c.sampleRate * (decay + 0.02));
-	const buffer = c.createBuffer(1, length, c.sampleRate);
-	const data = buffer.getChannelData(0);
-	for (let i = 0; i < length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / length) ** 2;
-	const src = c.createBufferSource();
-	src.buffer = buffer;
-	const filter = c.createBiquadFilter();
-	filter.type = 'bandpass';
-	filter.frequency.value = cutoff;
-	const amp = c.createGain();
-	amp.gain.value = gain;
-	src.connect(filter).connect(amp).connect(sfxBus);
-	src.start(t);
+function load(name) {
+	let pending = buffers.get(name);
+	if (!pending) {
+		const c = audio();
+		/** @type {('ogg' | 'm4a')[]} */
+		const formats = prefersOpus() ? ['ogg', 'm4a'] : ['m4a'];
+		pending = (async () => {
+			for (const format of formats) {
+				try {
+					const response = await fetch(FILES[name][format]);
+					if (!response.ok) continue;
+					return await c.decodeAudioData(await response.arrayBuffer());
+				} catch {
+					// Try the next format; with none left the sound stays silent.
+				}
+			}
+			buffers.delete(name);
+			return null;
+		})();
+		buffers.set(name, pending);
+	}
+	return pending;
 }
 
 /**
- * Wraps a sound so it only plays while sound effects are on.
- * @template {unknown[]} A
- * @param {(...args: A) => void} play
+ * Plays one effect from the sprite.
+ * @param {keyof typeof SPRITE} name
+ * @param {number} [at] seconds from now
  */
-const sfx =
-	(play) =>
-	(/** @type {A} */ ...args) => {
-		if (sfxOn) play(...args);
-	};
+function play(name, at = 0) {
+	if (!sfxOn) return;
+	const c = audio();
+	if (!sfxBuffer) {
+		// The first sounds after unlocking may beat the download; they are skipped.
+		void load('sfx').then((b) => (sfxBuffer = b));
+		return;
+	}
+	const [start, length] = SPRITE[name];
+	const source = c.createBufferSource();
+	source.buffer = sfxBuffer;
+	source.connect(sfxBus);
+	source.start(c.currentTime + at, start, length);
+}
+
+const COLORS = 14;
+const color = (/** @type {number} */ c) => ((c % COLORS) + COLORS) % COLORS;
 
 export const sound = {
-	/** @param {number} color */
-	pick: sfx((/** @type {number} */ color) =>
-		tone({
-			freq: step(color + 5),
-			type: 'triangle',
-			gain: 0.22,
-			decay: 0.12,
-			slide: step(color + 7)
-		})
-	),
+	/** @param {number} c */
+	pick: (c) => play(/** @type {keyof typeof SPRITE} */ (`pick${color(c)}`)),
 	/** Index is the ball's position in a stack move. */
-	drop: sfx((/** @type {number} */ color, /** @type {number} */ index) => {
-		const at = index * 0.06;
-		tone({ freq: step(color + 3), type: 'sine', gain: 0.25, decay: 0.16, at });
-		noise(1800, 0.25, 0.04, at + 0.12);
-	}),
-	invalid: sfx(() => {
-		tone({ freq: 140, type: 'square', gain: 0.07, decay: 0.09 });
-		tone({ freq: 110, type: 'square', gain: 0.07, decay: 0.12, at: 0.08 });
-	}),
-	complete: sfx((/** @type {number} */ combo) => {
-		const root = 7 + Math.min(combo - 1, 6) * 2;
-		[0, 2, 4, 7].forEach((n, i) => bell(step(root + n), i * 0.07, 0.14));
-		if (combo > 1) tone({ freq: step(root + 9), gain: 0.1, decay: 0.6, at: 0.3, type: 'triangle' });
-	}),
-	win: sfx(() => {
-		[0, 2, 4, 5, 7, 10].forEach((n, i) => bell(step(5 + n), i * 0.09, 0.16, 1.2));
-		[0, 2, 4].forEach((n) =>
-			tone({
-				freq: step(5 + n) / 2,
-				type: 'triangle',
-				gain: 0.09,
-				attack: 0.05,
-				decay: 1.6,
-				at: 0.55
-			})
-		);
-	}),
+	drop: (/** @type {number} */ c, /** @type {number} */ index) =>
+		play(/** @type {keyof typeof SPRITE} */ (`drop${color(c)}`), index * 0.06),
+	invalid: () => play('invalid'),
+	complete: (/** @type {number} */ combo) =>
+		play(/** @type {keyof typeof SPRITE} */ (`complete${Math.min(Math.max(combo, 1), 7)}`)),
+	win: () => play('win'),
 	/** Plays for star number 1, 2, or 3. */
-	star: sfx((/** @type {number} */ n) => bell(step(9 + n * 2), 0, 0.2, 0.8)),
-	coin: sfx(() => {
-		tone({ freq: 1976, type: 'square', gain: 0.05, decay: 0.08 });
-		tone({ freq: 2637, type: 'square', gain: 0.05, decay: 0.25, at: 0.08 });
-	}),
-	tap: sfx(() => noise(3200, 0.12, 0.03)),
-	undo: sfx(() => tone({ freq: 700, slide: 260, type: 'sine', gain: 0.14, decay: 0.16 })),
-	hint: sfx(() => [0, 1, 2, 3, 4, 5].forEach((n) => bell(step(12 + n), n * 0.04, 0.06, 0.4))),
-	reveal: sfx(() => bell(step(14), 0, 0.1, 0.5)),
-	buy: sfx(() => {
-		[0, 4, 7].forEach((n, i) => bell(step(10 + n), i * 0.06, 0.12));
-		noise(5000, 0.15, 0.1, 0.18);
-	}),
-	tick: sfx(() => tone({ freq: 1200, type: 'square', gain: 0.04, decay: 0.03 })),
-	whoosh: sfx(() => noise(900, 0.12, 0.22))
+	star: (/** @type {number} */ n) =>
+		play(/** @type {keyof typeof SPRITE} */ (`star${Math.min(Math.max(n, 1), 3)}`)),
+	coin: () => play('coin'),
+	tap: () => play('tap'),
+	undo: () => play('undo'),
+	hint: () => play('hint'),
+	reveal: () => play('reveal'),
+	buy: () => play('buy'),
+	tick: () => play('tick'),
+	whoosh: () => play('whoosh')
 };
 
 /** @param {boolean} on */
@@ -164,81 +153,61 @@ export function setSound(on) {
 
 /** Wakes the audio context; browsers only allow this after a user gesture. */
 export function unlockAudio() {
-	if (sfxOn || musicOn) audio();
+	if (!sfxOn && !musicOn) return;
+	audio();
+	if (sfxOn && !sfxBuffer) void load('sfx').then((b) => (sfxBuffer = b));
 }
 
-// Generative background music: soft pentatonic plucks over a slow chord loop.
-const CHORDS = [
-	[0, 2, 4],
-	[-2, 0, 2],
-	[-4, -2, 1],
-	[-1, 1, 3]
-];
-const BEAT = 60 / 76 / 2;
-/** @type {ReturnType<typeof setInterval> | null} */
-let musicTimer = null;
-let nextBeat = 0;
-let beatIndex = 0;
+/** @type {{ scene: Scene, source: AudioBufferSourceNode, gain: GainNode } | null} */
+let current = null;
+/** Bumped on every change, so a slow download can't start an outdated loop. */
+let generation = 0;
 
-function scheduleMusic() {
+function stopCurrent() {
+	if (!current || !ctx) return;
+	const { source, gain } = current;
+	gain.gain.setTargetAtTime(0, ctx.currentTime, FADE_OUT / 4);
+	source.stop(ctx.currentTime + FADE_OUT);
+	current = null;
+}
+
+async function startScene() {
+	const want = ++generation;
+	if (current?.scene === scene) return;
+	const buffer = await load(scene);
+	if (want !== generation || !musicOn || !buffer || current?.scene === scene) return;
 	const c = audio();
-	if (!musicOn) return;
-	while (nextBeat < c.currentTime + 0.4) {
-		const chord = CHORDS[Math.floor(beatIndex / 16) % CHORDS.length];
-		const at = Math.max(0, nextBeat - c.currentTime);
-		if (beatIndex % 16 === 0) {
-			tone({
-				freq: step(chord[0] - 5) / 2,
-				type: 'triangle',
-				gain: 0.12,
-				attack: 0.3,
-				decay: 5,
-				at,
-				bus: musicBus
-			});
-		}
-		if (beatIndex % 2 === 0 || Math.random() < 0.3) {
-			if (Math.random() < 0.6) {
-				const n = chord[Math.floor(Math.random() * 3)] + (Math.random() < 0.5 ? 5 : 10);
-				tone({
-					freq: step(n),
-					type: 'sine',
-					gain: 0.08,
-					attack: 0.01,
-					decay: 1.4,
-					at,
-					bus: musicBus
-				});
-				tone({
-					freq: step(n) * 2,
-					type: 'sine',
-					gain: 0.015,
-					attack: 0.01,
-					decay: 0.8,
-					at,
-					bus: musicBus
-				});
-			}
-		}
-		nextBeat += BEAT;
-		beatIndex++;
-	}
+	stopCurrent();
+	const source = c.createBufferSource();
+	source.buffer = buffer;
+	source.loop = true;
+	source.loopEnd = LOOP_SECONDS[scene];
+	const gain = c.createGain();
+	gain.gain.setValueAtTime(0, c.currentTime);
+	gain.gain.linearRampToValueAtTime(1, c.currentTime + FADE_IN);
+	source.connect(gain).connect(musicBus);
+	source.start();
+	current = { scene, source, gain };
 }
 
 /** @param {boolean} on */
 export function setMusic(on) {
 	musicOn = on;
-	if (!on) {
-		if (musicTimer) clearInterval(musicTimer);
-		musicTimer = null;
-		if (ctx) musicBus.gain.setTargetAtTime(0, ctx.currentTime, 0.3);
-		return;
+	if (on) void startScene();
+	else {
+		generation++;
+		stopCurrent();
 	}
-	const c = audio();
-	if (musicTimer) return;
-	musicBus.gain.setTargetAtTime(0.5, c.currentTime, 1);
-	nextBeat = c.currentTime + 0.1;
-	musicTimer = setInterval(scheduleMusic, 150);
+}
+
+/**
+ * Picks the loop for what's on screen: a bouncy one for the menus, a calmer
+ * one while playing. Switching crossfades.
+ * @param {Scene} next
+ */
+export function setMusicScene(next) {
+	scene = next;
+	if (musicOn) void startScene();
 }
 
 /** Silences everything while the app is hidden. */

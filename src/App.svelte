@@ -2,7 +2,7 @@
 	import { fade } from 'svelte/transition';
 	import { MediaQuery } from 'svelte/reactivity';
 	import { themeById } from './lib/game/cosmetics.js';
-	import { setMusic, setSound, suspendAudio, unlockAudio } from './lib/fx/audio.js';
+	import { setMusic, setMusicScene, setSound, suspendAudio, unlockAudio } from './lib/fx/audio.js';
 	import { setHaptics } from './lib/fx/haptics.js';
 	import { setReducedMotion } from './lib/fx/particles.js';
 	import { activity, watchActivity } from './lib/state/activity.svelte.js';
@@ -51,6 +51,7 @@
 	$effect(() => setHaptics(profile.settings.haptics));
 	$effect(() => setReducedMotion(reduced));
 	$effect(watchActivity);
+	$effect(() => setMusicScene(nav.screen === 'play' ? 'play' : 'menu'));
 	$effect(() => {
 		if (audioReady) setMusic(profile.settings.music);
 	});
