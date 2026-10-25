@@ -6,7 +6,7 @@ import { dailySeed, dailySpec, levelSeed, levelSpec, MAX_COLORS } from '../src/l
 import { canMove, isSolved, usefulMoves } from '../src/lib/game/rules.js';
 import { dailyCoins, levelCoins, rankFor, scoreFor, starsFor } from '../src/lib/game/scoring.js';
 import { solve } from '../src/lib/game/solver.js';
-import { PALETTE, SKINS, SYMBOLS } from '../src/lib/game/cosmetics.js';
+import { LETTERS, PALETTE, SKINS } from '../src/lib/game/cosmetics.js';
 import { defaultProfile } from '../src/lib/game/profile.js';
 import { createRng, shuffleInPlace } from '../src/lib/game/rng.js';
 
@@ -143,7 +143,7 @@ test('the level curve stays within the palette and keeps growing', () => {
 		}
 	}
 	assert.ok(levelSpec(10).boss && !levelSpec(11).boss);
-	assert.ok(MAX_COLORS <= PALETTE.length && MAX_COLORS <= SYMBOLS.length);
+	assert.ok(MAX_COLORS <= PALETTE.length && MAX_COLORS <= LETTERS.length);
 	for (const skin of SKINS) {
 		assert.ok(skin.colors.length >= MAX_COLORS, skin.id);
 		if (skin.emoji) assert.ok(skin.emoji.length >= MAX_COLORS, skin.id);

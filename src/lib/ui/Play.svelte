@@ -16,7 +16,7 @@
 	import { clock } from '../game/format.js';
 	import { canMove } from '../game/rules.js';
 	import { starsFor } from '../game/scoring.js';
-	import { COMPLETE_GAP, DROP_GAP, sound } from '../fx/audio.js';
+	import { DROP_GAP, completeGap, sound } from '../fx/audio.js';
 	import { buzz, pulses } from '../fx/haptics.js';
 	import { go, nav } from '../state/nav.svelte.js';
 	import { profile } from '../state/profile.svelte.js';
@@ -76,7 +76,11 @@
 				sound.invalid();
 				buzz([15, 40, 15]);
 			} else if (e.type === 'move') {
-				e.balls.forEach((b, i) => setTimeout(() => sound.drop(b.color, i), reduced ? 0 : 230));
+				// A ball sounds its color's note, but the auto-finish climbs the scale move by move,
+				// starting again from the tonic after two octaves.
+				const step = finishing ? run % 15 : e.balls[0].color;
+				if (finishing) run += e.balls.length;
+				e.balls.forEach((_, i) => setTimeout(() => sound.drop(step, i), reduced ? 0 : 230));
 				buzz(pulses(e.balls.length, 10, DROP_GAP), reduced ? 0 : 230);
 				save();
 				checkDeadEnd();
@@ -84,7 +88,7 @@
 			} else if (e.type === 'complete') {
 				setTimeout(() => sound.complete(e.combo), reduced ? 0 : 330);
 				// One pulse per note of the completion's run, stronger in a combo.
-				buzz(pulses(4, e.combo > 1 ? 22 : 14, COMPLETE_GAP), reduced ? 0 : 330);
+				buzz(pulses(4, e.combo > 1 ? 22 : 14, completeGap(e.combo)), reduced ? 0 : 330);
 				profile.stats.tubesCompleted++;
 			} else if (e.type === 'reveal') sound.reveal();
 			else if (e.type === 'win') {
@@ -204,6 +208,8 @@
 
 	// Auto-finish: once only matching moves remain, the board plays itself out.
 	let finishing = $state(false);
+	// Scale steps the auto-finish has climbed.
+	let run = 0;
 	/** @type {ReturnType<typeof setTimeout> | undefined} */
 	let finishTimer;
 	// The search can answer after the player has left the puzzle.
@@ -217,6 +223,7 @@
 	function playFinish(moves) {
 		if (left || finishing || game.won) return;
 		finishing = true;
+		run = 0;
 		game.selected = -1;
 		const step = () => {
 			if (!moves.length || !canMove(game.colorTubes, ...moves[0], game.capacity)) {

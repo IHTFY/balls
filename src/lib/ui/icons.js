@@ -4,6 +4,7 @@ import Brain from '@lucide/svelte/icons/brain';
 import BrickWall from '@lucide/svelte/icons/brick-wall';
 import CalendarCheck from '@lucide/svelte/icons/calendar-check';
 import CalendarDays from '@lucide/svelte/icons/calendar-days';
+import CaseUpper from '@lucide/svelte/icons/case-upper';
 import Castle from '@lucide/svelte/icons/castle';
 import ClipboardCheck from '@lucide/svelte/icons/clipboard-check';
 import Coins from '@lucide/svelte/icons/coins';
@@ -31,7 +32,6 @@ import PiggyBank from '@lucide/svelte/icons/piggy-bank';
 import Puzzle from '@lucide/svelte/icons/puzzle';
 import Rocket from '@lucide/svelte/icons/rocket';
 import Ruler from '@lucide/svelte/icons/ruler';
-import Shapes from '@lucide/svelte/icons/shapes';
 import ShoppingBag from '@lucide/svelte/icons/shopping-bag';
 import Snowflake from '@lucide/svelte/icons/snowflake';
 import Sparkles from '@lucide/svelte/icons/sparkles';
@@ -59,6 +59,7 @@ export const ICONS = {
 	'brick-wall': BrickWall,
 	'calendar-check': CalendarCheck,
 	'calendar-days': CalendarDays,
+	'case-upper': CaseUpper,
 	castle: Castle,
 	'clipboard-check': ClipboardCheck,
 	coins: Coins,
@@ -86,7 +87,6 @@ export const ICONS = {
 	puzzle: Puzzle,
 	rocket: Rocket,
 	ruler: Ruler,
-	shapes: Shapes,
 	'shopping-bag': ShoppingBag,
 	snowflake: Snowflake,
 	sparkles: Sparkles,
