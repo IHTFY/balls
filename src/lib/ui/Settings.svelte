@@ -15,7 +15,7 @@
 
 	const OPTIONS = /** @type {const} */ ([
 		['sound', 'volume-2', 'Sound effects', ''],
-		['music', 'music', 'Music', 'Gentle generated melodies'],
+		['music', 'music', 'Music', 'Relaxed background tunes'],
 		['haptics', 'vibrate', 'Vibration', 'On supported phones'],
 		['symbols', 'shapes', 'Color symbols', 'Shapes on balls for color-blind play'],
 		['stacks', 'layers', 'Move stacks', 'Move matching top balls together'],

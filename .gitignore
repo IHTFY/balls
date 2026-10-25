@@ -29,3 +29,6 @@ dist-ssr
 # Browser test output
 test-results
 playwright-report
+
+# Python bytecode from scripts/sounds
+__pycache__

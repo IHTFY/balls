@@ -6,11 +6,15 @@ import { defineConfig } from 'vite';
 
 // Deployment metadata that the app never requests.
 const NOT_PRECACHED = new Set(['CNAME', '.nojekyll', 'service-worker.js']);
+// Each audio file comes in two formats and a device only plays one, so the worker
+// caches audio when it is first played instead of precaching both.
+const AUDIO = /\.(ogg|m4a)$/;
 
 /**
  * Writes `service-worker.js` after the build. It lists every built file for
- * precaching and carries a hash of all of them as its version, so any change
- * to the app changes the worker and installed copies pick up the update.
+ * precaching (audio separately, see AUDIO) and carries a hash of all of them as
+ * its version, so any change to the app changes the worker and installed copies
+ * pick up the update.
  * @returns {import('vite').Plugin}
  */
 function serviceWorker() {
@@ -36,10 +40,12 @@ function serviceWorker() {
 			const hash = createHash('sha256').update(template);
 			for (const file of files) hash.update(file).update(await readFile(path.join(outDir, file)));
 			const version = hash.digest('hex').slice(0, 12);
-			const assets = ['./', ...files.map((f) => `./${f}`)];
+			const assets = ['./', ...files.filter((f) => !AUDIO.test(f)).map((f) => `./${f}`)];
+			const audio = files.filter((f) => AUDIO.test(f)).map((f) => `./${f}`);
 			const worker = template
 				.replace("'__VERSION__'", JSON.stringify(version))
-				.replace('[/* __ASSETS__ */]', JSON.stringify(assets, null, '\t'));
+				.replace('[/* __ASSETS__ */]', JSON.stringify(assets, null, '\t'))
+				.replace('[/* __AUDIO__ */]', JSON.stringify(audio, null, '\t'));
 			await writeFile(path.join(outDir, 'service-worker.js'), worker);
 		}
 	};
