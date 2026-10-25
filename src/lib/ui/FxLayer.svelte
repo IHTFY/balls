@@ -19,4 +19,8 @@
 		/* Keeps confetti off the ad beside the puzzle (PlayAd sets the variable). */
 		clip-path: inset(0 var(--play-ad-right, 0px) 0 0);
 	}
+	/* The results screen holds an ad, which nothing may cover. */
+	:global(:root[data-results]) canvas {
+		visibility: hidden;
+	}
 </style>

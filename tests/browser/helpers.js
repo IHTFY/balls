@@ -86,3 +86,9 @@ export async function solveBoard(page, start) {
 	}
 	return result.moves?.length ?? 0;
 }
+
+/**
+ * The results screen shown after a puzzle or a Blitz run.
+ * @param {import('@playwright/test').Page} page
+ */
+export const results = (page) => page.getByRole('region', { name: /results$/ });

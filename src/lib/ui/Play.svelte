@@ -42,7 +42,7 @@
 	} from '../state/session.svelte.js';
 	import Board from './Board.svelte';
 	import CoinChip from './CoinChip.svelte';
-	import WinDialog from './WinDialog.svelte';
+	import Results from './Results.svelte';
 
 	/** @type {{ reduced: boolean }} */
 	let { reduced } = $props();
@@ -59,7 +59,8 @@
 		}
 		const timer = setTimeout(
 			() => (showResult = true),
-			session.result.mode === 'blitz' ? 300 : 1300
+			// Long enough after the last tap that the ad never appears under a finger.
+			1300
 		);
 		return () => clearTimeout(timer);
 	});
@@ -251,6 +252,7 @@
 
 <section
 	class="play"
+	class:away={showResult}
 	class:boss={session.boss}
 	data-state={session.loading ? 'loading' : game.won ? 'won' : 'playing'}
 >
@@ -397,7 +399,7 @@
 </section>
 
 {#if showResult && session.result}
-	<WinDialog
+	<Results
 		result={session.result}
 		onnext={() => {
 			sound.tap();
@@ -421,6 +423,10 @@
 		max-width: 1100px;
 		margin: 0 auto;
 		padding: calc(8px + env(safe-area-inset-top)) 12px calc(8px + env(safe-area-inset-bottom));
+	}
+	/* The results screen takes its place; the board stays mounted. */
+	.play.away {
+		display: none;
 	}
 	.hud {
 		display: grid;

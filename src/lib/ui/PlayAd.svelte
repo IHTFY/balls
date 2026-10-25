@@ -67,7 +67,7 @@
 			<aside class="ad" bind:this={aside}>
 				<div class="row" class:stacked={width === '160'}>
 					<small>Advertisements</small>
-					<a href="https://ihtfy.com/privacy" target="_blank" rel="noopener">Privacy</a>
+					<a href="https://ihtfy.com/privacy/" target="_blank" rel="noopener">Privacy</a>
 				</div>
 				<div
 					class="ad-box"

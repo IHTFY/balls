@@ -60,6 +60,8 @@ export const session = $state({
 	hintBusy: false,
 	/** @type {Result | null} */
 	result: null,
+	/** when the last game in this tab ended (ms since epoch), 0 before the first */
+	lastEnded: 0,
 	blitz: { left: 0, solved: 0, score: 0, over: false, lastGain: 0 }
 });
 
@@ -304,6 +306,7 @@ export function finish() {
 		streak,
 		ended: Date.now()
 	};
+	session.lastEnded = session.result.ended;
 }
 
 /** @param {ReturnType<typeof baseResult>} r */
@@ -358,6 +361,7 @@ function endBlitz() {
 		solved: b.solved,
 		ended: Date.now()
 	};
+	session.lastEnded = session.result.ended;
 }
 
 /**

@@ -111,7 +111,7 @@
 		<a class="secondary" href={SUPPORT_URL} target="_blank" rel="noopener"
 			><HandHeart size={20} /> Support ♥</a
 		>
-		<a class="secondary" href="https://ihtfy.com/privacy" target="_blank" rel="noopener"
+		<a class="secondary" href="https://ihtfy.com/privacy/" target="_blank" rel="noopener"
 			><Shield size={20} /> Privacy</a
 		>
 		<button class="danger" onclick={reset}>

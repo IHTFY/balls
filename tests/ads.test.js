@@ -227,6 +227,12 @@ test('a box beside the puzzle that left the page before the first tap gets no ad
 	assert.equal(added.length, 0);
 });
 
+/** Lets the loader arrive and the box be handed to it. */
+const placeAll = async () => {
+	added.at(-1)?.dispatchEvent(new Event('load'));
+	await tick();
+};
+
 test('a game started within a minute of the last ad keeps its key; a later one or a new size gets a new key', async () => {
 	const { playAdKey, showPlayAd } = await loadAds();
 	assert.equal(playAdKey(), 'play/1');
@@ -234,6 +240,7 @@ test('a game started within a minute of the last ad keeps its key; a later one o
 	now = 5_000;
 	showPlayAd(box(), 'play/1');
 	await tick();
+	await placeAll();
 	now = 64_999;
 	assert.equal(playAdKey(), 'play/1');
 	now = 65_000;
@@ -241,14 +248,111 @@ test('a game started within a minute of the last ad keeps its key; a later one o
 	assert.equal(playAdKey(true), 'play/3');
 });
 
+test('the minute counts from the placement, so a slow loader does not use it up', async () => {
+	const { playAdKey, showPlayAd } = await loadAds();
+	press();
+	const a = box();
+	showPlayAd(a, playAdKey());
+	await tick();
+	// Requested at 0, but the loader takes 90 s to arrive: nothing is placed yet.
+	now = 90_000;
+	assert.equal(playAdKey(), 'play/2');
+	await placeAll();
+	assert.deepEqual(shown, [[a, 'play/1']]);
+	// Placed at 90 s: a game started 30 s later keeps the ad, one at 150 s gets a new one.
+	now = 120_000;
+	assert.equal(playAdKey(), 'play/2');
+	now = 150_000;
+	assert.equal(playAdKey(), 'play/3');
+});
+
+test('a box that left the page before the loader arrived never starts the minute', async () => {
+	const { playAdKey, showPlayAd } = await loadAds();
+	press();
+	const a = box();
+	showPlayAd(a, playAdKey());
+	await tick();
+	a.remove();
+	now = 1_000;
+	await placeAll();
+	assert.equal(shown.length, 0);
+	now = 2_000;
+	assert.equal(playAdKey(), 'play/2');
+});
+
 test('showing the same key again in a new box does not restart the minute', async () => {
 	const { playAdKey, showPlayAd } = await loadAds();
 	press();
 	showPlayAd(box(), playAdKey());
 	await tick();
+	await placeAll();
 	now = 30_000;
 	showPlayAd(box(), playAdKey());
 	await tick();
 	now = 60_000;
 	assert.equal(playAdKey(), 'play/2');
+});
+
+test('only the results screen and, after a game, the home screen get a box', async () => {
+	const { adForScreen, RESULT_AD_SLOT } = await loadAds();
+	const state = { buyer: false, played: true };
+	assert.deepEqual(adForScreen('results', state), { slot: RESULT_AD_SLOT });
+	assert.deepEqual(adForScreen('home', state), { slot: RESULT_AD_SLOT });
+	assert.equal(adForScreen('home', { ...state, played: false }), null);
+	for (const screen of [
+		'play',
+		'levels',
+		'shop',
+		'trophies',
+		'stats',
+		'settings',
+		'howto',
+		'zen',
+		'gift'
+	])
+		assert.equal(adForScreen(screen, state), null, screen);
+});
+
+test('the results screen gets no box while the play ad sits beside the puzzle', async () => {
+	const { adForScreen } = await loadAds();
+	assert.equal(adForScreen('results', { buyer: false, played: true, beside: true }), null);
+});
+
+test('the play screen never gets a box, whatever else is true', async () => {
+	const { adForScreen } = await loadAds();
+	for (const buyer of [false, true])
+		for (const played of [false, true])
+			for (const covered of [false, true])
+				assert.equal(adForScreen('play', { buyer, played, covered }), null);
+});
+
+test('a buyer never gets a box', async () => {
+	const { adForScreen } = await loadAds();
+	for (const screen of ['results', 'home', 'play', 'levels'])
+		assert.equal(adForScreen(screen, { buyer: true, played: true }), null, screen);
+});
+
+test('the home screen gets no box while the gift button or a dialog covers it', async () => {
+	const { adForScreen } = await loadAds();
+	assert.equal(adForScreen('home', { buyer: false, played: true, covered: true }), null);
+});
+
+test('a screen ad takes the largest size that fits and none when nothing does', async () => {
+	const { AD_ASIDE_EXTRA, fitAdSize } = await loadAds();
+	assert.equal(fitAdSize(AD_ASIDE_EXTRA + 250), '300x250');
+	assert.equal(fitAdSize(AD_ASIDE_EXTRA + 249), '320x100');
+	assert.equal(fitAdSize(AD_ASIDE_EXTRA + 100), '320x100');
+	assert.equal(fitAdSize(AD_ASIDE_EXTRA + 99), '320x50');
+	assert.equal(fitAdSize(AD_ASIDE_EXTRA + 50), '320x50');
+	assert.equal(fitAdSize(AD_ASIDE_EXTRA + 49), null);
+	assert.equal(fitAdSize(-20), null);
+});
+
+test('adAsked is true once a box was handed to the loader under that key', async () => {
+	const { adAsked, showAd } = await loadAds();
+	assert.equal(adAsked('home/1'), false);
+	showAd(box(), 'home/1');
+	assert.equal(adAsked('home/1'), false);
+	await placeAll();
+	assert.equal(adAsked('home/1'), true);
 });
