@@ -2,13 +2,20 @@
 	import { fade } from 'svelte/transition';
 	import { MediaQuery } from 'svelte/reactivity';
 	import { themeById } from './lib/game/cosmetics.js';
-	import { setMusic, setMusicScene, setSound, suspendAudio, unlockAudio } from './lib/fx/audio.js';
+	import {
+		setMusic,
+		setMusicHurry,
+		setMusicScene,
+		setSound,
+		suspendAudio,
+		unlockAudio
+	} from './lib/fx/audio.js';
 	import { setHaptics } from './lib/fx/haptics.js';
 	import { setReducedMotion } from './lib/fx/particles.js';
 	import { activity, watchActivity } from './lib/state/activity.svelte.js';
 	import { back, nav } from './lib/state/nav.svelte.js';
 	import { persist, profile } from './lib/state/profile.svelte.js';
-	import { giftReady } from './lib/state/session.svelte.js';
+	import { giftReady, session } from './lib/state/session.svelte.js';
 	import Ambience from './lib/ui/Ambience.svelte';
 	import FxLayer from './lib/ui/FxLayer.svelte';
 	import GiftDialog from './lib/ui/GiftDialog.svelte';
@@ -51,7 +58,12 @@
 	$effect(() => setHaptics(profile.settings.haptics));
 	$effect(() => setReducedMotion(reduced));
 	$effect(watchActivity);
-	$effect(() => setMusicScene(nav.screen === 'play' ? 'play' : 'menu'));
+	const blitzOn = $derived(
+		nav.screen === 'play' && session.mode === 'blitz' && !session.blitz.over
+	);
+	$effect(() => setMusicScene(nav.screen !== 'play' ? 'menu' : blitzOn ? 'blitz' : 'play'));
+	// The last ten seconds of a Blitz run, the same stretch that ticks.
+	$effect(() => setMusicHurry(blitzOn && session.blitz.left <= 10));
 	$effect(() => {
 		if (audioReady) setMusic(profile.settings.music);
 	});

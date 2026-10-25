@@ -2,7 +2,7 @@
 
 The game's music and sound effects are written here as notes and rendered with recorded instruments. The results are committed in `src/assets/audio/`, with the sprite index in `src/lib/fx/sfx-sprite.json`, so building the game needs none of this.
 
-- `songs.py`: the two music loops, menu (F major, 96 BPM) and play (D major, 78 BPM), each 32 bars.
+- `songs.py`: the three music loops, menu (F major, 96 BPM), play (D major, 78 BPM), and Blitz (A minor, 120 BPM), each 32 bars.
 - `effects.py`: every sound effect, packed into one sprite file.
 - `instruments.py`: the instruments both use.
 - `render.py`: renders and exports them.
@@ -14,6 +14,7 @@ You need Python 3 with numpy, scipy, soundfile, and [pedalboard](https://github.
 ```sh
 PYTHONPATH=path/to/musickit:scripts/sounds python scripts/sounds/render.py          # both
 PYTHONPATH=path/to/musickit:scripts/sounds python scripts/sounds/render.py sfx      # effects only
+PYTHONPATH=path/to/musickit:scripts/sounds python scripts/sounds/render.py blitz    # one loop (menu, play, or blitz)
 ```
 
 Each run prints how loud every part is, any notes a semitone apart that sound together, and each effect's loudness. Music is mastered to -20 LUFS. Effects are matched by how loud they are on a phone speaker, with peaks at or below -2 dBFS. Files are exported as Ogg Opus, with AAC (`.m4a`) for browsers that can't decode Opus.

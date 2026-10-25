@@ -34,7 +34,7 @@ test('audio is cached on first use, not precached', async ({ page, browserName }
 		/** @type {RegExpMatchArray} */ (source.match(/const AUDIO = (\[[^\]]*\]);/))[1]
 	);
 	const ogg = audio.filter((/** @type {string} */ a) => a.endsWith('.ogg'));
-	expect(ogg).toHaveLength(3);
+	expect(ogg).toHaveLength(4);
 	expect(source.match(/const ASSETS = (\[[^\]]*\]);/)?.[1]).not.toMatch(/\.(ogg|m4a)"/);
 	const seconds = await page.evaluate(async (files) => {
 		const ctx = new OfflineAudioContext(2, 48000, 48000);

@@ -1,9 +1,10 @@
-"""The two background loops: a bouncy one for the menus and a calmer one for play.
+"""The background loops: a bouncy one for the menus, a calmer one for play, and a
+driving one for Blitz.
 
 Each song is written out bar by bar: chords, a melody in scale degrees, and
 the parts that play them. Tracks are mixed by target loudness (LUFS of the
 track alone): melody about -27, accompaniment -31 to -34, pad -37,
-percussion -38 to -44. home() and play() return a Song; render.py renders it.
+percussion -38 to -44. home(), play(), and blitz() return a Song; render.py renders it.
 
 Chords use add-nine instead of major sevenths: a close-voiced major seventh
 puts the seventh a semitone from the root, which rubs against the tune.
@@ -227,6 +228,92 @@ def play():
     mk.phrase(piano, song.bar(first["a2"]), PLAY_TUNE_A2, scale, velocity=0.5)
     mk.phrase(chimes, song.bar(first["b"]), PLAY_TUNE_B, scale, velocity=0.5)
     mk.phrase(piano, song.bar(first["a3"]), PLAY_TUNE_A3, scale, velocity=0.5)
+
+    song.length_bars = len(bars)
+    return song
+
+
+# ------------------------------------------------------------------ blitz: A minor, 120 BPM
+
+BLITZ_A = [["Am"], ["F"], ["C"], ["G"], ["Am"], ["F"], ["C"], ["E"]]
+BLITZ_B = [["Fadd9"], ["G"], ["Em7"], ["Am7"], ["Fadd9"], ["G"], ["Esus4"], ["E"]]
+
+BLITZ_TUNE_A = """
+5 - 1' - 3' - 1' 5 | 6 - 1' - 3' - 4' 3' | 5 - 3 - 5 - 1' 7 | 7 - 2' - 7 - 5 - |
+5 - 1' - 3' - 5' - | 4' - 3' - 1' - 6 - | 5 - 7 - 1' - 3' - | 2' - - - #7 - 5 - |
+"""
+BLITZ_TUNE_B = """
+1' - 6 - 1' 3' - . | 2' - 7 - 2' 4' - . | 5' - 4' - 2' - 7 - | 1' - - - 5 - 7 - |
+1' - 6 - 1' 3' - . | 2' - 7 - 2' 4' - 5' | 4' - 2' - 1' - 2' - | #7 - - - 2' - 5 - |
+"""
+
+
+def blitz():
+    song = mk.Song(bpm=120)
+    k = kit()
+    scale, high = mk.Scale("A4", "minor"), mk.Scale("A5", "minor")
+    sections = [("a", BLITZ_A), ("b", BLITZ_B), ("a2", BLITZ_A), ("c", BLITZ_B)]
+    bars = [b for _, s in sections for b in s]
+    chords, lengths, starts = expand(bars)
+    voicings = mk.voice_lead(chords, 4)
+    section_of = [name for name, s in sections for _ in s]
+
+    def track(name, instrument, loudness, position=0.0, fx=None, humanize=0.003):
+        return song.track(k[instrument], name=name, loudness=loudness, position=position, fx=fx, humanize=humanize)
+
+    lead = track("lead", "marimba", -27, 0.15, reverb(0.35, 0.12))
+    glock = track("glock", "glock", -32, 0.25, reverb(0.45, 0.18))
+    flute = track("flute", "flute_stac", -28, -0.2, reverb(0.45, 0.18))
+    comp = track("comp", "marimba", -33, -0.3, reverb(0.3, 0.1))
+    bass = track("bass", "bass_pizz", -32, 0.0, reverb(0.25, 0.06), 0.002)
+    pizz = track("pizz", "violin_pizz", -35, 0.35, reverb(0.4, 0.15))
+    pad = track("pad", "pad_still", -40, 0.0, soft_pad(3000), 0)
+    shaker = track("shaker", "shaker", -41, 0.45)
+    kick = track("kick", "bass_drum", -35, 0.0, None, 0)
+    tamb = track("tamb", "tambourine", -40, -0.4, None, 0.002)
+    conga = track("conga", "conga", -39, -0.25)
+
+    for i, (c, length, at) in enumerate(zip(chords, lengths, starts)):
+        low, tones = voicings[i]
+        part = section_of[int(at // 4)]
+        root = bass_root(c)
+        # Bass: driving eighths, jumping the octave on the off-beats.
+        for j in range(int(length * 2)):
+            bass.note(at + j * 0.5, root + (12 if j % 2 else 0), 0.35, 0.68 if j % 2 == 0 else 0.55)
+        pad.note(at, tones, length, 0.45)
+        if part in ("a", "a2"):
+            # Marimba comp: chords on every off-beat.
+            for b in range(int(length)):
+                comp.note(at + b + 0.5, tones, 0.3, 0.42)
+        else:
+            # Pizzicato chords in sixteenths, and a glockenspiel run up the chord.
+            for j in range(int(length * 4)):
+                pizz.note(at + j * 0.25, tones if j % 4 == 0 else tones[-1], 0.2, 0.45 if j % 4 == 0 else 0.32)
+        if part == "c":
+            up = [*tones, tones[0] + 12, tones[1] + 12, tones[0] + 12, *tones[:0:-1]]
+            for j in range(int(length * 2)):
+                glock.note(at + j * 0.5, up[j % len(up)] + 12, 0.4, 0.45 if j % 2 == 0 else 0.38)
+
+    first = {name: section_of.index(name) for name, _ in sections}
+    mk.phrase(lead, song.bar(first["a"]), BLITZ_TUNE_A, scale, velocity=0.55)
+    mk.phrase(lead, song.bar(first["b"]), BLITZ_TUNE_B, scale, velocity=0.55)
+    mk.phrase(glock, song.bar(first["b"]), BLITZ_TUNE_B, high, velocity=0.42)
+    mk.phrase(flute, song.bar(first["a2"]), BLITZ_TUNE_A, scale, velocity=0.5, legato=0.8)
+    mk.phrase(lead, song.bar(first["a2"]), BLITZ_TUNE_A, scale, velocity=0.5)
+
+    for bar, part in enumerate(section_of):
+        b0 = song.bar(bar)
+        for j in range(16):
+            shaker.hit(b0 + j * 0.25, 0.5 if j % 2 == 0 else 0.3)
+        # Four on the floor, lighter in the opening section.
+        for beat in range(4) if part != "a" else (0, 2):
+            kick.hit(b0 + beat, 0.55 if beat % 2 == 0 else 0.45)
+        tamb.hit(b0 + 1, 0.5)
+        tamb.hit(b0 + 3, 0.5)
+        conga.hit(b0 + 0.75, 0.4)
+        conga.hit(b0 + 1.5, 0.45)
+        conga.hit(b0 + 2.75, 0.4)
+        conga.hit(b0 + 3.5, 0.5, pitch=65)
 
     song.length_bars = len(bars)
     return song

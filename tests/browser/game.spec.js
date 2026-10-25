@@ -127,6 +127,20 @@ test('a stuck board says so', async ({ page }) => {
 	await expect(page.getByRole('alert')).toContainText('No moves left');
 });
 
+test('blitz plays its own music loop', async ({ page }) => {
+	/** @type {string[]} */
+	const loops = [];
+	page.on('request', (r) => {
+		const m = r.url().match(/music-(\w+)-/);
+		if (m) loops.push(m[1]);
+	});
+	await open(page, { settings: { music: true } });
+	await page.getByRole('button', { name: /Blitz/ }).click();
+	await waitForBoard(page);
+	await expect.poll(() => loops).toContain('blitz');
+	expect(loops).not.toContain('play');
+});
+
 test('blitz ends when the clock runs out', async ({ page }) => {
 	await page.clock.install();
 	// Reduced motion stops the particle loops, which would otherwise run every faked frame.
