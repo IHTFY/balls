@@ -1,36 +1,49 @@
-// Which sprite sound plays, and how far it is raised, for effects that climb a scale.
-// The colors' notes run up a major scale over two octaves (scripts/sounds/effects.py).
-const MAJOR = [0, 2, 4, 5, 7, 9, 11];
+// Which sprite sound plays, and how far it is shifted, for pitched effects. They are
+// rendered in C major (scripts/sounds/effects.py) and shifted into the key of the
+// music: steps count up the scale from the key's tonic.
 export const COLORS = 14;
-// Combos climb a scale step each, up to MAX_COMBO; past the sprite's last one it is raised.
+// Picks and drops: C4 up a major scale over two octaves. Completions: one arpeggio
+// on each step of the scale from C5.
+const NOTES = 14;
+// Combos climb a scale step each, up to MAX_COMBO.
 const MAX_COMBO = 10;
-const SPRITE_COMBOS = 7;
 
-/** @param {number} step scale steps from the tonic */
-const semitones = (step) => MAJOR[step % 7] + 12 * Math.floor(step / 7);
+/**
+ * Each music loop's key: how far to shift the C major sprite, and which step of
+ * C major is the tonic. A minor uses the notes of C major, starting from A.
+ * @type {Record<'menu' | 'play' | 'blitz', { cents: number, tonic: number }>}
+ */
+export const KEYS = {
+	menu: { cents: 500, tonic: 0 }, // F major
+	play: { cents: 200, tonic: 0 }, // D major
+	blitz: { cents: 0, tonic: -2 } // A minor
+};
 
 /** @param {number} c */
 export const color = (c) => ((c % COLORS) + COLORS) % COLORS;
 
 /**
- * A ball's drop, a number of scale steps above its color's note. Steps past the
- * top color reuse the note an octave down, raised by an octave.
- * @param {number} c
- * @param {number} steps
+ * A pick or drop on a step of C major (0 is C4). Steps outside the sprite's two
+ * octaves reuse its note an octave nearer, shifted by the octaves between.
+ * @param {'pick' | 'drop'} kind
+ * @param {number} step
  */
-export function dropNote(c, steps) {
-	let degree = color(c) + steps;
+export function ballNote(kind, step) {
+	let index = step;
 	let octaves = 0;
-	while (degree >= COLORS) {
-		degree -= 7;
-		octaves++;
-	}
-	return { name: `drop${degree}`, cents: octaves * 1200 };
+	for (; index >= NOTES; index -= 7) octaves++;
+	for (; index < 0; index += 7) octaves--;
+	return { name: `${kind}${index}`, cents: octaves * 1200 };
 }
 
-/** @param {number} combo */
-export function completeNote(combo) {
-	const n = Math.min(Math.max(combo, 1), MAX_COMBO);
-	const sprite = Math.min(n, SPRITE_COMBOS);
-	return { name: `complete${sprite}`, cents: (semitones(n - 1) - semitones(sprite - 1)) * 100 };
+/**
+ * A completion's arpeggio for a combo of this size, on a step of C major (0 is C5).
+ * @param {number} combo
+ * @param {number} tonic
+ */
+export function completeNote(combo, tonic) {
+	const step = tonic + Math.min(Math.max(combo, 1), MAX_COMBO) - 1;
+	const index = ((step % 7) + 7) % 7;
+	const octaves = Math.floor(step / 7);
+	return { name: `complete${index}`, chime: `chime${index}`, cents: octaves * 1200 };
 }

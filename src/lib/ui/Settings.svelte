@@ -17,7 +17,7 @@
 		['sound', 'volume-2', 'Sound effects', ''],
 		['music', 'music', 'Music', 'Relaxed background tunes'],
 		['haptics', 'vibrate', 'Vibration', 'On supported phones'],
-		['symbols', 'shapes', 'Color symbols', 'Shapes on balls for color-blind play'],
+		['symbols', 'case-upper', 'Color letters', 'A letter on each ball for color-blind play'],
 		['stacks', 'layers', 'Move stacks', 'Move matching top balls together'],
 		['targets', 'target', 'Show where it fits', 'Light up the tubes a picked-up ball can go to'],
 		[

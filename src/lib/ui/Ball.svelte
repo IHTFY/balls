@@ -1,5 +1,5 @@
 <script>
-	import { SYMBOLS } from '../game/cosmetics.js';
+	import { LETTERS } from '../game/cosmetics.js';
 
 	/**
 	 * @type {{ color: number, hidden?: boolean, skin: import('../game/cosmetics.js').Skin,
@@ -29,7 +29,7 @@
 		<span class="number">{color + 1}</span>
 	{/if}
 	{#if symbols && !hidden && !label && skin.style !== 'emoji' && skin.style !== 'billiard'}
-		<span class="symbol">{SYMBOLS[color]}&#xFE0E;</span>
+		<span class="symbol">{LETTERS[color]}</span>
 	{/if}
 </div>
 

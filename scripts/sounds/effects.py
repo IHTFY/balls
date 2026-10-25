@@ -19,13 +19,15 @@ TARGET = -16.0
 QUIET = -18.0
 INDEX = Path(__file__).resolve().parents[2] / "src/lib/fx/sfx-sprite.json"
 
-# Ball colors map to a major scale from C4, two octaves for the 14 colors.
+# Pitched effects are rendered in C major and the game shifts them into the key of
+# the music playing (src/lib/fx/pitch.js). Picks and drops cover two octaves from
+# C4, one note per scale step; completions are an arpeggio on each step from C5.
 MAJOR = [0, 2, 4, 5, 7, 9, 11]
-COLORS = 14
+NOTES = 14
 
 
-def color_note(color):
-    return 60 + 12 * (color // 7) + MAJOR[color % 7]
+def scale_note(step, tonic=60):
+    return tonic + 12 * (step // 7) + MAJOR[step % 7]
 
 
 def room(wet=0.12, low_cut=250):
@@ -50,13 +52,13 @@ def one_shot(parts, fx=room()):
     return x.mean(axis=0, keepdims=True)
 
 
-def pick(color):
-    p = color_note(color)
+def pick(step):
+    p = scale_note(step)
     return one_shot([("marimba", [(0, p, 0.3, 0.75)]), ("glock", [(0.005, p + 24, 0.3, 0.25)])])
 
 
-def drop(color):
-    p = color_note(color)
+def drop(step):
+    p = scale_note(step)
     return one_shot(
         [
             ("violin_pizz", [(0, p, 0.3, 0.3)]),
@@ -66,16 +68,16 @@ def drop(color):
     )
 
 
-def complete(combo):
-    # A rising arpeggio, a scale step higher for each step of a combo (up to seven;
-    # the game raises the last one for longer combos).
-    shift = [0, 2, 4, 5, 7, 9, 11][min(combo, 7) - 1]
-    arp = [79, 83, 86, 91]
-    notes = [(i * 0.07, p + shift, 0.6, 0.8 + 0.05 * i) for i, p in enumerate(arp)]
-    parts = [("glock", notes), ("harp", [(s, n - 12, d, v * 0.4) for s, n, d, v in notes])]
-    if combo > 1:
-        parts.append(("chimes", [(0.3, arp[-1] + shift - 12, 1.0, 0.6)]))
-    return one_shot(parts, room(0.2, 400))
+def complete(step):
+    # A rising arpeggio on the chord of this scale step: root, third, fifth, octave.
+    arp = [scale_note(step + d, 72) for d in (0, 2, 4, 7)]
+    notes = [(i * 0.07, p, 0.6, 0.8 + 0.05 * i) for i, p in enumerate(arp)]
+    return one_shot([("glock", notes), ("harp", [(s, n - 12, d, v * 0.4) for s, n, d, v in notes])], room(0.2, 400))
+
+
+def chime(step):
+    # Rings under a completion in a combo, on its chord's root.
+    return one_shot([("chimes", [(0, scale_note(step, 72), 1.0, 0.6)])], room(0.2, 400))
 
 
 def win():
@@ -159,9 +161,10 @@ def whoosh():
 
 def sounds():
     """(name, sound, phone loudness target, longest it may ring in seconds)."""
-    yield from ((f"pick{c}", pick(c), QUIET + 1, 0.6) for c in range(COLORS))
-    yield from ((f"drop{c}", drop(c), QUIET - 1.5, 0.5) for c in range(COLORS))
-    yield from ((f"complete{n}", complete(n), TARGET, 1.6) for n in range(1, 8))
+    yield from ((f"pick{n}", pick(n), QUIET + 1, 0.6) for n in range(NOTES))
+    yield from ((f"drop{n}", drop(n), QUIET - 1.5, 0.5) for n in range(NOTES))
+    yield from ((f"complete{n}", complete(n), TARGET, 1.6) for n in range(7))
+    yield from ((f"chime{n}", chime(n), TARGET - 3, 1.3) for n in range(7))
     yield "win", win(), TARGET, 3.2
     yield from ((f"star{n}", star(n), TARGET, 1.5) for n in (1, 2, 3))
     yield "coin", coin(), TARGET, 0.9

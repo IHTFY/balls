@@ -1,7 +1,7 @@
 // Sounds and music are recordings of sampled instruments, rendered by scripts/sounds.
 // The effects share one sprite file; sfx-sprite.json says where each one starts.
 import SPRITE from './sfx-sprite.json';
-import { color, completeNote, dropNote } from './pitch.js';
+import { KEYS, ballNote, color, completeNote } from './pitch.js';
 
 /** Each file in Ogg Opus, with AAC for browsers that can't decode Opus. */
 const FILES = {
@@ -137,18 +137,37 @@ function play(name, at = 0, cents = 0) {
 export const DROP_GAP = 0.06;
 export const COMPLETE_GAP = 0.07;
 
+/** The key of the music playing, raised a semitone while it hurries. */
+function key() {
+	const { tonic, cents } = KEYS[scene];
+	return { tonic, cents: cents + (hurry ? 100 : 0) };
+}
+
+/**
+ * A pick or drop on a step of the music's scale, counted from its tonic.
+ * @param {'pick' | 'drop'} kind
+ * @param {number} step
+ * @param {number} [at]
+ */
+function ball(kind, step, at = 0) {
+	const k = key();
+	const { name, cents } = ballNote(kind, k.tonic + step);
+	play(/** @type {keyof typeof SPRITE} */ (name), at, cents + k.cents);
+}
+
 export const sound = {
-	/** @param {number} c */
-	pick: (c) => play(/** @type {keyof typeof SPRITE} */ (`pick${color(c)}`)),
-	/** Index is the ball's position in a stack move; each lands a step higher. */
-	drop: (/** @type {number} */ c, /** @type {number} */ index) => {
-		const { name, cents } = dropNote(c, index);
-		play(/** @type {keyof typeof SPRITE} */ (name), index * DROP_GAP, cents);
-	},
+	/** Each color has its own step of the scale. */
+	pick: (/** @type {number} */ c) => ball('pick', color(c)),
+	/** The ball at index in a move; the first lands on step, each after it a step higher. */
+	drop: (/** @type {number} */ step, /** @type {number} */ index) =>
+		ball('drop', step + index, index * DROP_GAP),
 	invalid: () => play('invalid'),
+	/** An arpeggio a scale step higher for each completion of a combo, with a chime in one. */
 	complete: (/** @type {number} */ combo) => {
-		const { name, cents } = completeNote(combo);
-		play(/** @type {keyof typeof SPRITE} */ (name), 0, cents);
+		const k = key();
+		const { name, chime, cents } = completeNote(combo, k.tonic);
+		play(/** @type {keyof typeof SPRITE} */ (name), 0, cents + k.cents);
+		if (combo > 1) play(/** @type {keyof typeof SPRITE} */ (chime), 0.3, cents + k.cents);
 	},
 	win: () => play('win'),
 	/** Plays for star number 1, 2, or 3. */

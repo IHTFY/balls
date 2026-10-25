@@ -259,8 +259,8 @@ const PASTEL = [
 	'#c4c4cc'
 ];
 
-/** Shapes drawn on balls in color-assist mode, one per color. */
-export const SYMBOLS = ['●', '▲', '■', '◆', '★', '✚', '♥', '♠', '♣', '☾', '✿', '⬟', '✖', '☀'];
+/** Letters drawn on balls in color-assist mode, one per color. */
+export const LETTERS = 'ABCDEFGHIJKLMN';
 
 /**
  * @typedef {object} Skin
