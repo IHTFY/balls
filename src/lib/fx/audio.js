@@ -37,6 +37,7 @@ let sfxBus;
 let musicBus;
 let sfxOn = true;
 let musicOn = false;
+let appHidden = false;
 /** @type {Scene} */
 let scene = 'menu';
 
@@ -63,13 +64,11 @@ function audio() {
 		musicBus.gain.value = MUSIC_GAIN;
 		musicBus.connect(limiter);
 	}
-	// Resuming fails until the first user gesture; the next sound tries again.
-	if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+	// Resuming fails until the first user gesture; the next sound tries again. A
+	// download finishing while the app is hidden mustn't wake it.
+	if (ctx.state === 'suspended' && !appHidden) ctx.resume().catch(() => {});
 	return ctx;
 }
-
-const prefersOpus = () =>
-	typeof Audio !== 'undefined' && new Audio().canPlayType('audio/ogg; codecs="opus"') !== '';
 
 /**
  * Downloads and decodes a file once. Some browsers claim Opus support and then
@@ -81,7 +80,7 @@ function load(name) {
 	if (!pending) {
 		const c = audio();
 		/** @type {('ogg' | 'm4a')[]} */
-		const formats = prefersOpus() ? ['ogg', 'm4a'] : ['m4a'];
+		const formats = new Audio().canPlayType('audio/ogg; codecs="opus"') ? ['ogg', 'm4a'] : ['m4a'];
 		pending = (async () => {
 			for (const format of formats) {
 				try {
@@ -212,6 +211,7 @@ export function setMusicScene(next) {
 
 /** Silences everything while the app is hidden. */
 export function suspendAudio(/** @type {boolean} */ hidden) {
+	appHidden = hidden;
 	if (!ctx) return;
 	// A failed suspend or resume leaves audio as it was, which is harmless.
 	if (hidden) ctx.suspend().catch(() => {});

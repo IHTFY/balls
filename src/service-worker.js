@@ -82,7 +82,8 @@ async function cacheAudio(href, request) {
 	const hit = await cache.match(href);
 	if (hit) return hit;
 	const response = await fetch(request);
-	// Only whole files: a ranged 206 reply would cache a fragment.
-	if (response.status === 200) await cache.put(href, response.clone());
+	// Only whole files: a ranged 206 reply would cache a fragment. With storage
+	// full the file still plays, it just downloads again next time.
+	if (response.status === 200) await cache.put(href, response.clone()).catch(() => {});
 	return response;
 }
