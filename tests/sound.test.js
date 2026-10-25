@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { completeNote, dropNote } from '../src/lib/fx/pitch.js';
-import { pulses } from '../src/lib/fx/haptics.js';
+import { pulses, schedule } from '../src/lib/fx/haptics.js';
 
 const SPRITE = JSON.parse(
 	readFileSync(new URL('../src/lib/fx/sfx-sprite.json', import.meta.url), 'utf8')
@@ -40,4 +40,25 @@ test('every combo step sounds higher than the one before, up to x10', () => {
 test('vibration pulses keep the run of notes in step', () => {
 	assert.deepEqual(pulses(3, 10, 0.06), [10, 50, 10, 50, 10]);
 	assert.deepEqual(pulses(1, 25, 0.07), [25]);
+});
+
+test('overlapping buzzes play as one pattern instead of canceling each other', () => {
+	// A three-ball stack move at 230 ms whose completion run starts at 330 ms.
+	const drops = [230, 290, 350].map((t) => /** @type {[number, number]} */ ([t, t + 10]));
+	const run = [330, 400].map((t) => /** @type {[number, number]} */ ([t, t + 14]));
+	assert.deepEqual(schedule([...drops, ...run], 0), [0, 230, 10, 50, 10, 30, 14, 6, 10, 40, 14]);
+	// Rebuilt partway through: a buzz in progress keeps its remaining part.
+	assert.deepEqual(schedule(drops, 235), [0, 0, 5, 50, 10, 50, 10]);
+	// Touching or overlapping buzzes merge.
+	assert.deepEqual(
+		schedule(
+			[
+				[0, 10],
+				[5, 20],
+				[20, 30]
+			],
+			0
+		),
+		[0, 0, 30]
+	);
 });

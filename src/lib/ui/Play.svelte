@@ -77,14 +77,14 @@
 				buzz([15, 40, 15]);
 			} else if (e.type === 'move') {
 				e.balls.forEach((b, i) => setTimeout(() => sound.drop(b.color, i), reduced ? 0 : 230));
-				setTimeout(() => buzz(pulses(e.balls.length, 10, DROP_GAP)), reduced ? 0 : 230);
+				buzz(pulses(e.balls.length, 10, DROP_GAP), reduced ? 0 : 230);
 				save();
 				checkDeadEnd();
 				if (!finishing) findFinish().then((moves) => moves && playFinish(moves));
 			} else if (e.type === 'complete') {
 				setTimeout(() => sound.complete(e.combo), reduced ? 0 : 330);
 				// One pulse per note of the completion's run, stronger in a combo.
-				setTimeout(() => buzz(pulses(4, e.combo > 1 ? 22 : 14, COMPLETE_GAP)), reduced ? 0 : 330);
+				buzz(pulses(4, e.combo > 1 ? 22 : 14, COMPLETE_GAP), reduced ? 0 : 330);
 				profile.stats.tubesCompleted++;
 			} else if (e.type === 'reveal') sound.reveal();
 			else if (e.type === 'win') {
