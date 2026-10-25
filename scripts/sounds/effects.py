@@ -67,7 +67,8 @@ def drop(color):
 
 
 def complete(combo):
-    # A rising arpeggio, a whole step higher for each step of a combo (up to seven).
+    # A rising arpeggio, a scale step higher for each step of a combo (up to seven;
+    # the game raises the last one for longer combos).
     shift = [0, 2, 4, 5, 7, 9, 11][min(combo, 7) - 1]
     arp = [79, 83, 86, 91]
     notes = [(i * 0.07, p + shift, 0.6, 0.8 + 0.05 * i) for i, p in enumerate(arp)]

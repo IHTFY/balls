@@ -12,7 +12,7 @@ Play at [balls.ihtfy.com](https://balls.ihtfy.com). Install it from the browser 
 - **Progress:** points, ranks, coins, 30 trophies, stats with a daily calendar, and a daily gift with a seven-day streak.
 - **Shop:** 10 themes with animated backgrounds and 9 ball sets (glossy, billiards, neon, gems, marbles, fruit, sports, critters, pastel), plus hints and extra tubes.
 - **Helpers:** free undo and restart, hints from the solver, extra tubes, dead-end warnings, stack moves, color-blind symbols, highlighted target tubes, and optional settings that drop a ball with only one place to go and play out the last matching moves.
-- Sound effects and two music loops played on recorded instruments (see `scripts/sounds`), vibration, keyboard controls (`1`–`0`, `Z`, `R`, `H`, `Esc`), a reduced-motion setting, and an Android back button that steps back through the app.
+- Sound effects and three music loops played on recorded instruments (see `scripts/sounds`): one for the menus, one for play, and a faster one for Blitz that rises a semitone in the last 10 seconds. Notes climb a scale through stack moves and combos, each with its own vibration pulse. Also keyboard controls (`1`–`0`, `Z`, `R`, `H`, `Esc`), a reduced-motion setting, and an Android back button that steps back through the app.
 
 ## Offline play and updates
 

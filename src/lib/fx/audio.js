@@ -1,6 +1,7 @@
 // Sounds and music are recordings of sampled instruments, rendered by scripts/sounds.
 // The effects share one sprite file; sfx-sprite.json says where each one starts.
 import SPRITE from './sfx-sprite.json';
+import { color, completeNote, dropNote } from './pitch.js';
 
 /** Each file in Ogg Opus, with AAC for browsers that can't decode Opus. */
 const FILES = {
@@ -15,19 +16,29 @@ const FILES = {
 	play: {
 		ogg: new URL('../../assets/audio/music-play.ogg', import.meta.url).href,
 		m4a: new URL('../../assets/audio/music-play.m4a', import.meta.url).href
+	},
+	blitz: {
+		ogg: new URL('../../assets/audio/music-blitz.ogg', import.meta.url).href,
+		m4a: new URL('../../assets/audio/music-blitz.m4a', import.meta.url).href
 	}
 };
 /** @typedef {keyof typeof FILES} AudioFile */
-/** @typedef {'menu' | 'play'} Scene */
+/** @typedef {'menu' | 'play' | 'blitz'} Scene */
 
 const SFX_GAIN = 0.9;
 // The loops are mastered to -20 LUFS; this keeps them well under the effects.
 const MUSIC_GAIN = 0.4;
 const FADE_OUT = 1.2;
 const FADE_IN = 0.8;
-// Each loop is exactly 32 bars (at 96 and 78 BPM), its tails already mixed into its
-// start. Looping at the bar line keeps any padding a decoder adds out of the seam.
-const LOOP_SECONDS = { menu: (32 * 4 * 60) / 96, play: (32 * 4 * 60) / 78 };
+// Each loop is exactly 32 bars (at 96, 78, and 120 BPM), its tails already mixed into
+// its start. Looping at the bar line keeps any padding a decoder adds out of the seam.
+const LOOP_SECONDS = {
+	menu: (32 * 4 * 60) / 96,
+	play: (32 * 4 * 60) / 78,
+	blitz: (32 * 4 * 60) / 120
+};
+// Hurrying plays the loop a semitone higher, and so 6% faster.
+const HURRY_RATE = 2 ** (1 / 12);
 
 /** @type {AudioContext | null} */
 let ctx = null;
@@ -40,6 +51,7 @@ let musicOn = false;
 let appHidden = false;
 /** @type {Scene} */
 let scene = 'menu';
+let hurry = false;
 
 /** @type {Map<AudioFile, Promise<AudioBuffer | null>>} */
 const buffers = new Map();
@@ -103,8 +115,9 @@ function load(name) {
  * Plays one effect from the sprite.
  * @param {keyof typeof SPRITE} name
  * @param {number} [at] seconds from now
+ * @param {number} [cents] how far to raise it; it also plays that much faster
  */
-function play(name, at = 0) {
+function play(name, at = 0, cents = 0) {
 	if (!sfxOn) return;
 	const c = audio();
 	if (!sfxBuffer) {
@@ -115,22 +128,28 @@ function play(name, at = 0) {
 	const [start, length] = SPRITE[name];
 	const source = c.createBufferSource();
 	source.buffer = sfxBuffer;
+	source.detune.value = cents;
 	source.connect(sfxBus);
 	source.start(c.currentTime + at, start, length);
 }
 
-const COLORS = 14;
-const color = (/** @type {number} */ c) => ((c % COLORS) + COLORS) % COLORS;
+/** Seconds between the balls of a stack move, and between a completion's notes. */
+export const DROP_GAP = 0.06;
+export const COMPLETE_GAP = 0.07;
 
 export const sound = {
 	/** @param {number} c */
 	pick: (c) => play(/** @type {keyof typeof SPRITE} */ (`pick${color(c)}`)),
-	/** Index is the ball's position in a stack move. */
-	drop: (/** @type {number} */ c, /** @type {number} */ index) =>
-		play(/** @type {keyof typeof SPRITE} */ (`drop${color(c)}`), index * 0.06),
+	/** Index is the ball's position in a stack move; each lands a step higher. */
+	drop: (/** @type {number} */ c, /** @type {number} */ index) => {
+		const { name, cents } = dropNote(c, index);
+		play(/** @type {keyof typeof SPRITE} */ (name), index * DROP_GAP, cents);
+	},
 	invalid: () => play('invalid'),
-	complete: (/** @type {number} */ combo) =>
-		play(/** @type {keyof typeof SPRITE} */ (`complete${Math.min(Math.max(combo, 1), 7)}`)),
+	complete: (/** @type {number} */ combo) => {
+		const { name, cents } = completeNote(combo);
+		play(/** @type {keyof typeof SPRITE} */ (name), 0, cents);
+	},
 	win: () => play('win'),
 	/** Plays for star number 1, 2, or 3. */
 	star: (/** @type {number} */ n) =>
@@ -181,6 +200,7 @@ async function startScene() {
 	source.buffer = buffer;
 	source.loop = true;
 	source.loopEnd = LOOP_SECONDS[scene];
+	source.playbackRate.value = hurry ? HURRY_RATE : 1;
 	const gain = c.createGain();
 	gain.gain.setValueAtTime(0, c.currentTime);
 	gain.gain.linearRampToValueAtTime(1, c.currentTime + FADE_IN);
@@ -201,12 +221,23 @@ export function setMusic(on) {
 
 /**
  * Picks the loop for what's on screen: a bouncy one for the menus, a calmer
- * one while playing. Switching crossfades.
+ * one while playing, and a driving one for Blitz. Switching crossfades.
  * @param {Scene} next
  */
 export function setMusicScene(next) {
 	scene = next;
 	if (musicOn) void startScene();
+}
+
+/**
+ * Speeds the music up a semitone while time runs out, and back down after.
+ * @param {boolean} on
+ */
+export function setMusicHurry(on) {
+	if (on === hurry) return;
+	hurry = on;
+	if (current && ctx)
+		current.source.playbackRate.setTargetAtTime(on ? HURRY_RATE : 1, ctx.currentTime, 0.15);
 }
 
 /** Silences everything while the app is hidden. */
