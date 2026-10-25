@@ -218,38 +218,69 @@
 	}
 	.kicker {
 		margin: 0;
-		color: var(--muted);
-		text-transform: uppercase;
-		letter-spacing: 0.12em;
-		font-size: 12px;
+		color: var(--text);
+		font-size: 15px;
+		font-weight: 700;
 	}
 	h2 {
 		margin: 0;
 		font-family: var(--display);
-		font-size: 34px;
-		line-height: 1.15;
-		background: linear-gradient(90deg, var(--accent), var(--accent-2));
+		font-size: 40px;
+		font-weight: 700;
+		line-height: 1.1;
+		background: linear-gradient(
+			180deg,
+			color-mix(in oklab, var(--accent), #fff 35%),
+			var(--accent) 60%
+		);
 		background-clip: text;
+		-webkit-background-clip: text;
 		color: transparent;
+		filter: drop-shadow(0 3px 0 color-mix(in oklab, var(--accent), #6a2a00 45%))
+			drop-shadow(0 0 18px color-mix(in srgb, var(--accent), transparent 65%));
 	}
+	/* The stars sit on a soft arc of light. */
 	.stars {
+		position: relative;
+		isolation: isolate;
 		display: flex;
 		align-items: flex-end;
-		gap: 6px;
-		height: 56px;
+		gap: 8px;
+		height: 60px;
+	}
+	.stars::before {
+		content: '';
+		position: absolute;
+		inset: 30% -40% -30%;
+		border-radius: 50%;
+		background: radial-gradient(
+			closest-side,
+			color-mix(in srgb, var(--accent), transparent 70%),
+			transparent
+		);
+		opacity: 0;
+		transition: opacity 0.6s;
+		z-index: -1;
+	}
+	.stars:has(.earned)::before {
+		opacity: 1;
 	}
 	.star {
-		font-size: 44px;
+		font-size: 46px;
 		line-height: 1;
 		color: var(--surface-strong);
 		transition: color 0.2s;
 	}
 	.star.mid {
-		font-size: 56px;
+		font-size: 60px;
+		margin-bottom: 6px;
 	}
 	.star.earned {
-		color: #ffcf3f;
-		text-shadow: 0 0 22px rgb(255 207 63 / 0.7);
+		background: linear-gradient(180deg, #fff1a6, #ffd23a 45%, #f5a300);
+		background-clip: text;
+		-webkit-background-clip: text;
+		color: transparent;
+		filter: drop-shadow(0 0 12px rgb(255 207 63 / 0.6));
 		animation: star-pop 0.5s cubic-bezier(0.3, 1.8, 0.5, 1);
 	}
 	.facts {
@@ -262,8 +293,10 @@
 		flex: 1;
 		min-width: 0;
 		padding: 6px 8px;
-		border-radius: 14px;
-		background: var(--surface);
+		border-radius: 16px;
+		background: var(--well);
+		border: 1.5px solid var(--edge);
+		box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
 	}
 	.facts small,
 	.facts em {
@@ -274,7 +307,9 @@
 		letter-spacing: 0.06em;
 	}
 	.facts strong {
-		font-size: 22px;
+		font-size: 24px;
+		line-height: 1.2;
+		font-variant-numeric: tabular-nums;
 	}
 	.streak {
 		display: inline-flex;
@@ -289,8 +324,8 @@
 		margin: 0;
 		padding: 0 10px;
 		border-radius: 999px;
-		background: var(--accent-2);
-		color: #fff;
+		background: var(--accent);
+		color: var(--on-accent);
 		font-size: 13px;
 		font-weight: 700;
 	}
@@ -315,16 +350,19 @@
 		padding: 0;
 		width: 100%;
 		display: grid;
-		gap: 2px;
+		gap: 4px;
 	}
 	.lines li {
 		display: flex;
 		justify-content: space-between;
-		padding: 2px 8px;
-		color: var(--muted);
+		padding: 5px 14px;
+		border-radius: 12px;
+		background: var(--well);
+		border: 1.5px solid var(--edge);
+		font-weight: 600;
 	}
 	.lines b {
-		color: var(--text);
+		color: var(--accent);
 		font-variant-numeric: tabular-nums;
 	}
 	.coins {
@@ -338,12 +376,17 @@
 	.rank {
 		width: 100%;
 		display: grid;
-		gap: 4px;
+		gap: 6px;
+		padding: 10px 14px 12px;
+		border-radius: 16px;
+		background: var(--well);
+		border: 1.5px solid var(--edge);
 	}
 	.rank-label {
 		display: flex;
 		justify-content: space-between;
-		font-size: 13px;
+		font-size: 14px;
+		font-weight: 600;
 	}
 	.rank-label small {
 		color: var(--muted);
@@ -351,13 +394,17 @@
 	.bar {
 		height: 10px;
 		border-radius: 999px;
-		background: var(--surface);
+		background: var(--surface-strong);
 		overflow: hidden;
 	}
 	.bar div {
 		height: 100%;
 		border-radius: inherit;
-		background: linear-gradient(90deg, var(--accent-2), var(--accent));
+		background: linear-gradient(
+			180deg,
+			color-mix(in oklab, var(--accent), #fff 25%),
+			var(--accent)
+		);
 		transition: width 1s cubic-bezier(0.3, 1, 0.4, 1);
 	}
 	@keyframes star-pop {

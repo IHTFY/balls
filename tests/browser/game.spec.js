@@ -183,6 +183,26 @@ test('the shop sells and equips a theme after a confirming tap', async ({ page }
 	expect(vars.trim()).toBe('#3ff3d0');
 });
 
+test('a dark theme drops the panel colors a light theme set', async ({ page }) => {
+	await open(page, { owned: ['midnight', 'glossy', 'candy'], theme: 'candy' });
+	const well = () =>
+		page.evaluate(() =>
+			getComputedStyle(document.documentElement).getPropertyValue('--well').trim()
+		);
+	expect(await well()).toBe('rgb(255 255 255 / 0.55)');
+	await page.getByRole('button', { name: /Shop/ }).click();
+	await page
+		.locator('.card', { hasText: 'Midnight' })
+		.getByRole('button', { name: /Equip/ })
+		.click();
+	await expect(page.locator('.card', { hasText: 'Midnight' })).toContainText('Equipped');
+	// The same as Midnight on a fresh load.
+	const switched = await well();
+	await page.reload();
+	await expect(page.getByRole('button', { name: /Play.*Level 1/ })).toBeVisible();
+	expect(switched).toBe(await well());
+});
+
 test('a returning player opens a daily gift', async ({ page }) => {
 	await open(page, {
 		coins: 0,

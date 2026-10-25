@@ -1,22 +1,12 @@
 <script>
 	import { fly } from 'svelte/transition';
 	import { backOut } from 'svelte/easing';
-	import CalendarDays from '@lucide/svelte/icons/calendar-days';
-	import ChartColumn from '@lucide/svelte/icons/chart-column';
-	import CircleHelp from '@lucide/svelte/icons/circle-help';
 	import Crown from '@lucide/svelte/icons/crown';
 	import Flame from '@lucide/svelte/icons/flame';
 	import Gift from '@lucide/svelte/icons/gift';
-	import HandHeart from '@lucide/svelte/icons/hand-heart';
-	import Leaf from '@lucide/svelte/icons/leaf';
-	import Map from '@lucide/svelte/icons/map';
 	import Settings from '@lucide/svelte/icons/settings';
-	import ShoppingBag from '@lucide/svelte/icons/shopping-bag';
 	import Star from '@lucide/svelte/icons/star';
-	import Trophy from '@lucide/svelte/icons/trophy';
-	import Zap from '@lucide/svelte/icons/zap';
 	import { ACHIEVEMENTS, earnedCount } from '../game/achievements.js';
-	import { skinById } from '../game/cosmetics.js';
 	import { chapterName, chapterOf, isBoss } from '../game/levels.js';
 	import { dateKey, isNextDay, totalStars } from '../game/profile.js';
 	import { rankFor } from '../game/scoring.js';
@@ -33,15 +23,25 @@
 	} from '../state/session.svelte.js';
 	import { adAsked, adForScreen, mayBeAdFree } from '../ads.js';
 	import AdAside from './AdAside.svelte';
-	import Ball from './Ball.svelte';
 	import CoinChip from './CoinChip.svelte';
 	import UpdatePrompt from './UpdatePrompt.svelte';
 	import { SUPPORT_URL } from '../support.js';
+	import ballB from '../../assets/logo/ball-b.webp';
+	import ballA from '../../assets/logo/ball-a.webp';
+	import ballL1 from '../../assets/logo/ball-l1.webp';
+	import ballL2 from '../../assets/logo/ball-l2.webp';
+	import ballS from '../../assets/logo/ball-s.webp';
+	import dailyIcon from '../../assets/icons/daily.webp';
+	import zenIcon from '../../assets/icons/zen.webp';
+	import blitzIcon from '../../assets/icons/blitz.webp';
+	import levelsIcon from '../../assets/icons/levels.webp';
+	import shopIcon from '../../assets/icons/shop.webp';
+	import trophiesIcon from '../../assets/icons/trophies.webp';
+	import statsIcon from '../../assets/icons/stats.webp';
+	import helpIcon from '../../assets/icons/help.webp';
+	import supportIcon from '../../assets/icons/support.webp';
 
 	const rank = $derived(rankFor(profile.score));
-	// Emoji balls would hide the logo's letters.
-	const equipped = $derived(skinById(profile.skin));
-	const skin = $derived(equipped.style === 'emoji' ? skinById('glossy') : equipped);
 	const level = $derived(profile.unlocked);
 	const today = dateKey();
 	const dailyDone = $derived(!!profile.daily.done[today]);
@@ -86,7 +86,7 @@
 		go('play');
 	}
 
-	const LETTERS = ['B', 'A', 'L', 'L', 'S'];
+	const LETTERS = [ballB, ballA, ballL1, ballL2, ballS];
 </script>
 
 <section class="home">
@@ -107,10 +107,8 @@
 	</header>
 
 	<div class="logo" aria-label="Balls">
-		{#each LETTERS as letter, i (i)}
-			<span class="letter" style:--i={i} aria-hidden="true">
-				<Ball color={i} {skin} size={64} label={letter} />
-			</span>
+		{#each LETTERS as src, i (i)}
+			<img class="letter" style:--i={i} {src} alt="" width="66" height="66" />
 		{/each}
 	</div>
 	<p class="tagline">Sort the colors. Chase the stars.</p>
@@ -129,7 +127,7 @@
 
 	<div class="modes">
 		<button class="mode daily" class:done={dailyDone} onclick={() => play(startDaily)}>
-			<span class="mode-icon"><CalendarDays size={26} /></span>
+			<img class="mode-icon" src={dailyIcon} alt="" />
 			<b>Daily</b>
 			<small>
 				{#if dailyDone}✓ Done · next in {untilTomorrow}{:else}New puzzle today!{/if}
@@ -138,13 +136,13 @@
 					><Flame size={12} /> {profile.daily.streak}</span
 				>{/if}
 		</button>
-		<button class="mode" onclick={() => (nav.dialog = 'zen')}>
-			<span class="mode-icon"><Leaf size={26} /></span>
+		<button class="mode zen" onclick={() => (nav.dialog = 'zen')}>
+			<img class="mode-icon" src={zenIcon} alt="" />
 			<b>Zen</b>
 			<small>Endless and relaxed</small>
 		</button>
-		<button class="mode" onclick={() => play(startBlitz)}>
-			<span class="mode-icon"><Zap size={26} /></span>
+		<button class="mode blitz" onclick={() => play(startBlitz)}>
+			<img class="mode-icon" src={blitzIcon} alt="" />
 			<b>Blitz</b>
 			<small
 				>{profile.stats.blitzBest
@@ -152,21 +150,23 @@
 					: 'Race the clock'}</small
 			>
 		</button>
-		<button class="mode" onclick={() => go('levels')}>
-			<span class="mode-icon"><Map size={26} /></span>
+		<button class="mode levels" onclick={() => go('levels')}>
+			<img class="mode-icon" src={levelsIcon} alt="" />
 			<b>Levels</b>
 			<small class="stars"><Star size={13} fill="currentColor" /> {totalStars(profile)}</small>
 		</button>
 	</div>
 
 	<nav class="links" bind:this={links}>
-		<button onclick={() => go('shop')}><ShoppingBag size={22} />Shop</button>
+		<button onclick={() => go('shop')}><img src={shopIcon} alt="" />Shop</button>
 		<button onclick={() => go('trophies')}
-			><Trophy size={22} />{earned}/{ACHIEVEMENTS.length}</button
+			><img src={trophiesIcon} alt="" />{earned}/{ACHIEVEMENTS.length}</button
 		>
-		<button onclick={() => go('stats')}><ChartColumn size={22} />Stats</button>
-		<button onclick={() => (nav.dialog = 'howto')}><CircleHelp size={22} />Help</button>
-		<a href={SUPPORT_URL} target="_blank" rel="noopener"><HandHeart size={22} />Support ♥</a>
+		<button onclick={() => go('stats')}><img src={statsIcon} alt="" />Stats</button>
+		<button onclick={() => (nav.dialog = 'howto')}><img src={helpIcon} alt="" />Help</button>
+		<a href={SUPPORT_URL} target="_blank" rel="noopener"
+			><img src={supportIcon} alt="" />Support ♥</a
+		>
 	</nav>
 
 	{#if ad}<AdAside above={links} slot={ad.slot} {adKey} />{/if}
@@ -211,33 +211,35 @@
 	.rank {
 		display: flex;
 		align-items: center;
-		gap: 8px;
-		padding: 4px 12px 4px 4px;
+		gap: 10px;
+		padding: 5px 16px 5px 5px;
 		border-radius: 999px;
-		background: var(--surface);
+		background: var(--well);
+		border: 1.5px solid var(--edge);
 		color: var(--text);
 		text-align: left;
 	}
 	.rank-level {
 		display: grid;
 		place-items: center;
-		width: 34px;
-		height: 34px;
+		width: 36px;
+		height: 36px;
 		border-radius: 50%;
 		background: linear-gradient(135deg, var(--accent), var(--accent-2));
 		color: #fff;
 		font-weight: 800;
 		text-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+		box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35);
 	}
 	.rank-text {
 		display: grid;
-		gap: 3px;
-		font-size: 13px;
+		gap: 4px;
+		font-size: 14px;
 	}
 	.bar {
 		display: block;
 		width: 110px;
-		height: 6px;
+		height: 7px;
 		border-radius: 999px;
 		background: var(--surface-strong);
 		overflow: hidden;
@@ -245,32 +247,39 @@
 	.bar span {
 		display: block;
 		height: 100%;
-		background: linear-gradient(90deg, var(--accent-2), var(--accent));
+		border-radius: inherit;
+		background: var(--accent);
 	}
 	.logo {
 		display: flex;
-		gap: 4px;
-		margin-top: clamp(4px, 4vh, 40px);
+		gap: 2px;
+		margin-top: clamp(4px, 2.5vh, 32px);
+		filter: drop-shadow(0 8px 10px rgb(0 0 0 / 0.3));
 	}
 	.letter {
+		width: 66px;
+		height: 66px;
 		animation: bounce 2.4s cubic-bezier(0.3, 0, 0.3, 1) calc(var(--i) * 0.12s) infinite;
 	}
 	.tagline {
 		margin: -4px 0 4px;
-		color: var(--muted);
+		color: color-mix(in oklab, var(--text), var(--muted) 35%);
+		font-size: 17px;
+		font-weight: 600;
 	}
 	.play-button {
 		display: grid;
 		gap: 2px;
 		width: 100%;
-		padding: 16px;
-		border-radius: 24px;
+		padding: 13px 16px 15px;
+		border-radius: 22px;
 		font-size: 26px;
 		animation: glow 2s ease-in-out infinite alternate;
 	}
 	.play-main {
 		font-family: var(--display);
-		font-size: 30px;
+		font-size: 34px;
+		font-weight: 700;
 		line-height: 1;
 	}
 	.play-sub {
@@ -278,9 +287,9 @@
 		align-items: center;
 		justify-content: center;
 		gap: 4px;
-		font-size: 14px;
+		font-size: 15px;
 		font-weight: 600;
-		opacity: 0.85;
+		opacity: 0.9;
 	}
 	.modes {
 		display: grid;
@@ -288,38 +297,55 @@
 		gap: 10px;
 		width: 100%;
 	}
+	/* Each mode keeps its own color in every theme, measured from the home mockup. */
 	.mode {
+		--card: #681179;
+		--card-edge: #ab2fc1;
 		position: relative;
 		display: grid;
 		justify-items: start;
-		gap: 2px;
-		padding: 14px;
-		border-radius: 20px;
-		background: var(--surface);
-		color: var(--text);
+		gap: 0;
+		padding: 12px 14px;
+		border-radius: 18px;
+		background: linear-gradient(180deg, color-mix(in oklab, var(--card), #fff 8%), var(--card) 60%);
+		border: 1.5px solid var(--card-edge);
+		box-shadow:
+			inset 0 1px 0 rgb(255 255 255 / 0.18),
+			0 6px 16px rgb(0 0 0 / 0.22);
+		color: #fff;
 		text-align: left;
-		border: 1px solid transparent;
 		transition:
 			transform 0.15s,
-			background 0.2s;
+			filter 0.2s,
+			box-shadow 0.2s;
+	}
+	.mode.zen {
+		--card: #076e64;
+		--card-edge: #19b19c;
+	}
+	.mode.blitz {
+		--card: #114ff6;
+		--card-edge: #3584fc;
+	}
+	.mode.levels {
+		--card: #3f54d0;
+		--card-edge: #6e86fb;
 	}
 	.mode:hover {
-		background: var(--surface-strong);
+		filter: brightness(1.08);
 		transform: translateY(-2px);
 	}
 	.mode.daily:not(.done) {
 		border-color: var(--accent);
-		box-shadow: 0 0 20px color-mix(in srgb, var(--accent), transparent 70%);
+		box-shadow:
+			inset 0 1px 0 rgb(255 255 255 / 0.18),
+			0 0 20px color-mix(in srgb, var(--accent), transparent 60%);
 	}
 	.mode-icon {
-		display: grid;
-		place-items: center;
-		width: 44px;
-		height: 44px;
+		width: 48px;
+		height: 48px;
 		margin-bottom: 4px;
-		border-radius: 14px;
-		background: color-mix(in srgb, var(--accent), transparent 82%);
-		color: var(--accent);
+		filter: drop-shadow(0 4px 6px rgb(0 0 0 / 0.25));
 	}
 	.stars {
 		display: inline-flex;
@@ -330,10 +356,13 @@
 		color: #ffcf3f;
 	}
 	.mode b {
-		font-size: 18px;
+		font-size: 22px;
+		line-height: 1.15;
 	}
 	.mode small {
-		color: var(--muted);
+		font-size: 15px;
+		font-weight: 600;
+		color: rgb(255 255 255 / 0.82);
 	}
 	.pill {
 		display: inline-flex;
@@ -359,21 +388,23 @@
 	.links a {
 		display: grid;
 		justify-items: center;
-		gap: 2px;
-		padding: 10px 4px;
+		gap: 4px;
+		padding: 10px 4px 9px;
 		border-radius: 16px;
-		background: var(--surface);
+		background: var(--well);
+		border: 1.5px solid var(--edge);
 		color: var(--text);
 		font-size: 13px;
 		font-weight: 600;
 		text-decoration: none;
 	}
+	.links img {
+		width: 28px;
+		height: 28px;
+	}
 	.links a {
 		padding-inline: 0;
 		white-space: nowrap;
-	}
-	.links :global(svg) {
-		color: var(--accent);
 	}
 	.gift {
 		display: grid;
@@ -389,6 +420,26 @@
 		box-shadow: 0 10px 30px color-mix(in srgb, var(--accent-2), transparent 40%);
 		animation: wiggle 2.5s ease-in-out infinite;
 		z-index: 5;
+	}
+	/* Short phones: smaller logo and card art so the links stay on screen. */
+	@media (max-height: 700px) {
+		.home {
+			gap: 10px;
+		}
+		.letter {
+			width: 56px;
+			height: 56px;
+		}
+		.mode-icon {
+			width: 36px;
+			height: 36px;
+		}
+		.mode b {
+			font-size: 20px;
+		}
+		.play-main {
+			font-size: 30px;
+		}
 	}
 	:global(.app.idle) .letter,
 	:global(.app.idle) .play-button,

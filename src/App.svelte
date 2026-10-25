@@ -34,6 +34,10 @@
 		for (const [key, value] of Object.entries(theme.vars)) root.setProperty(key, value);
 		root.colorScheme = theme.light ? 'light' : 'dark';
 		document.querySelector('meta[name="theme-color"]')?.setAttribute('content', theme.chrome);
+		// Light themes set properties that dark themes take from app.css, so drop them on a switch.
+		return () => {
+			for (const key of Object.keys(theme.vars)) root.removeProperty(key);
+		};
 	});
 
 	// Save shortly after any change; the play timer changes the profile every second.
