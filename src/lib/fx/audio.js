@@ -135,7 +135,7 @@ function play(name, at = 0, cents = 0) {
 
 /** Seconds between the balls of a stack move, and between a completion's notes. */
 export const DROP_GAP = 0.06;
-export const COMPLETE_GAP = 0.07;
+const COMPLETE_GAP = 0.07;
 
 /** The key of the music playing, raised a semitone while it hurries. */
 function key() {
@@ -155,6 +155,19 @@ function ball(kind, step, at = 0) {
 	play(/** @type {keyof typeof SPRITE} */ (name), at, cents + k.cents);
 }
 
+/** @param {number} combo */
+function completion(combo) {
+	const k = key();
+	const note = completeNote(combo, k.tonic);
+	return { ...note, cents: note.cents + k.cents };
+}
+
+/**
+ * Seconds between a completion's notes as it plays: shifting it also changes its speed.
+ * @param {number} combo
+ */
+export const completeGap = (combo) => COMPLETE_GAP / 2 ** (completion(combo).cents / 1200);
+
 export const sound = {
 	/** Each color has its own step of the scale. */
 	pick: (/** @type {number} */ c) => ball('pick', color(c)),
@@ -164,10 +177,9 @@ export const sound = {
 	invalid: () => play('invalid'),
 	/** An arpeggio a scale step higher for each completion of a combo, with a chime in one. */
 	complete: (/** @type {number} */ combo) => {
-		const k = key();
-		const { name, chime, cents } = completeNote(combo, k.tonic);
-		play(/** @type {keyof typeof SPRITE} */ (name), 0, cents + k.cents);
-		if (combo > 1) play(/** @type {keyof typeof SPRITE} */ (chime), 0.3, cents + k.cents);
+		const { name, chime, cents } = completion(combo);
+		play(/** @type {keyof typeof SPRITE} */ (name), 0, cents);
+		if (combo > 1) play(/** @type {keyof typeof SPRITE} */ (chime), 0.3, cents);
 	},
 	win: () => play('win'),
 	/** Plays for star number 1, 2, or 3. */

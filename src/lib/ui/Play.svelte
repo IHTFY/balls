@@ -16,7 +16,7 @@
 	import { clock } from '../game/format.js';
 	import { canMove } from '../game/rules.js';
 	import { starsFor } from '../game/scoring.js';
-	import { COMPLETE_GAP, DROP_GAP, sound } from '../fx/audio.js';
+	import { DROP_GAP, completeGap, sound } from '../fx/audio.js';
 	import { buzz, pulses } from '../fx/haptics.js';
 	import { go, nav } from '../state/nav.svelte.js';
 	import { profile } from '../state/profile.svelte.js';
@@ -88,7 +88,7 @@
 			} else if (e.type === 'complete') {
 				setTimeout(() => sound.complete(e.combo), reduced ? 0 : 330);
 				// One pulse per note of the completion's run, stronger in a combo.
-				buzz(pulses(4, e.combo > 1 ? 22 : 14, COMPLETE_GAP), reduced ? 0 : 330);
+				buzz(pulses(4, e.combo > 1 ? 22 : 14, completeGap(e.combo)), reduced ? 0 : 330);
 				profile.stats.tubesCompleted++;
 			} else if (e.type === 'reveal') sound.reveal();
 			else if (e.type === 'win') {
