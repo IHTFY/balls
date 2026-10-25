@@ -5,12 +5,17 @@
 	line-height: 1.4;
 	font-weight: 450;
 	color: var(--text);
-	background: #0a0a1f;
+	background: #141c67;
 	font-synthesis: none;
 	text-rendering: optimizeLegibility;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 	-webkit-text-size-adjust: 100%;
+	/* Recessed panels (chips, small buttons) and their rim; light themes override both. */
+	--well: rgb(4 8 48 / 0.3);
+	--edge: color-mix(in srgb, var(--text), transparent 84%);
+	--on-accent: #121a55;
+	--glass-rim: color-mix(in srgb, var(--glass-edge), #fff 45%);
 }
 
 * {
@@ -76,21 +81,32 @@ a.secondary {
 	gap: 6px;
 }
 
+/* A raised candy button: lighter top, the accent below, and a darker lip under it. */
 .primary {
 	background: linear-gradient(
-		135deg,
-		var(--accent),
-		color-mix(in oklab, var(--accent), var(--accent-2) 55%)
+		180deg,
+		color-mix(in oklab, var(--accent), #fff 12%),
+		var(--accent) 55%,
+		color-mix(in oklab, var(--accent), #f07800 18%)
 	);
-	color: #1a1030;
+	color: var(--on-accent);
 	box-shadow:
-		0 6px 18px color-mix(in srgb, var(--accent), transparent 65%),
-		inset 0 1px 0 rgb(255 255 255 / 0.4);
-	text-shadow: 0 1px 0 rgb(255 255 255 / 0.3);
+		inset 0 1.5px 0 rgb(255 255 255 / 0.55),
+		0 4px 0 color-mix(in oklab, var(--accent), #6a2a00 32%),
+		0 8px 18px color-mix(in srgb, var(--accent), transparent 72%);
+	text-shadow: 0 1px 0 rgb(255 255 255 / 0.35);
+}
+
+.primary:active:not(:disabled) {
+	box-shadow:
+		inset 0 1.5px 0 rgb(255 255 255 / 0.55),
+		0 1px 0 color-mix(in oklab, var(--accent), #6a2a00 32%),
+		0 4px 10px color-mix(in srgb, var(--accent), transparent 72%);
 }
 
 .secondary {
 	background: var(--surface-strong);
+	border: 1.5px solid var(--edge);
 	color: var(--text);
 }
 
@@ -102,11 +118,12 @@ a.secondary {
 .icon-button {
 	display: grid;
 	place-items: center;
-	width: 42px;
-	height: 42px;
+	width: 44px;
+	height: 44px;
 	padding: 0;
 	border-radius: 50%;
-	background: var(--surface);
+	background: var(--well);
+	border: 1.5px solid var(--edge);
 	color: var(--text);
 }
 

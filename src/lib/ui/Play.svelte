@@ -354,11 +354,15 @@
 	{/if}
 
 	<nav class="toolbar">
-		<button class="tool" onclick={undo} disabled={!game.history.length || game.won || finishing}>
+		<button
+			class="tool lit"
+			onclick={undo}
+			disabled={!game.history.length || game.won || finishing}
+		>
 			<Undo2 size={22} /><span>Undo</span>
 		</button>
 		<button
-			class="tool"
+			class="tool lit"
 			onclick={() => game.restart()}
 			disabled={!game.history.length || game.won || finishing}
 		>
@@ -366,7 +370,7 @@
 		</button>
 		{#if !blitz}
 			<button
-				class="tool"
+				class="tool lit"
 				onclick={hint}
 				disabled={session.hintBusy || game.won || finishing}
 				aria-label={profile.hints > 0
@@ -472,10 +476,16 @@
 		align-items: center;
 		gap: 8px;
 		margin: 8px auto 0;
-		padding: 6px 16px;
+		padding: 8px 16px;
 		width: min(420px, 100%);
-		border-radius: 18px;
-		background: var(--surface);
+		border-radius: 20px;
+		background: var(--well);
+		border: 1.5px solid var(--edge);
+		box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
+	}
+	.stats:not(.blitz-stats) > .meter {
+		border-inline: 1.5px solid var(--edge);
+		padding-inline: 14px;
 	}
 	.stats > div {
 		display: grid;
@@ -483,12 +493,14 @@
 	}
 	.stats small {
 		color: var(--muted);
-		font-size: 11px;
+		font-size: 12px;
+		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
 	}
 	.stats strong {
-		font-size: 20px;
+		font-size: 24px;
+		line-height: 1.15;
 		font-variant-numeric: tabular-nums;
 	}
 	.meter {
@@ -497,7 +509,7 @@
 		gap: 2px;
 		flex-wrap: wrap;
 		justify-content: center;
-		width: 110px;
+		width: 124px;
 	}
 	.meter small {
 		width: 100%;
@@ -511,7 +523,11 @@
 	}
 	.star.lit {
 		color: #ffcf3f;
-		text-shadow: 0 0 10px rgb(255 207 63 / 0.6);
+		background: linear-gradient(180deg, #ffe680, #ffc21a 70%, #f5a300);
+		background-clip: text;
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		filter: drop-shadow(0 0 6px rgb(255 207 63 / 0.55));
 	}
 	.blitz-clock {
 		display: flex;
@@ -649,14 +665,19 @@
 		position: relative;
 		display: grid;
 		justify-items: center;
-		gap: 2px;
-		min-width: 64px;
-		padding: 8px 10px;
-		border-radius: 16px;
-		background: var(--surface);
+		gap: 3px;
+		min-width: 66px;
+		padding: 9px 10px 8px;
+		border-radius: 18px;
+		background: var(--well);
+		border: 1.5px solid var(--edge);
+		box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
 		color: var(--text);
-		font-size: 12px;
-		font-weight: 600;
+		font-size: 13px;
+		font-weight: 700;
+	}
+	.tool.lit :global(svg) {
+		color: var(--accent);
 	}
 	.tool:not(:disabled):hover {
 		background: var(--surface-strong);
@@ -672,8 +693,10 @@
 		padding: 1px 6px;
 		border-radius: 999px;
 		background: var(--accent-2);
+		box-shadow: 0 2px 6px rgb(0 0 0 / 0.3);
 		color: #fff;
-		font-size: 11px;
+		font-size: 12px;
+		font-weight: 700;
 		display: inline-flex;
 		align-items: center;
 		gap: 2px;

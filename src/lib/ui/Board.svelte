@@ -360,6 +360,7 @@
 		cursor: pointer;
 		border-radius: calc(var(--ball) * 0.2) calc(var(--ball) * 0.2) calc(var(--ball) * 0.65)
 			calc(var(--ball) * 0.65);
+		isolation: isolate;
 		transition: transform 0.2s cubic-bezier(0.3, 1.5, 0.6, 1);
 		animation: tube-in 0.5s var(--delay) cubic-bezier(0.3, 1.4, 0.6, 1) backwards;
 	}
@@ -371,40 +372,68 @@
 		position: absolute;
 		inset: 0;
 		border-radius: inherit;
-		border: max(2px, calc(var(--ball) * 0.05)) solid var(--glass-edge);
+		border: max(2px, calc(var(--ball) * 0.04)) solid var(--glass-rim);
 		border-top: none;
 		background:
 			linear-gradient(
 				90deg,
-				transparent 12%,
-				rgb(255 255 255 / 0.22) 18%,
-				transparent 26%,
-				transparent 76%,
-				rgb(255 255 255 / 0.1) 82%,
-				transparent 88%
+				transparent 9%,
+				rgb(255 255 255 / 0.28) 14%,
+				rgb(255 255 255 / 0.08) 22%,
+				transparent 28%,
+				transparent 78%,
+				rgb(255 255 255 / 0.12) 84%,
+				transparent 90%
 			),
-			var(--glass);
-		box-shadow: inset 0 calc(var(--ball) * -0.1) calc(var(--ball) * 0.3) rgb(0 0 0 / 0.15);
+			radial-gradient(70% 22% at 50% 100%, rgb(255 255 255 / 0.12), transparent), var(--glass);
+		box-shadow:
+			inset 0 0 0 max(1px, calc(var(--ball) * 0.04)) rgb(255 255 255 / 0.06),
+			inset 0 calc(var(--ball) * -0.1) calc(var(--ball) * 0.3) rgb(0 0 0 / 0.15),
+			0 0 calc(var(--ball) * 0.14) color-mix(in srgb, var(--glass-edge), transparent 55%);
 		transition:
 			box-shadow 0.3s,
 			border-color 0.3s;
 	}
 	.glass::before {
-		/* The tube's rim. */
+		/* The tube's rim: a glass ring a little wider than the tube. */
 		content: '';
 		position: absolute;
-		left: calc(var(--ball) * -0.1);
-		right: calc(var(--ball) * -0.1);
-		top: calc(var(--ball) * -0.06);
-		height: calc(var(--ball) * 0.12);
-		border-radius: calc(var(--ball) * 0.1);
-		background: var(--glass-edge);
+		left: calc(var(--ball) * -0.12);
+		right: calc(var(--ball) * -0.12);
+		top: calc(var(--ball) * -0.1);
+		height: calc(var(--ball) * 0.2);
+		border-radius: 999px;
+		border: max(2px, calc(var(--ball) * 0.04)) solid var(--glass-rim);
+		background: linear-gradient(
+			180deg,
+			rgb(255 255 255 / 0.18),
+			color-mix(in srgb, var(--glass-edge), transparent 60%)
+		);
+		box-shadow: 0 0 calc(var(--ball) * 0.12) color-mix(in srgb, var(--glass-edge), transparent 50%);
+		transition:
+			border-color 0.3s,
+			box-shadow 0.3s;
+	}
+	.glass::after {
+		/* A soft shadow on the floor under the tube. */
+		content: '';
+		position: absolute;
+		left: 8%;
+		right: 8%;
+		bottom: calc(var(--ball) * -0.2);
+		height: calc(var(--ball) * 0.22);
+		border-radius: 50%;
+		background: radial-gradient(closest-side, rgb(0 0 0 / 0.3), transparent);
+		z-index: -1;
 	}
 	.selected {
 		transform: translateY(calc(var(--ball) * -0.08));
 	}
-	.selected .glass {
+	.selected .glass,
+	.selected .glass::before {
 		border-color: var(--accent);
+	}
+	.selected .glass {
 		box-shadow:
 			0 0 calc(var(--ball) * 0.35) color-mix(in srgb, var(--accent), transparent 50%),
 			inset 0 0 calc(var(--ball) * 0.3) color-mix(in srgb, var(--accent), transparent 75%);

@@ -49,16 +49,20 @@
 	.ball > span {
 		grid-area: 1 / 1;
 	}
+	/* A crisp highlight, saturated body, darker edge, and a faint rim of reflected light. */
 	.glossy {
-		background: radial-gradient(
-			circle at 34% 28%,
-			#fff 0 5%,
-			color-mix(in oklab, var(--c), #fff 45%) 13%,
-			var(--c) 48%,
-			color-mix(in oklab, var(--c), #000 48%) 100%
-		);
+		background:
+			radial-gradient(ellipse 24% 16% at 34% 25%, #fff 0 35%, rgb(255 255 255 / 0) 100%),
+			radial-gradient(circle, transparent 84%, rgb(255 255 255 / 0.16) 95%, transparent 100%),
+			radial-gradient(
+				circle at 38% 32%,
+				color-mix(in oklab, var(--c), #fff 28%) 0%,
+				var(--c) 32%,
+				color-mix(in oklab, var(--c), #000 20%) 74%,
+				color-mix(in oklab, var(--c), #000 34%) 100%
+			);
 		box-shadow:
-			inset 0 calc(var(--size) * -0.06) calc(var(--size) * 0.12) rgb(0 0 0 / 0.22),
+			inset 0 calc(var(--size) * -0.05) calc(var(--size) * 0.1) rgb(0 0 0 / 0.18),
 			0 calc(var(--size) * 0.06) calc(var(--size) * 0.12) rgb(0 0 0 / 0.3);
 	}
 	.matte {

@@ -18,10 +18,10 @@ export const THEMES = [
 		name: 'Midnight',
 		price: 0,
 		ambience: 'bubbles',
-		chrome: '#141537',
+		chrome: '#141c67',
 		vars: {
-			'--panel': '#1e1f4f',
-			'--bg': 'radial-gradient(120% 80% at 50% 0%, #2b2f77 0%, #141537 55%, #0a0a1f 100%)',
+			'--panel': '#1c2577',
+			'--bg': 'radial-gradient(120% 80% at 50% 0%, #1e2a85 0%, #141c67 55%, #0d1352 100%)',
 			'--surface': 'rgb(255 255 255 / 0.07)',
 			'--surface-strong': 'rgb(255 255 255 / 0.12)',
 			'--text': '#f4f3ff',
@@ -111,6 +111,8 @@ export const THEMES = [
 			'--accent-2': '#8f5bff',
 			'--glass': 'rgb(255 255 255 / 0.35)',
 			'--glass-edge': 'rgb(140 80 160 / 0.45)',
+			'--well': 'rgb(255 255 255 / 0.55)',
+			'--glass-rim': 'rgb(140 80 160 / 0.45)',
 			'--particle': '#ffffff'
 		}
 	},
@@ -132,6 +134,8 @@ export const THEMES = [
 			'--accent-2': '#2e7bff',
 			'--glass': 'rgb(255 255 255 / 0.4)',
 			'--glass-edge': 'rgb(40 80 130 / 0.4)',
+			'--well': 'rgb(255 255 255 / 0.55)',
+			'--glass-rim': 'rgb(40 80 130 / 0.4)',
 			'--particle': '#ffffff'
 		}
 	},
@@ -213,6 +217,8 @@ export const THEMES = [
 			'--accent-2': '#2f6690',
 			'--glass': 'rgb(255 255 255 / 0.5)',
 			'--glass-edge': 'rgb(60 45 25 / 0.45)',
+			'--well': 'rgb(255 255 255 / 0.55)',
+			'--glass-rim': 'rgb(60 45 25 / 0.45)',
 			'--particle': '#d8c8a8'
 		}
 	}

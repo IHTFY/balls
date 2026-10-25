@@ -21,9 +21,11 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 6px;
-		padding: 6px 12px 6px 8px;
+		min-height: 44px;
+		padding: 6px 14px 6px 8px;
 		border-radius: 999px;
-		background: var(--surface);
+		background: var(--well);
+		border: 1.5px solid var(--edge);
 		font-weight: 700;
 		font-size: 16px;
 	}
