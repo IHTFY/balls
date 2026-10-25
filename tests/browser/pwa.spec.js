@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { readFile, writeFile } from 'node:fs/promises';
-import { open, solveBoard, waitForBoard } from './helpers.js';
+import { open, results, solveBoard, waitForBoard } from './helpers.js';
 
 const WORKER = new URL('../../dist/service-worker.js', import.meta.url);
 
@@ -38,7 +38,7 @@ test('the game installs, then loads and plays with no network', async ({
 	await page.getByRole('button', { name: /Play.*Level 1/ }).click();
 	await waitForBoard(page);
 	await solveBoard(page);
-	await expect(page.getByRole('dialog')).toContainText('Level 1');
+	await expect(results(page)).toContainText('Level 1');
 	// Puzzles come from the worker script, which must also load from the cache.
 	await page.getByRole('button', { name: 'Next ›' }).click();
 	await expect(page.locator('[data-state="playing"]')).toBeVisible();
@@ -121,7 +121,7 @@ test.describe('ads', () => {
 		expect(await page.locator('.ad-box').count()).toBe(0);
 
 		await solveBoard(page);
-		await expect(page.getByRole('dialog')).toContainText('Level 3');
+		await expect(results(page)).toContainText('Level 3');
 		await expect(page.getByText('Advertisements', { exact: true })).toBeVisible();
 		await expect.poll(() => outside).toEqual(['https://ihtfy.com/ads/v1.js']);
 		expect(violations).toEqual([]);

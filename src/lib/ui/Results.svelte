@@ -1,15 +1,15 @@
 <script>
-	import { fly, scale } from 'svelte/transition';
+	import { fade, fly, scale } from 'svelte/transition';
 	import { backOut, elasticOut } from 'svelte/easing';
 	import Flame from '@lucide/svelte/icons/flame';
 	import Share2 from '@lucide/svelte/icons/share-2';
-	import { RESULT_AD_SLOT, showAd } from '../ads.js';
+	import { adForScreen, mayBeAdFree, playAdBeside } from '../ads.js';
 	import { sound } from '../fx/audio.js';
 	import { clock } from '../game/format.js';
 	import { notify } from '../state/toasts.svelte.js';
 	import Coin from './Coin.svelte';
 	import RollingNumber from './RollingNumber.svelte';
-	import Modal from './Modal.svelte';
+	import AdAside from './AdAside.svelte';
 
 	/**
 	 * @type {{ result: import('../state/session.svelte.js').Result,
@@ -19,10 +19,26 @@
 
 	const blitz = $derived(result.mode === 'blitz');
 
-	// One ad per game over; showing these results again asks for no new one.
-	/** @type {HTMLDivElement} */
-	let adBox;
-	$effect(() => showAd(adBox, `${result.mode}/${result.ended}`));
+	// One ad per game over, under the buttons so it is in view with the result. A buyer gets no box at all, and neither does a window with the play ad beside the puzzle.
+	const ad = adForScreen('results', {
+		buyer: mayBeAdFree(),
+		played: true,
+		beside: playAdBeside()
+	});
+	/** @type {HTMLDivElement | undefined} */
+	let actions = $state();
+	/** @type {HTMLElement | undefined} */
+	let screen = $state();
+	// Confetti from the win stops here, so none falls over the ad.
+	$effect(() => {
+		const previous = /** @type {HTMLElement | null} */ (document.activeElement);
+		document.documentElement.dataset.results = '';
+		screen?.querySelector('button')?.focus({ preventScroll: true });
+		return () => {
+			delete document.documentElement.dataset.results;
+			previous?.focus?.({ preventScroll: true });
+		};
+	});
 	let shown = $state(0);
 	let total = $state(0);
 	let rankShown = $state(0);
@@ -86,9 +102,21 @@
 	}
 </script>
 
-<Modal label="{result.title} results">
+<section
+	class="results"
+	aria-label="{result.title} results"
+	bind:this={screen}
+	in:fade={{ duration: 200 }}
+>
 	<div class="win">
-		<p class="kicker">{result.title}</p>
+		<div class="head">
+			<p class="kicker">{result.title}</p>
+			{#if result.newBest && (blitz || result.previousStars)}
+				<p class="best" in:scale={{ delay: 500, duration: 400, easing: backOut }}>
+					{blitz ? 'New high score!' : 'New best!'}
+				</p>
+			{/if}
+		</div>
 		<h2 in:scale={{ start: 0.4, duration: 600, easing: elasticOut }}>{heading}</h2>
 
 		{#if !blitz}
@@ -100,6 +128,10 @@
 			<div class="facts">
 				<div><small>Moves</small><strong>{result.moves}</strong><em>par {result.par}</em></div>
 				<div><small>Time</small><strong>{clock(result.seconds)}</strong></div>
+				<div>
+					<small>Score</small>
+					<strong><RollingNumber value={total} start={0} duration={900} /></strong>
+				</div>
 				{#if result.streak}
 					<div>
 						<small>Streak</small><strong class="streak"><Flame size={20} /> {result.streak}</strong
@@ -107,54 +139,14 @@
 					</div>
 				{/if}
 			</div>
-			{#if result.newBest && result.previousStars}
-				<p class="best" in:scale={{ delay: 900, duration: 400, easing: backOut }}>New best!</p>
-			{/if}
 		{:else}
 			<div class="facts">
 				<div><small>Solved</small><strong>{result.solved}</strong></div>
 				<div><small>Score</small><strong>{result.score.toLocaleString()}</strong></div>
 			</div>
-			{#if result.newBest}
-				<p class="best" in:scale={{ delay: 500, duration: 400, easing: backOut }}>
-					New high score!
-				</p>
-			{/if}
 		{/if}
 
-		{#if result.lines.length}
-			<ul class="lines">
-				{#each result.lines as line, i (line.label)}
-					<li in:fly={{ x: -20, delay: 500 + result.stars * 320 + i * 90, duration: 300 }}>
-						<span>{line.label}</span><b>+{line.points.toLocaleString()}</b>
-					</li>
-				{/each}
-			</ul>
-		{/if}
-		<div class="total">
-			<span>Score</span>
-			<strong><RollingNumber value={total} start={0} duration={900} /></strong>
-		</div>
-
-		{#if result.coins}
-			<div
-				class="coins"
-				in:scale={{ delay: 900 + result.stars * 320, duration: 500, easing: elasticOut }}
-			>
-				+{result.coins}
-				<Coin size={24} />
-			</div>
-		{/if}
-
-		<div class="rank">
-			<div class="rank-label">
-				<span>Rank {result.rankAfter.level} · {result.rankAfter.title}</span>
-				<small>{result.rankAfter.toNext.toLocaleString()} to next</small>
-			</div>
-			<div class="bar"><div style:width="{rankShown * 100}%"></div></div>
-		</div>
-
-		<div class="actions">
+		<div class="actions" bind:this={actions}>
 			<button class="secondary" onclick={onhome}
 				>{result.mode === 'level' ? 'Levels' : 'Home'}</button
 			>
@@ -170,21 +162,59 @@
 			{/if}
 		</div>
 
-		<!-- Below the buttons, at least 150px away; the box keeps its size whether or not an ad fills it. -->
-		<aside class="ad">
-			<small>Advertisements</small>
-			<div class="ad-box" bind:this={adBox} data-ad-slot={RESULT_AD_SLOT}></div>
-			<a href="https://ihtfy.com/privacy" target="_blank" rel="noopener">Privacy</a>
-		</aside>
+		{#if ad}<AdAside above={actions} slot={ad.slot} adKey="{result.mode}/{result.ended}" />{/if}
+
+		<div class="details">
+			{#if result.lines.length}
+				<ul class="lines">
+					{#each result.lines as line, i (line.label)}
+						<li in:fly={{ x: -20, delay: 500 + result.stars * 320 + i * 90, duration: 300 }}>
+							<span>{line.label}</span><b>+{line.points.toLocaleString()}</b>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+
+			{#if result.coins}
+				<div
+					class="coins"
+					in:scale={{ delay: 900 + result.stars * 320, duration: 500, easing: elasticOut }}
+				>
+					+{result.coins}
+					<Coin size={24} />
+				</div>
+			{/if}
+
+			<div class="rank">
+				<div class="rank-label">
+					<span>Rank {result.rankAfter.level} · {result.rankAfter.title}</span>
+					<small>{result.rankAfter.toNext.toLocaleString()} to next</small>
+				</div>
+				<div class="bar"><div style:width="{rankShown * 100}%"></div></div>
+			</div>
+		</div>
 	</div>
-</Modal>
+</section>
 
 <style>
+	/* A screen of its own, not a dialog: the ad box stays in the page, uncovered. */
+	.results {
+		height: 100%;
+		overflow-y: auto;
+		padding: calc(10px + env(safe-area-inset-top)) 12px calc(16px + env(safe-area-inset-bottom));
+	}
 	.win {
 		display: grid;
 		justify-items: center;
 		text-align: center;
-		gap: 10px;
+		gap: 8px;
+		width: min(420px, 100%);
+		margin: 0 auto;
+	}
+	.head {
+		display: flex;
+		align-items: center;
+		gap: 8px;
 	}
 	.kicker {
 		margin: 0;
@@ -196,7 +226,8 @@
 	h2 {
 		margin: 0;
 		font-family: var(--display);
-		font-size: 38px;
+		font-size: 34px;
+		line-height: 1.15;
 		background: linear-gradient(90deg, var(--accent), var(--accent-2));
 		background-clip: text;
 		color: transparent;
@@ -205,16 +236,16 @@
 		display: flex;
 		align-items: flex-end;
 		gap: 6px;
-		height: 72px;
+		height: 56px;
 	}
 	.star {
-		font-size: 56px;
+		font-size: 44px;
 		line-height: 1;
 		color: var(--surface-strong);
 		transition: color 0.2s;
 	}
 	.star.mid {
-		font-size: 70px;
+		font-size: 56px;
 	}
 	.star.earned {
 		color: #ffcf3f;
@@ -223,12 +254,14 @@
 	}
 	.facts {
 		display: flex;
-		gap: 10px;
+		gap: 8px;
+		width: 100%;
 	}
 	.facts div {
 		display: grid;
-		min-width: 84px;
-		padding: 8px 12px;
+		flex: 1;
+		min-width: 0;
+		padding: 6px 8px;
 		border-radius: 14px;
 		background: var(--surface);
 	}
@@ -246,6 +279,7 @@
 	.streak {
 		display: inline-flex;
 		align-items: center;
+		justify-content: center;
 		gap: 4px;
 	}
 	.streak :global(svg) {
@@ -253,11 +287,27 @@
 	}
 	.best {
 		margin: 0;
-		padding: 2px 12px;
+		padding: 0 10px;
 		border-radius: 999px;
 		background: var(--accent-2);
 		color: #fff;
+		font-size: 13px;
 		font-weight: 700;
+	}
+	.actions {
+		display: flex;
+		gap: 8px;
+		width: 100%;
+	}
+	.actions button {
+		flex: 1;
+	}
+	.details {
+		display: grid;
+		justify-items: center;
+		gap: 10px;
+		width: 100%;
+		margin-top: 8px;
 	}
 	.lines {
 		list-style: none;
@@ -276,19 +326,6 @@
 	.lines b {
 		color: var(--text);
 		font-variant-numeric: tabular-nums;
-	}
-	.total {
-		display: flex;
-		justify-content: space-between;
-		align-items: baseline;
-		width: 100%;
-		padding: 8px 12px;
-		border-radius: 14px;
-		background: var(--surface-strong);
-	}
-	.total strong {
-		font-size: 26px;
-		font-family: var(--display);
 	}
 	.coins {
 		display: flex;
@@ -322,33 +359,6 @@
 		border-radius: inherit;
 		background: linear-gradient(90deg, var(--accent-2), var(--accent));
 		transition: width 1s cubic-bezier(0.3, 1, 0.4, 1);
-	}
-	.actions {
-		display: flex;
-		gap: 8px;
-		width: 100%;
-		margin-top: 4px;
-	}
-	.actions button {
-		flex: 1;
-	}
-	/* Spans the panel's padding so the 300px box fits on 360px-wide phones. */
-	.ad {
-		display: grid;
-		justify-items: center;
-		gap: 6px;
-		margin: 0 -20px;
-		padding-top: 150px;
-		color: var(--muted);
-		font-size: 12px;
-	}
-	.ad a {
-		color: inherit;
-	}
-	.ad-box {
-		width: 300px;
-		height: 250px;
-		min-height: 250px;
 	}
 	@keyframes star-pop {
 		0% {

@@ -28,8 +28,11 @@
 		hasSave,
 		startBlitz,
 		startDaily,
+		session,
 		startLevel
 	} from '../state/session.svelte.js';
+	import { adAsked, adForScreen, mayBeAdFree } from '../ads.js';
+	import AdAside from './AdAside.svelte';
 	import Ball from './Ball.svelte';
 	import CoinChip from './CoinChip.svelte';
 	import UpdatePrompt from './UpdatePrompt.svelte';
@@ -47,6 +50,21 @@
 	);
 	const earned = $derived(earnedCount(profile));
 	const gift = $derived(giftReady());
+
+	// One ad under the links, once a game has ended in this tab: not while the gift
+	// button floats over the bottom or a dialog covers the screen, and not again
+	// for the same game once it was asked for (the loader fills one box per key).
+	const adKey = $derived(`home/${session.lastEnded}`);
+	const buyer = mayBeAdFree();
+	const ad = $derived(
+		adForScreen('home', {
+			buyer,
+			played: session.lastEnded > 0 && !adAsked(adKey),
+			covered: gift || !!nav.dialog
+		})
+	);
+	/** @type {HTMLElement | undefined} */
+	let links = $state();
 
 	let untilTomorrow = $state('');
 	$effect(() => {
@@ -141,7 +159,7 @@
 		</button>
 	</div>
 
-	<nav class="links">
+	<nav class="links" bind:this={links}>
 		<button onclick={() => go('shop')}><ShoppingBag size={22} />Shop</button>
 		<button onclick={() => go('trophies')}
 			><Trophy size={22} />{earned}/{ACHIEVEMENTS.length}</button
@@ -150,6 +168,8 @@
 		<button onclick={() => (nav.dialog = 'howto')}><CircleHelp size={22} />Help</button>
 		<a href={SUPPORT_URL} target="_blank" rel="noopener"><HandHeart size={22} />Support ♥</a>
 	</nav>
+
+	{#if ad}<AdAside above={links} slot={ad.slot} {adKey} />{/if}
 
 	{#if gift}
 		<button

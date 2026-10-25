@@ -7,7 +7,8 @@
 </script>
 
 <div class="toasts" role="status" aria-live="polite">
-	{#each toasts as t (t.id)}
+	<!-- Three at most, so the stack never reaches the ad on the results screen. -->
+	{#each toasts.slice(0, 3) as t (t.id)}
 		<button
 			class="toast"
 			animate:flip={{ duration: 200 }}

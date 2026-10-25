@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { generatePuzzle } from '../../src/lib/game/generator.js';
 import { dailySeed, dailySpec } from '../../src/lib/game/levels.js';
-import { open, readBoard, solveBoard, tap, waitForBoard } from './helpers.js';
+import { open, readBoard, results, solveBoard, tap, waitForBoard } from './helpers.js';
 
 test('a new player solves level 1 and unlocks level 2', async ({ page }) => {
 	await page.goto('/');
@@ -10,8 +10,8 @@ test('a new player solves level 1 and unlocks level 2', async ({ page }) => {
 	await waitForBoard(page);
 	await expect(page.getByText('Tap a tube to pick up its top ball')).toBeVisible();
 	await solveBoard(page);
-	await expect(page.getByRole('dialog')).toContainText('Level 1');
-	await expect(page.getByRole('dialog').getByLabel('3 of 3 stars')).toBeVisible();
+	await expect(results(page)).toContainText('Level 1');
+	await expect(results(page).getByLabel('3 of 3 stars')).toBeVisible();
 	await expect(page.getByText('First Sort')).toBeVisible();
 	await page.getByRole('button', { name: 'Next ›' }).click();
 	await expect(page.getByRole('heading', { name: 'Level 2' })).toBeVisible();
@@ -161,7 +161,7 @@ test('the daily challenge pays once and builds a streak', async ({ page }) => {
 	await expect(page.getByRole('heading', { name: 'Daily Challenge' })).toBeVisible();
 	await waitForBoard(page);
 	await solveBoard(page, generatePuzzle(dailySpec(date), dailySeed(date)).tubes);
-	await expect(page.getByRole('dialog')).toContainText('Streak');
+	await expect(results(page)).toContainText('Streak');
 	const saved = await page.evaluate(() =>
 		JSON.parse(localStorage.getItem('balls.profile.v1') ?? '{}')
 	);
@@ -390,7 +390,7 @@ test('with only-move drop on, a ball with one place to go drops there', async ({
 	await expect(page.getByText('Only move')).toBeVisible();
 	expect((await readBoard(page)).tubes[1]).toEqual([1, 1, 1, 1]);
 	await tap(page, 0);
-	await expect(page.getByRole('dialog')).toContainText('Level 18');
+	await expect(results(page)).toContainText('Level 18');
 });
 
 test('only-move drop ignores an empty tube a one-color tube has no reason to use', async ({
@@ -404,7 +404,7 @@ test('only-move drop ignores an empty tube a one-color tube has no reason to use
 	await page.getByRole('button', { name: /Level 18/ }).click();
 	await waitForBoard(page);
 	await tap(page, 0);
-	await expect(page.getByRole('dialog')).toContainText('Level 18');
+	await expect(results(page)).toContainText('Level 18');
 });
 
 test('with auto-finish on, the game plays out the matching moves left', async ({ page }) => {
@@ -418,8 +418,8 @@ test('with auto-finish on, the game plays out the matching moves left', async ({
 	await tap(page, 0);
 	await tap(page, 3);
 	await expect(page.getByText('Only moves left')).toBeVisible();
-	await expect(page.getByRole('dialog')).toContainText('Level 18');
-	await expect(page.getByRole('dialog').getByText('Moves').locator('..')).toContainText('3');
+	await expect(results(page)).toContainText('Level 18');
+	await expect(results(page).getByText('Moves').locator('..')).toContainText('3');
 });
 
 test('decorative loops pause after 15 seconds without input and resume on input', async ({
