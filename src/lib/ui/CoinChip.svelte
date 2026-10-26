@@ -11,7 +11,7 @@
 	});
 </script>
 
-<div class="coins" aria-label="{profile.coins} coins">
+<div class="coins pane" aria-label="{profile.coins} coins">
 	{#key bump}<span class="coin"><Coin size={20} /></span>{/key}
 	<RollingNumber value={profile.coins} />
 </div>
@@ -24,8 +24,6 @@
 		min-height: 44px;
 		padding: 6px 14px 6px 8px;
 		border-radius: 999px;
-		background: var(--well);
-		border: 1.5px solid var(--edge);
 		font-weight: 700;
 		font-size: 16px;
 	}

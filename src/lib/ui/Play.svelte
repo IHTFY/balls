@@ -282,7 +282,7 @@
 	</header>
 
 	{#if blitz}
-		<div class="stats blitz-stats">
+		<div class="stats pane blitz-stats">
 			<div class="blitz-clock" class:hurry={session.blitz.left <= 10}>
 				<Timer size={24} />
 				{clock(session.blitz.left)}
@@ -291,7 +291,7 @@
 			<div><small>Score</small><strong>{session.blitz.score.toLocaleString()}</strong></div>
 		</div>
 	{:else}
-		<div class="stats">
+		<div class="stats pane">
 			<div><small>Moves</small><strong>{game.moves}</strong></div>
 			<div class="meter" title="Par {game.par}" aria-label="{liveStars} stars at this pace">
 				{#each [1, 2, 3] as n (n)}
@@ -367,14 +367,14 @@
 			onclick={undo}
 			disabled={!game.history.length || game.won || finishing}
 		>
-			<Undo2 size={22} /><span>Undo</span>
+			<span class="bubble"><Undo2 size={22} /></span><span>Undo</span>
 		</button>
 		<button
 			class="tool lit"
 			onclick={() => game.restart()}
 			disabled={!game.history.length || game.won || finishing}
 		>
-			<RotateCcw size={22} /><span>Restart</span>
+			<span class="bubble"><RotateCcw size={22} /></span><span>Restart</span>
 		</button>
 		{#if !blitz}
 			<button
@@ -385,7 +385,7 @@
 					? `Hint, ${profile.hints} left`
 					: `Hint for ${HINT_PRICE} coins`}
 			>
-				<Lightbulb size={22} /><span>Hint</span>
+				<span class="bubble"><Lightbulb size={22} /></span><span>Hint</span>
 				<b class="badge" class:price={profile.hints <= 0}
 					>{#if profile.hints > 0}{profile.hints}{:else}<Coin size={11} />{HINT_PRICE}{/if}</b
 				>
@@ -398,14 +398,14 @@
 					? `Add tube, ${profile.tubes} left`
 					: `Add tube for ${TUBE_PRICE} coins`}
 			>
-				<Plus size={22} /><span>Tube</span>
+				<span class="bubble"><Plus size={22} /></span><span>Tube</span>
 				<b class="badge" class:price={profile.tubes <= 0}
 					>{#if profile.tubes > 0}{profile.tubes}{:else}<Coin size={11} />{TUBE_PRICE}{/if}</b
 				>
 			</button>
 		{/if}
 		<button class="tool" onclick={() => (nav.dialog = 'settings')}>
-			<Settings size={22} /><span>Settings</span>
+			<span class="bubble"><Settings size={22} /></span><span>Settings</span>
 		</button>
 	</nav>
 </section>
@@ -486,13 +486,9 @@
 		margin: 8px auto 0;
 		padding: 8px 16px;
 		width: min(420px, 100%);
-		border-radius: 20px;
-		background: var(--well);
-		border: 1.5px solid var(--edge);
-		box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
 	}
 	.stats:not(.blitz-stats) > .meter {
-		border-inline: 1.5px solid var(--edge);
+		border-inline: 1px solid var(--edge);
 		padding-inline: 14px;
 	}
 	.stats > div {
@@ -664,6 +660,7 @@
 		);
 		box-shadow: 0 10px 30px color-mix(in srgb, var(--accent-2), transparent 55%);
 	}
+	/* Each tool is a glass bubble with its name underneath, like the buttons on the home screen. */
 	.toolbar {
 		display: flex;
 		justify-content: center;
@@ -674,29 +671,31 @@
 		display: grid;
 		justify-items: center;
 		gap: 3px;
-		min-width: 66px;
-		padding: 9px 10px 8px;
-		border-radius: 18px;
-		background: var(--well);
-		border: 1.5px solid var(--edge);
-		box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
+		min-width: 62px;
+		padding: 2px 4px 4px;
+		background: none;
+		border: 0;
 		color: var(--text);
 		font-size: 13px;
 		font-weight: 700;
 	}
-	.tool.lit :global(svg) {
+	.bubble {
+		width: 48px;
+		height: 48px;
+	}
+	.tool.lit .bubble {
 		color: var(--accent);
 	}
-	.tool:not(:disabled):hover {
-		background: var(--surface-strong);
+	.tool:not(:disabled):hover .bubble {
+		border-color: var(--glass-rim);
 	}
 	.tool:disabled {
 		opacity: 0.4;
 	}
 	.badge {
 		position: absolute;
-		top: -6px;
-		right: -4px;
+		top: -4px;
+		right: 2px;
 		min-width: 20px;
 		padding: 1px 6px;
 		border-radius: 999px;
@@ -753,10 +752,14 @@
 			justify-content: center;
 		}
 		.tool {
-			min-width: 56px;
-			padding: 6px;
+			min-width: 0;
+			padding: 2px;
 		}
-		.tool span {
+		.bubble {
+			width: 44px;
+			height: 44px;
+		}
+		.tool span:not(.bubble) {
 			display: none;
 		}
 	}

@@ -91,11 +91,15 @@
 
 <section class="home">
 	<header class="top">
-		<button class="rank" onclick={() => go('stats')} aria-label="Rank {rank.level}, {rank.title}">
-			<span class="rank-level">{rank.level}</span>
+		<button
+			class="rank pane"
+			onclick={() => go('stats')}
+			aria-label="Rank {rank.level}, {rank.title}"
+		>
+			<span class="orb">{rank.level}</span>
 			<span class="rank-text">
 				<b>{rank.title}</b>
-				<span class="bar"><span style:width="{rank.progress * 100}%"></span></span>
+				<span class="tube-bar"><span style:width="{rank.progress * 100}%"></span></span>
 			</span>
 		</button>
 		<div class="top-right">
@@ -157,7 +161,7 @@
 		</button>
 	</div>
 
-	<nav class="links" bind:this={links}>
+	<nav class="links pane" bind:this={links}>
 		<button onclick={() => go('shop')}><img src={shopIcon} alt="" />Shop</button>
 		<button onclick={() => go('trophies')}
 			><img src={trophiesIcon} alt="" />{earned}/{ACHIEVEMENTS.length}</button
@@ -173,7 +177,7 @@
 
 	{#if gift}
 		<button
-			class="gift"
+			class="gift orb"
 			aria-label="Open your daily gift"
 			in:fly={{ y: 80, duration: 600, delay: 400, easing: backOut }}
 			onclick={() => (nav.dialog = 'gift')}
@@ -212,43 +216,21 @@
 		display: flex;
 		align-items: center;
 		gap: 10px;
-		padding: 5px 16px 5px 5px;
+		padding: 4px 16px 4px 4px;
 		border-radius: 999px;
-		background: var(--well);
-		border: 1.5px solid var(--edge);
-		color: var(--text);
 		text-align: left;
 	}
-	.rank-level {
-		display: grid;
-		place-items: center;
-		width: 36px;
-		height: 36px;
-		border-radius: 50%;
-		background: linear-gradient(135deg, var(--accent), var(--accent-2));
-		color: #fff;
-		font-weight: 800;
-		text-shadow: 0 1px 2px rgb(0 0 0 / 0.4);
-		box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35);
+	.rank .orb {
+		--s: 36px;
 	}
 	.rank-text {
 		display: grid;
 		gap: 4px;
 		font-size: 14px;
 	}
-	.bar {
-		display: block;
+	.rank .tube-bar {
 		width: 110px;
-		height: 7px;
-		border-radius: 999px;
-		background: var(--surface-strong);
-		overflow: hidden;
-	}
-	.bar span {
-		display: block;
-		height: 100%;
-		border-radius: inherit;
-		background: var(--accent);
+		height: 10px;
 	}
 	.logo {
 		display: flex;
@@ -378,21 +360,21 @@
 		font-size: 12px;
 		font-weight: 700;
 	}
+	/* One glass shelf, split by hairlines, instead of five boxes. */
 	.links {
 		display: grid;
 		grid-template-columns: repeat(5, 1fr);
-		gap: 6px;
 		width: 100%;
+		padding: 4px 0;
 	}
 	.links button,
 	.links a {
 		display: grid;
 		justify-items: center;
 		gap: 4px;
-		padding: 10px 4px 9px;
-		border-radius: 16px;
-		background: var(--well);
-		border: 1.5px solid var(--edge);
+		padding: 8px 4px 7px;
+		background: none;
+		border: 0;
 		color: var(--text);
 		font-size: 13px;
 		font-weight: 600;
@@ -402,22 +384,22 @@
 		width: 28px;
 		height: 28px;
 	}
+	.links > * + * {
+		border-left: 1px solid var(--edge);
+	}
 	.links a {
 		padding-inline: 0;
 		white-space: nowrap;
 	}
+	/* The gift is a big glossy ball waiting to be tapped. */
 	.gift {
-		display: grid;
-		place-items: center;
-		color: #fff;
+		--s: 64px;
 		position: fixed;
 		right: 18px;
 		bottom: calc(18px + env(safe-area-inset-bottom));
-		width: 64px;
-		height: 64px;
-		border-radius: 50%;
-		background: radial-gradient(circle, var(--accent) 0%, var(--accent-2) 100%);
-		box-shadow: 0 10px 30px color-mix(in srgb, var(--accent-2), transparent 40%);
+		box-shadow:
+			inset 0 -3px 6px rgb(0 0 0 / 0.2),
+			0 10px 30px color-mix(in srgb, var(--accent-2), transparent 40%);
 		animation: wiggle 2.5s ease-in-out infinite;
 		z-index: 5;
 	}

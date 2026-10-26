@@ -1,7 +1,7 @@
 <script>
 	import Gift from '@lucide/svelte/icons/gift';
 	import Lightbulb from '@lucide/svelte/icons/lightbulb';
-	import Sparkles from '@lucide/svelte/icons/sparkles';
+	import Check from '@lucide/svelte/icons/check';
 	import TestTube from '@lucide/svelte/icons/test-tube';
 	import { scale } from 'svelte/transition';
 	import { elasticOut } from 'svelte/easing';
@@ -47,21 +47,23 @@
 	<div class="gift">
 		<div class="week">
 			{#each GIFTS as g, i (i)}
-				<div class="day" class:today={i + 1 === day} class:past={i + 1 < day}>
-					<small>Day {i + 1}</small>
-					<span class="items">{@render items(g, 12)}</span>
+				{@const past = i + 1 < day}
+				<div class="day" class:today={i + 1 === day} class:past>
+					<span class="orb" class:empty={i + 1 > day}
+						>{#if past}<Check size={16} strokeWidth={3} />{:else}{i + 1}{/if}</span
+					>
+					<span class="items">{@render items(g, 11)}</span>
 				</div>
 			{/each}
 		</div>
 		{#if opened}
 			<div class="reward" in:scale={{ duration: 700, easing: elasticOut }}>
-				<span class="big"><Sparkles size={56} /></span>
 				<b class="items">{@render items(opened, 26)}</b>
 				<small>Come back tomorrow for day {(day % GIFTS.length) + 1}!</small>
 			</div>
 			<button class="primary" onclick={() => (nav.dialog = '')}>Collect</button>
 		{:else}
-			<button class="chest" onclick={open} aria-label="Open gift"><Gift size={96} /></button>
+			<button class="chest" onclick={open} aria-label="Open gift"><Gift size={64} /></button>
 			<p>Tap to open · Day {day} of your streak</p>
 		{/if}
 	</div>
@@ -71,53 +73,78 @@
 	.gift {
 		display: grid;
 		justify-items: center;
-		gap: 12px;
+		gap: 14px;
 		text-align: center;
 	}
+	/* The week is a row of ball sockets: filled for days collected, glowing for today. */
 	.week {
 		display: grid;
 		grid-template-columns: repeat(7, 1fr);
-		gap: 4px;
+		gap: 2px;
 		width: 100%;
 	}
 	.day {
 		display: grid;
-		gap: 2px;
-		padding: 6px 2px;
-		border-radius: 10px;
-		background: var(--surface);
+		justify-items: center;
+		align-content: start;
+		gap: 4px;
 		font-size: 10px;
-	}
-	.day small {
 		color: var(--muted);
 	}
-	.day.past {
-		opacity: 0.45;
+	.day .orb {
+		--s: 34px;
+		--c: var(--accent-2);
+		font-size: 15px;
+	}
+	.day.today .orb {
+		--c: var(--accent);
+		color: var(--on-accent);
+		text-shadow: none;
+		box-shadow:
+			inset 0 -2px 5px rgb(0 0 0 / 0.18),
+			0 0 16px color-mix(in srgb, var(--accent), transparent 40%);
 	}
 	.day.today {
-		background: linear-gradient(135deg, var(--accent), var(--accent-2));
-		color: #fff;
-	}
-	.day.today small {
-		color: #fff;
+		color: var(--text);
+		font-weight: 700;
 	}
 	.items {
 		display: flex;
 		flex-wrap: wrap;
 		justify-content: center;
-		gap: 2px 6px;
+		gap: 0 4px;
 	}
 	.item {
 		display: inline-flex;
 		align-items: center;
 		gap: 2px;
 	}
+	/* The gift sits in a big glossy ball, like a capsule from a ball machine. */
 	.chest {
-		color: var(--accent);
-		background: none;
+		display: grid;
+		place-items: center;
+		width: 132px;
+		height: 132px;
+		margin-top: 6px;
+		border-radius: 50%;
 		padding: 0;
+		color: #fff;
+		background:
+			radial-gradient(ellipse 30% 19% at 36% 23%, rgb(255 255 255 / 0.75), transparent),
+			radial-gradient(
+				circle at 40% 34%,
+				rgb(255 255 255 / 0.25),
+				transparent 40%,
+				rgb(0 0 0 / 0.32) 100%
+			),
+			var(--accent-2);
+		box-shadow:
+			inset 0 -4px 10px rgb(0 0 0 / 0.2),
+			0 12px 30px color-mix(in srgb, var(--accent-2), transparent 50%);
 		animation: shake 1.6s ease-in-out infinite;
-		filter: drop-shadow(0 10px 20px rgb(0 0 0 / 0.4));
+	}
+	.chest :global(svg) {
+		filter: drop-shadow(0 2px 2px rgb(0 0 0 / 0.35));
 	}
 	.reward {
 		display: grid;
@@ -125,9 +152,6 @@
 	}
 	.reward b {
 		font-size: 28px;
-	}
-	.big {
-		color: #ffcf3f;
 	}
 	small,
 	p {

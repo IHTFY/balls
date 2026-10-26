@@ -50,23 +50,24 @@
 		<h1>Stats</h1>
 	</header>
 	<div class="scroll">
-		<div class="rank-card">
-			<span class="badge">{rank.level}</span>
+		<div class="rank-card pane">
+			<span class="orb badge">{rank.level}</span>
 			<div>
-				<small>Rank</small>
+				<small class="label">Rank</small>
 				<b>{rank.title}</b>
-				<div class="bar"><span style:width="{rank.progress * 100}%"></span></div>
+				<span class="tube-bar"><span style:width="{rank.progress * 100}%"></span></span>
 				<small
 					>{profile.score.toLocaleString()} points · {rank.toNext.toLocaleString()} to next rank</small
 				>
 			</div>
 		</div>
 
-		<h2>Daily challenges</h2>
-		<div class="calendar" aria-label="Daily challenges from the last five weeks">
+		<h2 class="label">Daily challenges</h2>
+		<div class="calendar pane" aria-label="Daily challenges from the last five weeks">
 			{#each days as day (day.key)}
 				<span
-					class="day"
+					class="day orb"
+					class:empty={!day.stars}
 					class:today={day.today}
 					data-stars={day.stars}
 					title="{day.key}: {day.stars ? `${day.stars}★` : 'not played'}"
@@ -74,10 +75,11 @@
 			{/each}
 		</div>
 
-		<div class="tiles">
+		<h2 class="label">Totals</h2>
+		<div class="tiles pane">
 			{#each tiles as [icon, label, value] (label)}
 				<div class="tile">
-					<span><Icon name={icon} size={22} /></span>
+					<span class="icon"><Icon name={icon} size={18} /></span>
 					<b>{value}</b>
 					<small>{label}</small>
 				</div>
@@ -107,9 +109,7 @@
 		font-family: var(--display);
 	}
 	h2 {
-		margin: 16px 0 8px;
-		font-size: 16px;
-		color: var(--muted);
+		margin: 22px 4px 8px;
 	}
 	.scroll {
 		overflow-y: auto;
@@ -120,12 +120,6 @@
 		align-items: center;
 		gap: 14px;
 		padding: 16px;
-		border-radius: 22px;
-		background: linear-gradient(
-			135deg,
-			color-mix(in srgb, var(--accent-2), transparent 60%),
-			color-mix(in srgb, var(--accent), transparent 75%)
-		);
 	}
 	.rank-card div {
 		display: grid;
@@ -135,72 +129,66 @@
 	.rank-card b {
 		font-family: var(--display);
 		font-size: 24px;
+		line-height: 1.1;
 	}
 	.badge {
-		display: grid;
-		place-items: center;
-		width: 60px;
-		height: 60px;
-		border-radius: 50%;
-		background: linear-gradient(135deg, var(--accent), var(--accent-2));
-		color: #fff;
+		--s: 62px;
+		--c: var(--accent-2);
 		font-size: 28px;
-		font-weight: 800;
 	}
 	small {
 		color: var(--muted);
 	}
-	.bar {
-		height: 8px;
-		border-radius: 999px;
-		background: var(--surface-strong);
-		overflow: hidden;
-	}
-	.bar span {
-		display: block;
-		height: 100%;
-		background: linear-gradient(90deg, var(--accent-2), var(--accent));
-	}
+	/* Five weeks of sockets; each solved daily drops a ball in, brighter for more stars. */
 	.calendar {
 		display: grid;
 		grid-template-columns: repeat(7, 1fr);
-		gap: 5px;
-		max-width: 320px;
+		justify-items: center;
+		gap: 8px 4px;
+		padding: 14px 10px;
 	}
 	.day {
-		aspect-ratio: 1;
-		border-radius: 6px;
-		background: var(--surface);
+		--s: min(36px, 9vw);
+		box-shadow: inset 0 -2px 4px rgb(0 0 0 / 0.18);
 	}
 	.day[data-stars='1'] {
-		background: color-mix(in srgb, var(--accent), transparent 70%);
+		--c: color-mix(in oklab, var(--accent-2), #fff 20%);
 	}
 	.day[data-stars='2'] {
-		background: color-mix(in srgb, var(--accent), transparent 40%);
+		--c: color-mix(in oklab, var(--accent-2), var(--accent));
 	}
 	.day[data-stars='3'] {
-		background: var(--accent);
+		--c: var(--accent);
 	}
 	.day.today {
 		outline: 2px solid var(--text);
+		outline-offset: 2px;
 	}
 	.tiles {
 		display: grid;
-		grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-		gap: 10px;
-		margin-top: 16px;
+		grid-template-columns: 1fr 1fr;
+		padding: 0 14px;
 	}
 	.tile {
 		display: grid;
-		gap: 2px;
-		padding: 12px;
-		border-radius: 18px;
-		background: var(--surface);
+		grid-template-columns: auto 1fr;
+		align-items: center;
+		column-gap: 8px;
+		padding: 12px 0 12px 2px;
 	}
-	.tile span {
+	.tile:nth-child(n + 3) {
+		border-top: 1px solid var(--edge);
+	}
+	.tile:nth-child(even) {
+		padding-left: 14px;
+		border-left: 1px solid var(--edge);
+	}
+	.icon {
+		grid-row: span 2;
 		color: var(--accent);
 	}
 	.tile b {
 		font-size: 22px;
+		line-height: 1.1;
 	}
 </style>
