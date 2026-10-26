@@ -8,6 +8,7 @@
 	import { clock } from '../game/format.js';
 	import { notify } from '../state/toasts.svelte.js';
 	import Coin from './Coin.svelte';
+	import Icon from './Icon.svelte';
 	import RollingNumber from './RollingNumber.svelte';
 	import AdAside from './AdAside.svelte';
 
@@ -18,6 +19,7 @@
 	let { result, onnext, onreplay, onhome } = $props();
 
 	const blitz = $derived(result.mode === 'blitz');
+	const rankUp = $derived(result.rankAfter.level > result.rankBefore.level);
 
 	// One ad per game over, under the buttons so it is in view with the result. A buyer gets no box at all, and neither does a window with the play ad beside the puzzle.
 	const ad = adForScreen('results', {
@@ -58,14 +60,6 @@
 		at(tallyAt, () => (total = result.score));
 		if (result.coins) at(tallyAt + 600, () => sound.coin());
 		at(tallyAt + 500, () => (rankShown = result.rankAfter.progress));
-		if (result.rankAfter.level > result.rankBefore.level)
-			at(tallyAt + 1100, () =>
-				notify({
-					icon: 'medal',
-					title: `Rank up: ${result.rankAfter.title}`,
-					body: `You reached rank ${result.rankAfter.level}`
-				})
-			);
 		return () => timers.forEach(clearTimeout);
 	});
 
@@ -111,6 +105,13 @@
 	<div class="win">
 		<div class="head">
 			<p class="kicker">{result.title}</p>
+			{#if result.trophies.length}
+				<!-- In the heading row, so the ad below keeps its room; the list is under the ad. -->
+				<p class="new-trophy" in:scale={{ delay: 700, duration: 300, start: 0.6 }}>
+					<span class="orb"><Icon name="trophy" size={11} /></span>
+					{result.trophies.length > 1 ? `${result.trophies.length} new trophies` : 'New trophy'}
+				</p>
+			{/if}
 			{#if result.newBest && (blitz || result.previousStars)}
 				<p class="best" in:scale={{ delay: 500, duration: 400, easing: backOut }}>
 					{blitz ? 'New high score!' : 'New best!'}
@@ -125,7 +126,7 @@
 					<span class="star" class:earned={shown >= n} class:mid={n === 2}>★</span>
 				{/each}
 			</div>
-			<div class="facts">
+			<div class="facts pane">
 				<div><small>Moves</small><strong>{result.moves}</strong><em>par {result.par}</em></div>
 				<div><small>Time</small><strong>{clock(result.seconds)}</strong></div>
 				<div>
@@ -140,7 +141,7 @@
 				{/if}
 			</div>
 		{:else}
-			<div class="facts">
+			<div class="facts pane">
 				<div><small>Solved</small><strong>{result.solved}</strong></div>
 				<div><small>Score</small><strong>{result.score.toLocaleString()}</strong></div>
 			</div>
@@ -166,10 +167,22 @@
 
 		<div class="details">
 			{#if result.lines.length}
-				<ul class="lines">
+				<ul class="lines pane rows">
 					{#each result.lines as line, i (line.label)}
 						<li in:fly={{ x: -20, delay: 500 + result.stars * 320 + i * 90, duration: 300 }}>
 							<span>{line.label}</span><b>+{line.points.toLocaleString()}</b>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+
+			{#if result.trophies.length}
+				<ul class="trophies pane rows" aria-label="New trophies">
+					{#each result.trophies as t (t.id)}
+						<li>
+							<span class="orb"><Icon name={t.icon} size={18} /></span>
+							<b>{t.title}</b>
+							<span class="reward">+{t.reward} <Coin size={16} /></span>
 						</li>
 					{/each}
 				</ul>
@@ -185,12 +198,18 @@
 				</div>
 			{/if}
 
-			<div class="rank">
-				<div class="rank-label">
-					<span>Rank {result.rankAfter.level} · {result.rankAfter.title}</span>
-					<small>{result.rankAfter.toNext.toLocaleString()} to next</small>
+			<div class="rank pane">
+				<span class="orb">{result.rankAfter.level}</span>
+				<div>
+					<div class="rank-label">
+						<span
+							>{#if rankUp}<b>Rank up!</b>{/if}
+							{result.rankAfter.title}</span
+						>
+						<small>{result.rankAfter.toNext.toLocaleString()} to next</small>
+					</div>
+					<span class="tube-bar"><span style:width="{rankShown * 100}%"></span></span>
 				</div>
-				<div class="bar"><div style:width="{rankShown * 100}%"></div></div>
 			</div>
 		</div>
 	</div>
@@ -285,18 +304,17 @@
 	}
 	.facts {
 		display: flex;
-		gap: 8px;
 		width: 100%;
+		padding: 2px 0;
 	}
 	.facts div {
 		display: grid;
 		flex: 1;
 		min-width: 0;
 		padding: 6px 8px;
-		border-radius: 16px;
-		background: var(--well);
-		border: 1.5px solid var(--edge);
-		box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
+	}
+	.facts div + div {
+		border-left: 1px solid var(--edge);
 	}
 	.facts small,
 	.facts em {
@@ -319,6 +337,47 @@
 	}
 	.streak :global(svg) {
 		color: #ff8a1f;
+	}
+	.new-trophy {
+		display: flex;
+		align-items: center;
+		gap: 5px;
+		margin: 0;
+		padding: 1px 10px 1px 1px;
+		border-radius: 999px;
+		background: var(--well);
+		border: 1px solid var(--pane-rim);
+		font-size: 13px;
+		font-weight: 700;
+	}
+	.new-trophy .orb {
+		--s: 20px;
+	}
+	.trophies {
+		list-style: none;
+		margin: 0;
+		padding: 2px 14px;
+		width: 100%;
+	}
+	.trophies li {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		padding: 8px 0;
+		text-align: left;
+	}
+	.trophies .orb {
+		--s: 34px;
+	}
+	.trophies b {
+		flex: 1;
+	}
+	.reward {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		color: var(--accent);
+		font-weight: 700;
 	}
 	.best {
 		margin: 0;
@@ -347,18 +406,13 @@
 	.lines {
 		list-style: none;
 		margin: 0;
-		padding: 0;
+		padding: 2px 16px;
 		width: 100%;
-		display: grid;
-		gap: 4px;
 	}
 	.lines li {
 		display: flex;
 		justify-content: space-between;
-		padding: 5px 14px;
-		border-radius: 12px;
-		background: var(--well);
-		border: 1.5px solid var(--edge);
+		padding: 7px 0;
 		font-weight: 600;
 	}
 	.lines b {
@@ -375,12 +429,21 @@
 	}
 	.rank {
 		width: 100%;
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 10px 14px;
+		text-align: left;
+	}
+	.rank > div {
 		display: grid;
+		flex: 1;
 		gap: 6px;
-		padding: 10px 14px 12px;
-		border-radius: 16px;
-		background: var(--well);
-		border: 1.5px solid var(--edge);
+	}
+	.rank .orb {
+		--s: 36px;
+		font-size: 17px;
+		font-weight: 800;
 	}
 	.rank-label {
 		display: flex;
@@ -391,21 +454,8 @@
 	.rank-label small {
 		color: var(--muted);
 	}
-	.bar {
-		height: 10px;
-		border-radius: 999px;
-		background: var(--surface-strong);
-		overflow: hidden;
-	}
-	.bar div {
-		height: 100%;
-		border-radius: inherit;
-		background: linear-gradient(
-			180deg,
-			color-mix(in oklab, var(--accent), #fff 25%),
-			var(--accent)
-		);
-		transition: width 1s cubic-bezier(0.3, 1, 0.4, 1);
+	.rank-label b {
+		color: var(--accent);
 	}
 	@keyframes star-pop {
 		0% {

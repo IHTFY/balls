@@ -93,7 +93,7 @@
 		<CoinChip />
 	</header>
 
-	<div class="tabs" role="tablist">
+	<div class="tabs pane" role="tablist">
 		{#each TABS as [id, TabIcon, label] (id)}
 			<button
 				role="tab"
@@ -113,7 +113,7 @@
 				{#each THEMES as theme (theme.id)}
 					{@const owned = profile.owned.includes(theme.id)}
 					{@const active = profile.theme === theme.id}
-					<div class="card" class:active>
+					<div class="card pane" class:active>
 						<div class="theme-preview" style={style(theme.vars)}>
 							{#each [0, 1, 2] as t (t)}
 								<span class="mini-tube">
@@ -151,7 +151,7 @@
 				{#each SKINS as skin (skin.id)}
 					{@const owned = profile.owned.includes(skin.id)}
 					{@const active = profile.skin === skin.id}
-					<div class="card" class:active>
+					<div class="card pane" class:active>
 						<div class="skin-preview">
 							{#each preview as c (c)}
 								<Ball color={c} {skin} size={30} symbols={profile.settings.symbols} />
@@ -184,11 +184,11 @@
 				You have <b><Lightbulb size={16} /> {profile.hints}</b> hints and
 				<b><TestTube size={16} /> {profile.tubes}</b> extra tubes.
 			</p>
-			<div class="boosters">
+			<div class="boosters pane rows">
 				{#each BOOSTERS as booster, i (i)}
 					{@const key = `booster-${i}`}
 					<div class="booster">
-						<span class="booster-icon"><Icon name={booster.icon} size={26} /></span>
+						<span class="orb"><Icon name={booster.icon} size={24} /></span>
 						<div>
 							<b>{booster.name}</b>
 							<small>{booster.description}</small>
@@ -235,10 +235,13 @@
 		margin: 0;
 		font-family: var(--display);
 	}
+	/* The tabs share one glass tube; the chosen one is lit like a ball inside it. */
 	.tabs {
 		display: flex;
-		gap: 6px;
-		padding: 0 14px 10px;
+		gap: 4px;
+		margin: 0 14px 12px;
+		padding: 4px;
+		border-radius: 999px;
 	}
 	.tabs button {
 		display: flex;
@@ -246,15 +249,19 @@
 		justify-content: center;
 		gap: 6px;
 		flex: 1;
-		padding: 10px;
-		border-radius: 14px;
-		background: var(--surface);
+		padding: 8px;
+		border-radius: 999px;
+		background: none;
 		color: var(--text);
 		font-weight: 600;
+		transition:
+			background-color 0.2s,
+			color 0.2s;
 	}
 	.tabs button.active {
-		background: var(--text);
-		color: var(--panel);
+		background: linear-gradient(180deg, rgb(255 255 255 / 0.35), transparent 55%), var(--accent);
+		color: var(--on-accent);
+		box-shadow: 0 2px 6px rgb(0 0 0 / 0.2);
 	}
 	.scroll {
 		overflow-y: auto;
@@ -269,9 +276,6 @@
 		display: grid;
 		gap: 8px;
 		padding: 10px;
-		border-radius: 20px;
-		background: var(--surface);
-		border: 2px solid transparent;
 		text-align: center;
 	}
 	.card.active {
@@ -306,7 +310,7 @@
 		align-content: center;
 		padding: 6px;
 		border-radius: 14px;
-		background: var(--surface);
+		background: var(--well);
 	}
 	.small {
 		padding: 8px 10px;
@@ -326,18 +330,12 @@
 		vertical-align: -0.15em;
 		color: var(--accent);
 	}
-	.boosters {
-		display: grid;
-		gap: 10px;
-	}
 	.booster {
 		display: grid;
 		grid-template-columns: auto 1fr auto;
 		align-items: center;
 		gap: 12px;
-		padding: 12px;
-		border-radius: 18px;
-		background: var(--surface);
+		padding: 12px 14px;
 	}
 	.booster div {
 		display: grid;
@@ -346,14 +344,8 @@
 	.earn {
 		color: var(--muted);
 	}
-	.booster-icon {
-		display: grid;
-		place-items: center;
-		width: 48px;
-		height: 48px;
-		border-radius: 14px;
-		background: color-mix(in srgb, var(--accent), transparent 82%);
-		color: var(--accent);
+	.booster .orb {
+		--s: 46px;
 	}
 	.earn {
 		text-align: center;

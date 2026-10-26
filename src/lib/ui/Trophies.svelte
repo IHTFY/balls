@@ -26,24 +26,28 @@
 		<span>{earned}/{ACHIEVEMENTS.length}</span>
 	</header>
 	<div class="scroll">
-		{#each sorted as a (a.id)}
-			{@const done = !!profile.achievements[a.id]}
-			{@const value = Math.min(a.value(profile), a.goal)}
-			<div class="trophy" class:done>
-				<span class="icon"><Icon name={a.icon} size={26} /></span>
-				<div class="body">
-					<b>{a.title}</b>
-					<small>{a.description}</small>
-					{#if done}
-						<small class="when"><Check size={12} /> Unlocked {profile.achievements[a.id]}</small>
-					{:else}
-						<div class="bar"><span style:width="{(value / a.goal) * 100}%"></span></div>
-						<small>{value.toLocaleString()} / {a.goal.toLocaleString()}</small>
-					{/if}
+		<div class="pane rows">
+			{#each sorted as a (a.id)}
+				{@const done = !!profile.achievements[a.id]}
+				{@const value = Math.min(a.value(profile), a.goal)}
+				<div class="trophy" class:done>
+					<span class="orb" class:empty={!done}><Icon name={a.icon} size={22} /></span>
+					<div class="body">
+						<b>{a.title}</b>
+						<small>{a.description}</small>
+						{#if done}
+							<small class="when"><Check size={12} /> Unlocked {profile.achievements[a.id]}</small>
+						{:else}
+							<span class="progress">
+								<span class="tube-bar"><span style:width="{(value / a.goal) * 100}%"></span></span>
+								<small>{value.toLocaleString()} / {a.goal.toLocaleString()}</small>
+							</span>
+						{/if}
+					</div>
+					<span class="reward"><Coin size={16} /> {a.reward}</span>
 				</div>
-				<span class="reward"><Coin size={16} /> {a.reward}</span>
-			</div>
-		{/each}
+			{/each}
+		</div>
 	</div>
 </section>
 
@@ -71,43 +75,25 @@
 	}
 	.scroll {
 		overflow-y: auto;
-		display: grid;
-		gap: 10px;
-		align-content: start;
 		padding: 0 14px calc(24px + env(safe-area-inset-bottom));
+	}
+	.pane {
+		padding: 0 14px;
 	}
 	.trophy {
 		display: grid;
 		grid-template-columns: auto 1fr auto;
 		align-items: center;
 		gap: 12px;
-		padding: 12px;
-		border-radius: 18px;
-		background: var(--surface);
+		padding: 12px 0;
 	}
-	.trophy:not(.done) .icon {
-		background: var(--surface-strong);
-		color: var(--muted);
-	}
-	.trophy.done {
-		background: linear-gradient(
-			90deg,
-			color-mix(in srgb, var(--accent), transparent 80%),
-			var(--surface)
-		);
-	}
-	.icon {
-		display: grid;
-		place-items: center;
-		width: 48px;
-		height: 48px;
-		border-radius: 14px;
-		background: linear-gradient(135deg, var(--accent), var(--accent-2));
-		color: #fff;
+	.orb {
+		--s: 46px;
+		--c: var(--accent-2);
 	}
 	.body {
 		display: grid;
-		gap: 3px;
+		gap: 2px;
 	}
 	small {
 		color: var(--muted);
@@ -118,16 +104,18 @@
 		gap: 3px;
 		color: var(--accent);
 	}
-	.bar {
-		height: 6px;
-		border-radius: 999px;
-		background: var(--surface-strong);
-		overflow: hidden;
+	.progress {
+		display: grid;
+		grid-template-columns: 1fr auto;
+		align-items: center;
+		gap: 8px;
+		margin-top: 2px;
 	}
-	.bar span {
-		display: block;
-		height: 100%;
-		background: linear-gradient(90deg, var(--accent-2), var(--accent));
+	.tube-bar {
+		height: 11px;
+	}
+	.trophy:not(.done) .reward {
+		opacity: 0.6;
 	}
 	.reward {
 		display: inline-flex;

@@ -44,16 +44,24 @@ export function spend(amount) {
 	return true;
 }
 
-/** Awards any achievements the profile now meets and announces each one. */
-export function checkAchievements() {
+/**
+ * Awards any achievements the profile now meets and returns them. Each one is announced
+ * unless `quiet`, for a screen that shows them itself.
+ */
+export function checkAchievements(quiet = false) {
+	/** @type {ReturnType<typeof newlyEarned>} */
+	const all = [];
 	// Rewards can unlock further achievements (coins earned), so repeat until settled.
 	for (let earned = newlyEarned(profile); earned.length; earned = newlyEarned(profile)) {
 		for (const a of earned) {
 			profile.achievements[a.id] = dateKey();
 			earn(a.reward);
-			notify({ icon: a.icon, title: a.title, body: `Achievement unlocked · +${a.reward} coins` });
+			all.push(a);
+			if (!quiet)
+				notify({ icon: a.icon, title: a.title, body: `Achievement unlocked · +${a.reward} coins` });
 		}
 	}
+	return all;
 }
 
 export function resetProfile() {

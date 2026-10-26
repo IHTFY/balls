@@ -38,6 +38,7 @@ const BLITZ_SECONDS = 90;
  * @property {boolean} newBest
  * @property {ReturnType<typeof rankFor>} rankBefore
  * @property {ReturnType<typeof rankFor>} rankAfter
+ * @property {import('../game/achievements.js').Achievement[]} trophies earned by this game
  * @property {number} [streak]
  * @property {number} [solved] blitz puzzles solved
  * @property {number} ended when the game ended (ms since epoch); names this game over
@@ -288,7 +289,7 @@ export function finish() {
 
 	earn(coins);
 	profile.saved = null;
-	checkAchievements();
+	const trophies = checkAchievements(true);
 	session.result = {
 		mode: session.mode,
 		title: title(),
@@ -303,6 +304,7 @@ export function finish() {
 		newBest,
 		rankBefore,
 		rankAfter: rankFor(profile.score),
+		trophies,
 		streak,
 		ended: Date.now()
 	};
@@ -343,7 +345,7 @@ function endBlitz() {
 	profile.score += b.score;
 	const coins = Math.floor(b.score / 150);
 	earn(coins);
-	checkAchievements();
+	const trophies = checkAchievements(true);
 	session.result = {
 		mode: 'blitz',
 		title: 'Time!',
@@ -358,6 +360,7 @@ function endBlitz() {
 		newBest,
 		rankBefore,
 		rankAfter: rankFor(profile.score),
+		trophies,
 		solved: b.solved,
 		ended: Date.now()
 	};

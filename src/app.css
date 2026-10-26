@@ -16,6 +16,9 @@
 	--edge: color-mix(in srgb, var(--text), transparent 84%);
 	--on-accent: #121a55;
 	--glass-rim: color-mix(in srgb, var(--glass-edge), #fff 45%);
+	/* Panels are glass like the tubes: a tinted pane, a faint rim, and the tube's reflection. */
+	--pane: color-mix(in srgb, var(--panel), transparent 28%);
+	--pane-rim: color-mix(in srgb, var(--glass-rim), transparent 58%);
 }
 
 * {
@@ -104,31 +107,199 @@ a.secondary {
 		0 4px 10px color-mix(in srgb, var(--accent), transparent 72%);
 }
 
-.secondary {
-	background: var(--surface-strong);
-	border: 1.5px solid var(--edge);
+.secondary,
+.pane {
+	background:
+		linear-gradient(
+			90deg,
+			transparent 7px,
+			rgb(255 255 255 / 0.12) 10px,
+			rgb(255 255 255 / 0.03) 17px,
+			transparent 23px
+		),
+		linear-gradient(180deg, rgb(255 255 255 / 0.07), transparent 50%), var(--pane);
+	border: 1.5px solid var(--pane-rim);
+	box-shadow:
+		inset 0 1.5px 0 rgb(255 255 255 / 0.12),
+		0 8px 22px rgb(0 0 0 / 0.16);
 	color: var(--text);
+}
+
+.pane {
+	border-radius: 22px;
+}
+
+.secondary:hover:not(:disabled) {
+	border-color: var(--glass-rim);
+}
+
+/* Rows inside one pane, split by hairlines instead of a card each. */
+.rows > * + * {
+	border-top: 1px solid var(--edge);
 }
 
 .danger {
 	background: color-mix(in srgb, #ff3b47, transparent 75%);
+	border: 1.5px solid color-mix(in srgb, #ff3b47, transparent 45%);
 	color: var(--text);
 }
 
-.icon-button {
+/* Round buttons are clear glass bubbles. */
+.icon-button,
+.bubble {
 	display: grid;
 	place-items: center;
+	flex: none;
 	width: 44px;
 	height: 44px;
 	padding: 0;
 	border-radius: 50%;
-	background: var(--well);
-	border: 1.5px solid var(--edge);
+	background:
+		radial-gradient(ellipse 30% 18% at 36% 22%, rgb(255 255 255 / 0.5), transparent),
+		radial-gradient(
+			circle,
+			transparent 58%,
+			color-mix(in srgb, var(--glass-edge), transparent 55%) 100%
+		),
+		var(--pane);
+	border: 1.5px solid var(--pane-rim);
+	box-shadow: 0 4px 10px rgb(0 0 0 / 0.18);
 	color: var(--text);
 }
 
 .icon-button:hover {
-	background: var(--surface-strong);
+	border-color: var(--glass-rim);
+}
+
+/* A glossy ball that carries an icon or a number. Set --c for its color and --s for its size. */
+.orb {
+	--c: var(--accent-2);
+	--s: 40px;
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: var(--s);
+	height: var(--s);
+	border-radius: 50%;
+	background:
+		radial-gradient(ellipse 30% 19% at 36% 23%, rgb(255 255 255 / 0.75), transparent),
+		radial-gradient(
+			circle at 40% 34%,
+			rgb(255 255 255 / 0.25),
+			transparent 40%,
+			rgb(0 0 0 / 0.32) 100%
+		);
+	background-color: var(--c);
+	box-shadow:
+		inset 0 -2px 5px rgb(0 0 0 / 0.18),
+		0 3px 7px rgb(0 0 0 / 0.25);
+	color: #fff;
+	font-weight: 800;
+	text-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
+	transition: background-color 0.25s;
+}
+
+.orb > svg {
+	filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.35));
+}
+
+/* An empty socket for a ball: clear glass, for what isn't earned yet. */
+.orb.empty {
+	background:
+		radial-gradient(ellipse 30% 19% at 36% 23%, rgb(255 255 255 / 0.3), transparent),
+		radial-gradient(
+			circle,
+			transparent 55%,
+			color-mix(in srgb, var(--glass-edge), transparent 60%) 100%
+		);
+	background-color: var(--glass);
+	border: 1.5px solid var(--pane-rim);
+	box-shadow: none;
+	color: var(--muted);
+	text-shadow: none;
+}
+
+.orb.empty > svg {
+	filter: none;
+}
+
+/* A progress bar is a glass tube on its side, filling with the accent. */
+.tube-bar {
+	display: block;
+	height: 12px;
+	padding: 2px;
+	border-radius: 999px;
+	background: linear-gradient(180deg, rgb(255 255 255 / 0.14), transparent 45%), var(--glass);
+	border: 1.5px solid var(--pane-rim);
+	overflow: hidden;
+}
+
+.tube-bar > * {
+	display: block;
+	height: 100%;
+	min-width: 6px;
+	border-radius: 999px;
+	background:
+		linear-gradient(180deg, rgb(255 255 255 / 0.5) 0 22%, transparent 45%, rgb(0 0 0 / 0.12)),
+		var(--accent);
+	transition: width 1s cubic-bezier(0.3, 1, 0.4, 1);
+}
+
+/* A switch is a ball rolling along a short glass tube. */
+input.switch {
+	appearance: none;
+	position: relative;
+	flex: none;
+	width: 54px;
+	height: 30px;
+	margin: 0;
+	border-radius: 999px;
+	background: linear-gradient(180deg, rgb(255 255 255 / 0.16), transparent 45%), var(--glass);
+	border: 1.5px solid var(--glass-rim);
+	cursor: pointer;
+	transition: background-color 0.22s;
+}
+
+input.switch::after {
+	content: '';
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 23px;
+	height: 23px;
+	border-radius: 50%;
+	background:
+		radial-gradient(ellipse 30% 19% at 36% 23%, rgb(255 255 255 / 0.8), transparent),
+		radial-gradient(circle at 40% 34%, transparent 35%, rgb(0 0 0 / 0.3) 100%);
+	background-color: color-mix(in srgb, var(--muted), transparent 30%);
+	box-shadow: 0 2px 4px rgb(0 0 0 / 0.3);
+	transition:
+		transform 0.22s cubic-bezier(0.45, 0, 0.3, 1.25),
+		background-color 0.22s;
+}
+
+input.switch:checked {
+	background-color: color-mix(in srgb, var(--accent-2), transparent 70%);
+}
+
+input.switch:checked::after {
+	transform: translateX(24px);
+	background-color: var(--accent-2);
+}
+
+input.switch:focus-visible {
+	outline: 3px solid var(--accent);
+	outline-offset: 2px;
+}
+
+/* A small heading over a group of rows. */
+.label {
+	margin: 0;
+	color: var(--muted);
+	font-size: 13px;
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
 }
 
 ::-webkit-scrollbar {
