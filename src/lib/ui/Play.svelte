@@ -759,7 +759,7 @@
 			width: 44px;
 			height: 44px;
 		}
-		.tool span {
+		.tool span:not(.bubble) {
 			display: none;
 		}
 	}

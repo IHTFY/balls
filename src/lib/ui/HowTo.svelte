@@ -26,7 +26,11 @@
 
 	/** @param {number} i */
 	function show(i) {
-		pages.scrollTo({ left: i * pages.clientWidth, behavior: 'smooth' });
+		page = i;
+		pages.scrollTo({
+			left: i * pages.clientWidth,
+			behavior: profile.settings.reducedMotion ? 'instant' : 'smooth'
+		});
 	}
 </script>
 
@@ -98,13 +102,12 @@
 			</section>
 		{/if}
 	</div>
-	<div class="dots" role="tablist" aria-label="Pages">
+	<div class="dots" aria-label="Pages">
 		{#each Array.from({ length: count }, (_, i) => i) as i (i)}
 			<button
-				role="tab"
 				class="dot"
 				class:on={i === page}
-				aria-selected={i === page}
+				aria-current={i === page}
 				aria-label="Page {i + 1}"
 				onclick={() => show(i)}
 			></button>
@@ -195,20 +198,26 @@
 	.dots {
 		display: flex;
 		justify-content: center;
-		gap: 6px;
-		margin: 14px 0;
+		margin: 4px 0;
 	}
+	/* A small dot with a finger-sized tap area around it. */
 	.dot {
+		padding: 12px 4px;
+		background: none;
+		border: 0;
+	}
+	.dot::before {
+		content: '';
+		display: block;
 		width: 9px;
 		height: 9px;
-		padding: 0;
 		border-radius: 999px;
 		background: var(--surface-strong);
 		transition:
 			width 0.2s ease-in-out,
 			background 0.2s;
 	}
-	.dot.on {
+	.dot.on::before {
 		width: 24px;
 		background: var(--accent);
 	}
