@@ -2,7 +2,6 @@
 	import CircleCheck from '@lucide/svelte/icons/circle-check';
 	import Download from '@lucide/svelte/icons/download';
 	import Gamepad2 from '@lucide/svelte/icons/gamepad-2';
-	import HandHeart from '@lucide/svelte/icons/hand-heart';
 	import LoaderCircle from '@lucide/svelte/icons/loader-circle';
 	import Shield from '@lucide/svelte/icons/shield';
 	import ChevronRight from '@lucide/svelte/icons/chevron-right';
@@ -14,7 +13,7 @@
 	import { updates } from '../state/updates.svelte.js';
 	import Icon from './Icon.svelte';
 	import Modal from './Modal.svelte';
-	import { MORE_GAMES_URL, SUPPORT_URL } from '../support.js';
+	import { MORE_GAMES_URL } from '../support.js';
 
 	const GROUPS = /** @type {const} */ ([
 		[
@@ -143,9 +142,6 @@
 		</button>
 		<a class="row link" href={MORE_GAMES_URL} target="_blank" rel="noopener">
 			<span class="orb"><Gamepad2 size={18} /></span><b>More games</b><ChevronRight size={20} />
-		</a>
-		<a class="row link" href={SUPPORT_URL} target="_blank" rel="noopener">
-			<span class="orb"><HandHeart size={18} /></span><b>Support ♥</b><ChevronRight size={20} />
 		</a>
 		<a class="row link" href="https://ihtfy.com/privacy/" target="_blank" rel="noopener">
 			<span class="orb"><Shield size={18} /></span><b>Privacy</b><ChevronRight size={20} />
