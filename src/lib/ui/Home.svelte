@@ -396,10 +396,8 @@
 		white-space: nowrap;
 	}
 	.links a.more {
-		align-content: start;
-		line-height: 1.1;
-		text-align: center;
-		white-space: normal;
+		padding-inline: 5px;
+		font-size: 11px;
 	}
 	/* The gift is a big glossy ball waiting to be tapped. */
 	.gift {
