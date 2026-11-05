@@ -26,7 +26,7 @@
 	import AdAside from './AdAside.svelte';
 	import CoinChip from './CoinChip.svelte';
 	import UpdatePrompt from './UpdatePrompt.svelte';
-	import { MORE_GAMES_URL, SUPPORT_URL } from '../support.js';
+	import { MORE_GAMES_URL } from '../support.js';
 	import ballB from '../../assets/logo/ball-b.webp';
 	import ballA from '../../assets/logo/ball-a.webp';
 	import ballL1 from '../../assets/logo/ball-l1.webp';
@@ -40,7 +40,6 @@
 	import trophiesIcon from '../../assets/icons/trophies.webp';
 	import statsIcon from '../../assets/icons/stats.webp';
 	import helpIcon from '../../assets/icons/help.webp';
-	import supportIcon from '../../assets/icons/support.webp';
 
 	const rank = $derived(rankFor(profile.score));
 	const level = $derived(profile.unlocked);
@@ -169,12 +168,7 @@
 		>
 		<button onclick={() => go('stats')}><img src={statsIcon} alt="" />Stats</button>
 		<button onclick={() => (nav.dialog = 'howto')}><img src={helpIcon} alt="" />Help</button>
-		<a class="more" href={MORE_GAMES_URL} target="_blank" rel="noopener"
-			><Gamepad2 size={28} />More games</a
-		>
-		<a href={SUPPORT_URL} target="_blank" rel="noopener"
-			><img src={supportIcon} alt="" />Support ♥</a
-		>
+		<a href={MORE_GAMES_URL} target="_blank" rel="noopener"><Gamepad2 size={28} />More games</a>
 	</nav>
 
 	{#if ad}<AdAside above={links} slot={ad.slot} {adKey} />{/if}
@@ -367,7 +361,7 @@
 	/* One glass shelf, split by hairlines, instead of five boxes. */
 	.links {
 		display: grid;
-		grid-template-columns: repeat(6, 1fr);
+		grid-template-columns: repeat(5, 1fr);
 		width: 100%;
 		padding: 4px 0;
 	}
@@ -394,10 +388,6 @@
 	.links a {
 		padding-inline: 0;
 		white-space: nowrap;
-	}
-	.links a.more {
-		padding-inline: 5px;
-		font-size: 11px;
 	}
 	/* The gift is a big glossy ball waiting to be tapped. */
 	.gift {

@@ -165,13 +165,6 @@ test.describe('ads', () => {
 	});
 });
 
-test('the support link opens the support page in a new tab', async ({ page }) => {
-	await open(page);
-	const link = page.getByRole('link', { name: /Support/ });
-	await expect(link).toHaveAttribute('href', 'https://ihtfy.com/support/');
-	await expect(link).toHaveAttribute('target', '_blank');
-});
-
 test('the more games link opens the games list in a new tab', async ({ page }) => {
 	await open(page);
 	const link = page.getByRole('link', { name: 'More games' });
