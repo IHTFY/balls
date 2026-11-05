@@ -3,6 +3,7 @@
 	import { backOut } from 'svelte/easing';
 	import Crown from '@lucide/svelte/icons/crown';
 	import Flame from '@lucide/svelte/icons/flame';
+	import Gamepad2 from '@lucide/svelte/icons/gamepad-2';
 	import Gift from '@lucide/svelte/icons/gift';
 	import Settings from '@lucide/svelte/icons/settings';
 	import Star from '@lucide/svelte/icons/star';
@@ -25,7 +26,7 @@
 	import AdAside from './AdAside.svelte';
 	import CoinChip from './CoinChip.svelte';
 	import UpdatePrompt from './UpdatePrompt.svelte';
-	import { SUPPORT_URL } from '../support.js';
+	import { MORE_GAMES_URL, SUPPORT_URL } from '../support.js';
 	import ballB from '../../assets/logo/ball-b.webp';
 	import ballA from '../../assets/logo/ball-a.webp';
 	import ballL1 from '../../assets/logo/ball-l1.webp';
@@ -168,6 +169,9 @@
 		>
 		<button onclick={() => go('stats')}><img src={statsIcon} alt="" />Stats</button>
 		<button onclick={() => (nav.dialog = 'howto')}><img src={helpIcon} alt="" />Help</button>
+		<a class="more" href={MORE_GAMES_URL} target="_blank" rel="noopener"
+			><Gamepad2 size={28} />More games</a
+		>
 		<a href={SUPPORT_URL} target="_blank" rel="noopener"
 			><img src={supportIcon} alt="" />Support ♥</a
 		>
@@ -363,7 +367,7 @@
 	/* One glass shelf, split by hairlines, instead of five boxes. */
 	.links {
 		display: grid;
-		grid-template-columns: repeat(5, 1fr);
+		grid-template-columns: repeat(6, 1fr);
 		width: 100%;
 		padding: 4px 0;
 	}
@@ -390,6 +394,12 @@
 	.links a {
 		padding-inline: 0;
 		white-space: nowrap;
+	}
+	.links a.more {
+		align-content: start;
+		line-height: 1.1;
+		text-align: center;
+		white-space: normal;
 	}
 	/* The gift is a big glossy ball waiting to be tapped. */
 	.gift {
