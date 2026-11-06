@@ -115,7 +115,6 @@
 			<img class="letter" style:--i={i} {src} alt="" width="66" height="66" />
 		{/each}
 	</div>
-	<p class="tagline">Sort the colors. Chase the stars.</p>
 
 	<UpdatePrompt />
 
@@ -240,12 +239,6 @@
 		width: 66px;
 		height: 66px;
 		animation: bounce 2.4s cubic-bezier(0.3, 0, 0.3, 1) calc(var(--i) * 0.12s) infinite;
-	}
-	.tagline {
-		margin: -4px 0 4px;
-		color: color-mix(in oklab, var(--text), var(--muted) 35%);
-		font-size: 17px;
-		font-weight: 600;
 	}
 	.play-button {
 		display: grid;
