@@ -52,7 +52,11 @@
 	/* A crisp highlight, saturated body, darker edge, and a faint rim of reflected light. */
 	.glossy {
 		background:
-			radial-gradient(ellipse 24% 16% at 34% 25%, #fff 0 35%, rgb(255 255 255 / 0) 100%),
+			radial-gradient(
+				ellipse 30% 20% at 36% 26%,
+				rgb(255 255 255 / 0.85) 0 25%,
+				rgb(255 255 255 / 0) 100%
+			),
 			radial-gradient(circle, transparent 84%, rgb(255 255 255 / 0.16) 95%, transparent 100%),
 			radial-gradient(
 				circle at 38% 32%,

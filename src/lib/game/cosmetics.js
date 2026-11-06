@@ -17,20 +17,29 @@ export const THEMES = [
 		id: 'midnight',
 		name: 'Midnight',
 		price: 0,
-		ambience: 'bubbles',
-		chrome: '#141c67',
+		ambience: 'none',
+		chrome: '#07131d',
 		vars: {
-			'--panel': '#1c2577',
-			'--bg': 'radial-gradient(120% 80% at 50% 0%, #1e2a85 0%, #141c67 55%, #0d1352 100%)',
+			'--panel': '#162638',
+			// Navy-black with a teal glow behind the logo and a violet one lower right,
+			// crossed by two faint light streaks.
+			'--bg': [
+				'linear-gradient(118deg, transparent 47.9%, rgb(160 220 255 / 0.07) 48%, transparent 48.4%)',
+				'linear-gradient(118deg, transparent 71.9%, rgb(200 170 255 / 0.06) 72%, transparent 72.3%)',
+				'radial-gradient(60% 34% at 30% 14%, rgb(8 110 125 / 0.42), transparent 70%)',
+				'radial-gradient(55% 40% at 95% 62%, rgb(80 55 170 / 0.34), transparent 70%)',
+				'radial-gradient(50% 30% at 0% 70%, rgb(8 90 105 / 0.26), transparent 70%)',
+				'linear-gradient(180deg, #0a1824 0%, #07131d 50%, #050d15 100%)'
+			].join(', '),
 			'--surface': 'rgb(255 255 255 / 0.07)',
 			'--surface-strong': 'rgb(255 255 255 / 0.12)',
-			'--text': '#f4f3ff',
-			'--muted': '#a9a8d6',
-			'--accent': '#ffcf3f',
-			'--accent-2': '#7c5cff',
-			'--glass': 'rgb(170 190 255 / 0.10)',
-			'--glass-edge': 'rgb(190 205 255 / 0.45)',
-			'--particle': '#8fa2ff'
+			'--text': '#f2f6fa',
+			'--muted': '#95a6b9',
+			'--accent': '#c6f72a',
+			'--accent-2': '#8b5cf6',
+			'--glass': 'rgb(200 225 255 / 0.07)',
+			'--glass-edge': 'rgb(210 232 255 / 0.42)',
+			'--particle': '#7fd4e8'
 		}
 	},
 	{

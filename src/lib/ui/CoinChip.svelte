@@ -11,7 +11,7 @@
 	});
 </script>
 
-<div class="coins pane" aria-label="{profile.coins} coins">
+<div class="coins pane slant" aria-label="{profile.coins} coins">
 	{#key bump}<span class="coin"><Coin size={20} /></span>{/key}
 	<RollingNumber value={profile.coins} />
 </div>
@@ -22,10 +22,10 @@
 		align-items: center;
 		gap: 6px;
 		min-height: 44px;
-		padding: 6px 14px 6px 8px;
-		border-radius: 999px;
-		font-weight: 700;
-		font-size: 16px;
+		padding: 6px 16px 6px 12px;
+		font-family: var(--display);
+		font-weight: 800;
+		font-size: 17px;
 	}
 	.coin {
 		display: inline-flex;
