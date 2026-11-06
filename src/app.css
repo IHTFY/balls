@@ -1,24 +1,26 @@
 :root {
-	--display: 'Fredoka', ui-rounded, 'SF Pro Rounded', system-ui, sans-serif;
-	font-family: var(--display);
+	/* Titles are heavy italic; main.js registers the italic cut as its own family. */
+	--display: 'Balls Display', 'Exo 2', system-ui, sans-serif;
+	--body: 'Exo 2', system-ui, sans-serif;
+	font-family: var(--body);
 	font-size: 16px;
 	line-height: 1.4;
-	font-weight: 450;
+	font-weight: 500;
 	color: var(--text);
-	background: #141c67;
+	background: #07131d;
 	font-synthesis: none;
 	text-rendering: optimizeLegibility;
 	-webkit-font-smoothing: antialiased;
 	-moz-osx-font-smoothing: grayscale;
 	-webkit-text-size-adjust: 100%;
 	/* Recessed panels (chips, small buttons) and their rim; light themes override both. */
-	--well: rgb(4 8 48 / 0.3);
+	--well: rgb(2 8 14 / 0.35);
 	--edge: color-mix(in srgb, var(--text), transparent 84%);
-	--on-accent: #121a55;
+	--on-accent: #0b1a05;
 	--glass-rim: color-mix(in srgb, var(--glass-edge), #fff 45%);
-	/* Panels are glass like the tubes: a tinted pane, a faint rim, and the tube's reflection. */
-	--pane: color-mix(in srgb, var(--panel), transparent 28%);
-	--pane-rim: color-mix(in srgb, var(--glass-rim), transparent 58%);
+	/* Panels are glass like the tubes: a tinted pane and a faint rim. */
+	--pane: color-mix(in srgb, var(--panel), transparent 35%);
+	--pane-rim: color-mix(in srgb, var(--glass-rim), transparent 62%);
 }
 
 * {
@@ -74,8 +76,7 @@ a.secondary {
 .secondary,
 .danger {
 	min-height: 46px;
-	padding: 10px 18px;
-	border-radius: 16px;
+	padding: 10px 22px;
 	font-weight: 700;
 	font-size: 16px;
 	display: inline-flex;
@@ -84,53 +85,116 @@ a.secondary {
 	gap: 6px;
 }
 
-/* A raised candy button: lighter top, the accent below, and a darker lip under it. */
-.primary {
-	background: linear-gradient(
-		180deg,
-		color-mix(in oklab, var(--accent), #fff 12%),
-		var(--accent) 55%,
-		color-mix(in oklab, var(--accent), #f07800 18%)
-	);
-	color: var(--on-accent);
-	box-shadow:
-		inset 0 1.5px 0 rgb(255 255 255 / 0.55),
-		0 4px 0 color-mix(in oklab, var(--accent), #6a2a00 32%),
-		0 8px 18px color-mix(in srgb, var(--accent), transparent 72%);
-	text-shadow: 0 1px 0 rgb(255 255 255 / 0.35);
+/*
+ * Buttons and short panels lean forward. The shape is drawn on a skewed layer behind
+ * the content, so the text stays upright and the rim follows the slant.
+ */
+.primary,
+.secondary,
+.danger,
+.icon-button,
+.slant {
+	--skew: -12deg;
+	position: relative;
+	isolation: isolate;
+	background: none;
+	border: 0;
+	box-shadow: none;
+	border-radius: 0;
 }
 
-.primary:active:not(:disabled) {
+.primary::before,
+.secondary::before,
+.danger::before,
+.icon-button::before,
+.slant::before {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	transform: skewX(var(--skew));
+	border-radius: 5px;
+	transition:
+		background 0.2s,
+		border-color 0.2s,
+		box-shadow 0.2s;
+}
+
+/* The one lime action on a screen, lit from the top. */
+.primary {
+	color: var(--on-accent);
+}
+
+.primary::before {
+	background:
+		linear-gradient(180deg, rgb(255 255 255 / 0.28), transparent 55%),
+		linear-gradient(100deg, color-mix(in oklab, var(--accent), #fff 22%), var(--accent) 60%);
 	box-shadow:
-		inset 0 1.5px 0 rgb(255 255 255 / 0.55),
-		0 1px 0 color-mix(in oklab, var(--accent), #6a2a00 32%),
-		0 4px 10px color-mix(in srgb, var(--accent), transparent 72%);
+		inset 0 1px 0 rgb(255 255 255 / 0.6),
+		0 0 0 1px color-mix(in oklab, var(--accent), #fff 30%),
+		0 6px 22px color-mix(in srgb, var(--accent), transparent 68%);
+}
+
+.primary:active:not(:disabled)::before {
+	box-shadow:
+		inset 0 1px 0 rgb(255 255 255 / 0.6),
+		0 0 0 1px color-mix(in oklab, var(--accent), #fff 30%),
+		0 2px 10px color-mix(in srgb, var(--accent), transparent 72%);
+}
+
+/* Glass: a dark tinted pane with a thin light rim and a soft sheen across the top. */
+.secondary::before,
+.slant::before,
+.icon-button::before,
+.pane {
+	background: linear-gradient(160deg, rgb(255 255 255 / 0.09), transparent 40%), var(--pane);
+	border: 1px solid var(--pane-rim);
+	box-shadow:
+		inset 0 1px 0 rgb(255 255 255 / 0.08),
+		0 10px 26px rgb(0 0 0 / 0.28);
+	-webkit-backdrop-filter: blur(10px);
+	backdrop-filter: blur(10px);
 }
 
 .secondary,
 .pane {
-	background:
-		linear-gradient(
-			90deg,
-			transparent 7px,
-			rgb(255 255 255 / 0.12) 10px,
-			rgb(255 255 255 / 0.03) 17px,
-			transparent 23px
-		),
-		linear-gradient(180deg, rgb(255 255 255 / 0.07), transparent 50%), var(--pane);
-	border: 1.5px solid var(--pane-rim);
-	box-shadow:
-		inset 0 1.5px 0 rgb(255 255 255 / 0.12),
-		0 8px 22px rgb(0 0 0 / 0.16);
 	color: var(--text);
 }
 
+/* Tall panels keep square sides and cut two corners instead of leaning. */
 .pane {
-	border-radius: 22px;
+	border-radius: 18px 5px;
+	corner-shape: bevel round;
 }
 
-.secondary:hover:not(:disabled) {
+.pane.slant {
+	background: none;
+	border: 0;
+	box-shadow: none;
+	border-radius: 0;
+	-webkit-backdrop-filter: none;
+	backdrop-filter: none;
+}
+
+.secondary:hover:not(:disabled)::before,
+.icon-button:hover::before {
 	border-color: var(--glass-rim);
+}
+
+/* A lime edge along the bottom right of a slanted panel, for the one that's live. */
+.edge::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	z-index: -1;
+	transform: skewX(var(--skew, -12deg));
+	border-radius: 5px;
+	border: 2px solid var(--edge-c, var(--accent));
+	border-top-color: transparent;
+	border-left-color: transparent;
+	-webkit-mask: linear-gradient(110deg, transparent 55%, #000 80%);
+	mask: linear-gradient(110deg, transparent 55%, #000 80%);
+	pointer-events: none;
 }
 
 /* Rows inside one pane, split by hairlines instead of a card each. */
@@ -139,13 +203,26 @@ a.secondary {
 }
 
 .danger {
-	background: color-mix(in srgb, #ff3b47, transparent 75%);
-	border: 1.5px solid color-mix(in srgb, #ff3b47, transparent 45%);
 	color: var(--text);
 }
 
-/* Round buttons are clear glass bubbles. */
-.icon-button,
+.danger::before {
+	background: color-mix(in srgb, #ff3b47, transparent 75%);
+	border: 1px solid color-mix(in srgb, #ff3b47, transparent 45%);
+}
+
+/* Square glass buttons that lean with the rest. */
+.icon-button {
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: 46px;
+	height: 44px;
+	padding: 0;
+	color: var(--text);
+}
+
+/* A bare icon slot; the button around it carries the glass. */
 .bubble {
 	display: grid;
 	place-items: center;
@@ -153,25 +230,10 @@ a.secondary {
 	width: 44px;
 	height: 44px;
 	padding: 0;
-	border-radius: 50%;
-	background:
-		radial-gradient(ellipse 30% 18% at 36% 22%, rgb(255 255 255 / 0.5), transparent),
-		radial-gradient(
-			circle,
-			transparent 58%,
-			color-mix(in srgb, var(--glass-edge), transparent 55%) 100%
-		),
-		var(--pane);
-	border: 1.5px solid var(--pane-rim);
-	box-shadow: 0 4px 10px rgb(0 0 0 / 0.18);
-	color: var(--text);
 }
 
-.icon-button:hover {
-	border-color: var(--glass-rim);
-}
-
-/* A glossy ball that carries an icon or a number. Set --c for its color and --s for its size. */
+/* A colored badge that carries an icon or a number: a polished ball with a soft sheen.
+   Set --c for its color and --s for its size. */
 .orb {
 	--c: var(--accent-2);
 	--s: 40px;
@@ -182,18 +244,14 @@ a.secondary {
 	height: var(--s);
 	border-radius: 50%;
 	background:
-		radial-gradient(ellipse 30% 19% at 36% 23%, rgb(255 255 255 / 0.75), transparent),
-		radial-gradient(
-			circle at 40% 34%,
-			rgb(255 255 255 / 0.25),
-			transparent 40%,
-			rgb(0 0 0 / 0.32) 100%
-		);
+		radial-gradient(ellipse 46% 30% at 42% 24%, rgb(255 255 255 / 0.38), transparent 70%),
+		radial-gradient(circle at 42% 36%, transparent 45%, rgb(0 0 0 / 0.34) 100%);
 	background-color: var(--c);
 	box-shadow:
-		inset 0 -2px 5px rgb(0 0 0 / 0.18),
-		0 3px 7px rgb(0 0 0 / 0.25);
+		inset 0 0 0 1px rgb(255 255 255 / 0.14),
+		0 3px 8px rgb(0 0 0 / 0.3);
 	color: #fff;
+	font-family: var(--display);
 	font-weight: 800;
 	text-shadow: 0 1px 2px rgb(0 0 0 / 0.35);
 	transition: background-color 0.25s;
@@ -203,17 +261,15 @@ a.secondary {
 	filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.35));
 }
 
-/* An empty socket for a ball: clear glass, for what isn't earned yet. */
+/* An empty socket: clear glass, for what isn't earned yet. */
 .orb.empty {
-	background:
-		radial-gradient(ellipse 30% 19% at 36% 23%, rgb(255 255 255 / 0.3), transparent),
-		radial-gradient(
-			circle,
-			transparent 55%,
-			color-mix(in srgb, var(--glass-edge), transparent 60%) 100%
-		);
+	background: radial-gradient(
+		circle,
+		transparent 55%,
+		color-mix(in srgb, var(--glass-edge), transparent 65%) 100%
+	);
 	background-color: var(--glass);
-	border: 1.5px solid var(--pane-rim);
+	border: 1px solid var(--pane-rim);
 	box-shadow: none;
 	color: var(--muted);
 	text-shadow: none;
@@ -223,14 +279,14 @@ a.secondary {
 	filter: none;
 }
 
-/* A progress bar is a glass tube on its side, filling with the accent. */
+/* A progress bar is a thin slanted track filling with the accent. */
 .tube-bar {
 	display: block;
-	height: 12px;
-	padding: 2px;
-	border-radius: 999px;
-	background: linear-gradient(180deg, rgb(255 255 255 / 0.14), transparent 45%), var(--glass);
-	border: 1.5px solid var(--pane-rim);
+	height: 8px;
+	transform: skewX(-12deg);
+	border-radius: 2px;
+	background: var(--glass);
+	box-shadow: inset 0 0 0 1px var(--pane-rim);
 	overflow: hidden;
 }
 
@@ -238,10 +294,9 @@ a.secondary {
 	display: block;
 	height: 100%;
 	min-width: 6px;
-	border-radius: 999px;
-	background:
-		linear-gradient(180deg, rgb(255 255 255 / 0.5) 0 22%, transparent 45%, rgb(0 0 0 / 0.12)),
-		var(--accent);
+	border-radius: 2px;
+	background: linear-gradient(90deg, color-mix(in oklab, var(--accent), #000 15%), var(--accent));
+	box-shadow: 0 0 10px color-mix(in srgb, var(--accent), transparent 50%);
 	transition: width 1s cubic-bezier(0.3, 1, 0.4, 1);
 }
 
@@ -254,8 +309,8 @@ input.switch {
 	height: 30px;
 	margin: 0;
 	border-radius: 999px;
-	background: linear-gradient(180deg, rgb(255 255 255 / 0.16), transparent 45%), var(--glass);
-	border: 1.5px solid var(--glass-rim);
+	background: var(--glass);
+	border: 1px solid var(--glass-rim);
 	cursor: pointer;
 	transition: background-color 0.22s;
 }
@@ -269,8 +324,8 @@ input.switch::after {
 	height: 23px;
 	border-radius: 50%;
 	background:
-		radial-gradient(ellipse 30% 19% at 36% 23%, rgb(255 255 255 / 0.8), transparent),
-		radial-gradient(circle at 40% 34%, transparent 35%, rgb(0 0 0 / 0.3) 100%);
+		radial-gradient(ellipse 46% 30% at 42% 24%, rgb(255 255 255 / 0.35), transparent 70%),
+		radial-gradient(circle at 42% 36%, transparent 45%, rgb(0 0 0 / 0.3) 100%);
 	background-color: color-mix(in srgb, var(--muted), transparent 30%);
 	box-shadow: 0 2px 4px rgb(0 0 0 / 0.3);
 	transition:
@@ -279,12 +334,12 @@ input.switch::after {
 }
 
 input.switch:checked {
-	background-color: color-mix(in srgb, var(--accent-2), transparent 70%);
+	background-color: color-mix(in srgb, var(--accent), transparent 75%);
 }
 
 input.switch:checked::after {
 	transform: translateX(24px);
-	background-color: var(--accent-2);
+	background-color: var(--accent);
 }
 
 input.switch:focus-visible {
@@ -296,8 +351,9 @@ input.switch:focus-visible {
 .label {
 	margin: 0;
 	color: var(--muted);
+	font-family: var(--display);
 	font-size: 13px;
-	font-weight: 700;
+	font-weight: 800;
 	text-transform: uppercase;
 	letter-spacing: 0.08em;
 }

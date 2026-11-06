@@ -324,7 +324,15 @@
 		text-transform: uppercase;
 		letter-spacing: 0.06em;
 	}
+	.facts small {
+		color: var(--accent);
+		font-family: var(--display);
+		font-size: 12px;
+		font-weight: 800;
+	}
 	.facts strong {
+		font-family: var(--display);
+		font-weight: 800;
 		font-size: 24px;
 		line-height: 1.2;
 		font-variant-numeric: tabular-nums;

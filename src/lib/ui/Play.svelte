@@ -282,7 +282,7 @@
 	</header>
 
 	{#if blitz}
-		<div class="stats pane blitz-stats">
+		<div class="stats pane slant edge blitz-stats">
 			<div class="blitz-clock" class:hurry={session.blitz.left <= 10}>
 				<Timer size={24} />
 				{clock(session.blitz.left)}
@@ -291,7 +291,7 @@
 			<div><small>Score</small><strong>{session.blitz.score.toLocaleString()}</strong></div>
 		</div>
 	{:else}
-		<div class="stats pane">
+		<div class="stats pane slant edge">
 			<div><small>Moves</small><strong>{game.moves}</strong></div>
 			<div class="meter" title="Par {game.par}" aria-label="{liveStars} stars at this pace">
 				{#each [1, 2, 3] as n (n)}
@@ -361,7 +361,7 @@
 		</div>
 	{/if}
 
-	<nav class="toolbar">
+	<nav class="toolbar pane slant edge">
 		<button
 			class="tool lit"
 			onclick={undo}
@@ -453,8 +453,9 @@
 	h1 {
 		margin: 0;
 		font-family: var(--display);
-		font-size: clamp(20px, 5vw, 28px);
-		line-height: 1.1;
+		font-size: clamp(22px, 6vw, 30px);
+		font-weight: 900;
+		line-height: 1.05;
 	}
 	.tags {
 		display: flex;
@@ -496,16 +497,22 @@
 		text-align: center;
 	}
 	.stats small {
-		color: var(--muted);
-		font-size: 12px;
-		font-weight: 600;
+		color: var(--accent);
+		font-family: var(--display);
+		font-size: 13px;
+		font-weight: 800;
 		text-transform: uppercase;
-		letter-spacing: 0.06em;
+		letter-spacing: 0.04em;
 	}
 	.stats strong {
-		font-size: 24px;
-		line-height: 1.15;
+		font-family: var(--display);
+		font-size: 26px;
+		font-weight: 800;
+		line-height: 1.1;
 		font-variant-numeric: tabular-nums;
+	}
+	.meter small {
+		color: var(--text);
 	}
 	.meter {
 		display: flex !important;
@@ -517,6 +524,7 @@
 	}
 	.meter small {
 		width: 100%;
+		font-weight: 700;
 	}
 	.star {
 		font-size: 22px;
@@ -660,19 +668,25 @@
 		);
 		box-shadow: 0 10px 30px color-mix(in srgb, var(--accent-2), transparent 55%);
 	}
-	/* Each tool is a glass bubble with its name underneath, like the buttons on the home screen. */
+	/* One slanted glass bar, split by hairlines, like the links on the home screen. */
 	.toolbar {
-		display: flex;
-		justify-content: center;
-		gap: 6px;
+		display: grid;
+		grid-auto-flow: column;
+		grid-auto-columns: 1fr;
+		justify-self: center;
+		width: min(420px, calc(100% - 12px));
+		padding: 2px 8px;
+	}
+	.tool + .tool {
+		border-left: 1px solid var(--edge);
 	}
 	.tool {
 		position: relative;
 		display: grid;
 		justify-items: center;
-		gap: 3px;
-		min-width: 62px;
-		padding: 2px 4px 4px;
+		gap: 0;
+		min-width: 0;
+		padding: 4px 2px 6px;
 		background: none;
 		border: 0;
 		color: var(--text);
@@ -680,37 +694,35 @@
 		font-weight: 700;
 	}
 	.bubble {
-		width: 48px;
-		height: 48px;
-	}
-	.tool.lit .bubble {
-		color: var(--accent);
+		width: 36px;
+		height: 34px;
 	}
 	.tool:not(:disabled):hover .bubble {
-		border-color: var(--glass-rim);
+		color: var(--accent);
 	}
 	.tool:disabled {
 		opacity: 0.4;
 	}
 	.badge {
 		position: absolute;
-		top: -4px;
-		right: 2px;
+		top: 0;
+		right: calc(50% - 28px);
 		min-width: 20px;
 		padding: 1px 6px;
 		border-radius: 999px;
-		background: var(--accent-2);
+		background: var(--accent);
 		box-shadow: 0 2px 6px rgb(0 0 0 / 0.3);
-		color: #fff;
+		color: var(--on-accent);
+		font-family: var(--display);
 		font-size: 12px;
-		font-weight: 700;
+		font-weight: 800;
 		display: inline-flex;
 		align-items: center;
 		gap: 2px;
 	}
 	.badge.price {
-		background: var(--accent);
-		color: #2b1d00;
+		background: var(--accent-2);
+		color: #fff;
 	}
 	@media (max-height: 520px) {
 		.play {
@@ -748,8 +760,15 @@
 		.toolbar {
 			grid-row: 2;
 			grid-column: 2;
-			flex-direction: column;
-			justify-content: center;
+			--skew: 0deg;
+			grid-auto-flow: row;
+			align-self: center;
+			width: auto;
+			padding: 6px 2px;
+		}
+		.tool + .tool {
+			border-left: 0;
+			border-top: 1px solid var(--edge);
 		}
 		.tool {
 			min-width: 0;

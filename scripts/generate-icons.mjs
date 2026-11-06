@@ -7,8 +7,8 @@ const out = new URL('../public/icons/', import.meta.url);
 /** A glass tube holding three glossy balls, scaled about the center. */
 const art = (/** @type {number} */ scale) => `
 	<g transform="translate(256 262) scale(${scale}) translate(-256 -256)">
-		<rect x="176" y="70" width="160" height="380" rx="80" fill="rgb(190 205 255 / 0.16)" stroke="rgb(210 220 255 / 0.85)" stroke-width="14"/>
-		<rect x="160" y="58" width="192" height="28" rx="14" fill="rgb(210 220 255 / 0.9)"/>
+		<rect x="176" y="70" width="160" height="380" rx="80" fill="rgb(200 225 255 / 0.12)" stroke="rgb(210 232 255 / 0.85)" stroke-width="14"/>
+		<rect x="160" y="58" width="192" height="28" rx="14" fill="rgb(210 232 255 / 0.9)"/>
 		${[
 			['#ff3b47', 370],
 			['#2f7bff', 258],
@@ -18,7 +18,7 @@ const art = (/** @type {number} */ scale) => `
 				([color, y]) => `
 		<circle cx="256" cy="${y}" r="52" fill="${color}"/>
 		<circle cx="256" cy="${y}" r="52" fill="url(#shade)"/>
-		<ellipse cx="236" cy="${Number(y) - 20}" rx="18" ry="12" fill="#fff" opacity="0.85"/>`
+		<ellipse cx="238" cy="${Number(y) - 20}" rx="22" ry="14" fill="#fff" opacity="0.7"/>`
 			)
 			.join('')}
 	</g>`;
@@ -26,14 +26,22 @@ const art = (/** @type {number} */ scale) => `
 const svg = (/** @type {number} */ scale, /** @type {number} */ radius) =>
 	`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
 	<defs>
-		<radialGradient id="bg" cx="50%" cy="0%" r="110%">
-			<stop offset="0" stop-color="#3b3fa0"/><stop offset="0.55" stop-color="#141537"/><stop offset="1" stop-color="#0a0a1f"/>
+		<linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+			<stop offset="0" stop-color="#0a1824"/><stop offset="0.5" stop-color="#07131d"/><stop offset="1" stop-color="#050d15"/>
+		</linearGradient>
+		<radialGradient id="teal" cx="25%" cy="20%" r="70%">
+			<stop offset="0" stop-color="#086e7d" stop-opacity="0.7"/><stop offset="1" stop-color="#086e7d" stop-opacity="0"/>
+		</radialGradient>
+		<radialGradient id="violet" cx="85%" cy="85%" r="70%">
+			<stop offset="0" stop-color="#5037aa" stop-opacity="0.65"/><stop offset="1" stop-color="#5037aa" stop-opacity="0"/>
 		</radialGradient>
 		<radialGradient id="shade" cx="35%" cy="30%" r="75%">
 			<stop offset="0" stop-color="#fff" stop-opacity="0.35"/><stop offset="0.5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity="0.4"/>
 		</radialGradient>
 	</defs>
-	<rect width="512" height="512" rx="${radius}" fill="url(#bg)"/>${art(scale)}
+	<rect width="512" height="512" rx="${radius}" fill="url(#bg)"/>
+	<rect width="512" height="512" rx="${radius}" fill="url(#teal)"/>
+	<rect width="512" height="512" rx="${radius}" fill="url(#violet)"/>${art(scale)}
 </svg>
 `;
 
