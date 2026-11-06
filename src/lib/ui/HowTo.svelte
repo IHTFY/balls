@@ -1,9 +1,12 @@
 <script>
+	import ArrowRight from '@lucide/svelte/icons/arrow-right';
+	import Check from '@lucide/svelte/icons/check';
 	import Flame from '@lucide/svelte/icons/flame';
 	import Keyboard from '@lucide/svelte/icons/keyboard';
 	import Lightbulb from '@lucide/svelte/icons/lightbulb';
 	import Star from '@lucide/svelte/icons/star';
 	import TestTube from '@lucide/svelte/icons/test-tube';
+	import X from '@lucide/svelte/icons/x';
 	import { skinById } from '../game/cosmetics.js';
 	import { nav } from '../state/nav.svelte.js';
 	import { profile } from '../state/profile.svelte.js';
@@ -14,6 +17,7 @@
 	// Keys only matter with a keyboard.
 	const keys = matchMedia('(pointer: fine)').matches;
 	const count = keys ? 8 : 7;
+	const BALL = 28;
 
 	/** @type {HTMLDivElement} */
 	let pages;
@@ -34,11 +38,31 @@
 	}
 </script>
 
-{#snippet tube(/** @type {number[]} */ colors, /** @type {boolean} */ hidden = false)}
-	<span class="tube">
-		{#each colors as c, i (i)}
-			<Ball color={c} {skin} size={34} hidden={hidden && i < colors.length - 1} />
-		{/each}
+{#snippet tube(
+	/** @type {number[]} */ colors,
+	/** @type {{ lift?: number, mark?: 'yes' | 'no', hidden?: boolean }} */ o = {}
+)}
+	<!-- A tube as the board draws it: four slots, a picked ball floats above its rim. -->
+	<span class="col">
+		<span class="above">
+			{#if o.lift !== undefined}
+				<Ball color={o.lift} {skin} size={BALL} />
+			{:else if o.mark === 'yes'}
+				<span class="mark yes"><Check size={26} strokeWidth={3.5} /></span>
+			{:else if o.mark === 'no'}
+				<span class="mark no"><X size={26} strokeWidth={3.5} /></span>
+			{/if}
+		</span>
+		<span
+			class="tube"
+			class:picked={o.lift !== undefined}
+			class:target={o.mark === 'yes'}
+			class:blocked={o.mark === 'no'}
+		>
+			{#each colors as c, i (i)}
+				<Ball color={c} {skin} size={BALL} hidden={o.hidden && i < colors.length - 1} />
+			{/each}
+		</span>
 	</span>
 {/snippet}
 
@@ -46,21 +70,30 @@
 	<div class="pages" bind:this={pages} {onscroll}>
 		<section>
 			<div class="art">
-				{@render tube([0, 1, 0])}<span class="arrow">→</span>{@render tube([1, 1])}
+				{@render tube([0], { lift: 1 })}
+				<span class="arrow"><ArrowRight size={28} strokeWidth={3} /></span>
+				{@render tube([2, 1], { mark: 'yes' })}
 			</div>
 			<p>
 				<b>Tap a tube</b> to pick up its top ball, then <b>tap another tube</b> to drop it there.
 			</p>
 		</section>
 		<section>
-			<div class="art">{@render tube([2, 0])}<span class="no">✕</span>{@render tube([1, 1])}</div>
+			<div class="art">
+				{@render tube([2], { lift: 0 })}
+				{@render tube([1, 1], { mark: 'no' })}
+				{@render tube([0, 2, 0], { mark: 'yes' })}
+				{@render tube([], { mark: 'yes' })}
+			</div>
 			<p>
-				A ball lands only on <b>the same color</b> or in an <b>empty tube</b>, and a tube holds only
-				so many.
+				A ball lands only on <b>the same color</b> or in an <b>empty tube</b>, and only if there’s
+				room.
 			</p>
 		</section>
 		<section>
-			<div class="art">{@render tube([3, 3, 3, 3])}{@render tube([1, 1, 1, 1])}</div>
+			<div class="art">
+				{@render tube([3, 3, 3, 3])}{@render tube([1, 1, 1, 1])}{@render tube([0, 0, 0, 0])}
+			</div>
 			<p><b>Fill every tube with one color</b> to win.</p>
 		</section>
 		<section>
@@ -78,7 +111,7 @@
 			<p>Fill tubes one after another to build a <b>combo</b> for extra points.</p>
 		</section>
 		<section>
-			<div class="art">{@render tube([4, 2, 0], true)}</div>
+			<div class="art">{@render tube([4, 2, 1, 0], { hidden: true })}</div>
 			<p><b>Mystery levels</b> hide each ball until it reaches the top.</p>
 		</section>
 		<section>
@@ -134,7 +167,7 @@
 	}
 	section {
 		display: grid;
-		grid-template-rows: 150px auto;
+		grid-template-rows: 176px auto;
 		justify-items: center;
 		align-content: start;
 		gap: 14px;
@@ -152,16 +185,28 @@
 		display: flex;
 		align-items: end;
 		justify-content: center;
-		gap: 10px;
+		gap: 12px;
 		width: 100%;
-		padding-bottom: 8px;
+		padding: 6px 0;
+	}
+	.col {
+		display: grid;
+		grid-template-rows: 36px auto;
+		justify-items: center;
+	}
+	.above {
+		display: grid;
+		place-items: start center;
 	}
 	.tube {
 		display: flex;
 		flex-direction: column-reverse;
 		gap: 2px;
+		/* Room for four balls, so every tube is the same size, even an empty one. */
+		box-sizing: content-box;
+		width: 28px;
+		height: calc(4 * 28px + 3 * 2px);
 		padding: 3px 3px 4px;
-		min-height: 30px;
 		border: 2.5px solid var(--glass-rim);
 		border-top: none;
 		border-radius: 0 0 20px 20px;
@@ -169,14 +214,35 @@
 			linear-gradient(90deg, transparent 12%, rgb(255 255 255 / 0.25) 18%, transparent 30%),
 			var(--glass);
 	}
-	.arrow,
-	.no {
-		align-self: center;
-		font-size: 26px;
-		font-weight: 800;
+	.picked {
+		border-color: var(--accent);
+		box-shadow: 0 0 10px color-mix(in srgb, var(--accent), transparent 50%);
+	}
+	.target {
+		border-color: color-mix(in srgb, var(--accent-2), transparent 15%);
+		box-shadow: 0 0 9px color-mix(in srgb, var(--accent-2), transparent 55%);
+	}
+	.blocked {
+		opacity: 0.6;
+	}
+	.mark {
+		display: grid;
+		place-items: center;
+		width: 30px;
+		height: 30px;
+	}
+	.yes {
+		color: var(--accent-2);
 	}
 	.no {
 		color: #ff4d5e;
+	}
+	.arrow {
+		display: grid;
+		height: 28px;
+		place-items: center;
+		align-self: start;
+		color: var(--muted);
 	}
 	.stars {
 		align-items: center;
