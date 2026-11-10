@@ -447,7 +447,8 @@ export const GIFTS = [
 	{ coins: 150, tubes: 1 }
 ];
 
-export const giftReady = () => profile.gift.last !== dateKey();
+/** @param {string} [today] the date key to check, for a screen that keeps its own */
+export const giftReady = (today = dateKey()) => profile.gift.last !== today;
 
 /** The gift streak day (1–7) that claiming today would pay. */
 export function giftDay() {

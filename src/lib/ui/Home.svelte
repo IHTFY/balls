@@ -38,13 +38,14 @@
 
 	const rank = $derived(rankFor(profile.score));
 	const level = $derived(profile.unlocked);
-	const today = dateKey();
+	// Kept current so a screen left open past midnight offers the new daily and gift.
+	let today = $state(dateKey());
 	const dailyDone = $derived(!!profile.daily.done[today]);
 	const streakAlive = $derived(
 		!!profile.daily.last && (profile.daily.last === today || isNextDay(profile.daily.last, today))
 	);
 	const earned = $derived(earnedCount(profile));
-	const gift = $derived(giftReady());
+	const gift = $derived(giftReady(today));
 
 	// One ad under the links, once a game has ended in this tab: not while the gift
 	// button floats over the bottom or a dialog covers the screen, and not again
@@ -65,6 +66,7 @@
 	$effect(() => {
 		const update = () => {
 			const now = new Date();
+			today = dateKey(now);
 			const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 			const mins = Math.ceil((midnight.getTime() - now.getTime()) / 60000);
 			untilTomorrow = `${Math.floor(mins / 60)}h ${mins % 60}m`;
@@ -81,6 +83,12 @@
 		go('play');
 	}
 </script>
+
+<svelte:document
+	onvisibilitychange={() => {
+		if (document.visibilityState === 'visible') today = dateKey();
+	}}
+/>
 
 <section class="home">
 	<header class="top">
