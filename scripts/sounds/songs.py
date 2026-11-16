@@ -178,7 +178,7 @@ MENU_BASS = {
     "intro": "R-------....R-O- | R-----F-....O-R-",
     "a": "R.R.O.R.R.R.ORF. | R.R.O.R..R.O.RN.",
     "b": "R--.R--.R.O.R.N. | R--.R--.F---O-R.",
-    "a2": "R.R.O.R.R.R.ORN. | R.ROR.R..R.ORF.",
+    "a2": "R.R.O.R.R.R.ORN. | R.ROR.R..R.ORF..",
 }
 
 

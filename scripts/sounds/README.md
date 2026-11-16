@@ -4,7 +4,7 @@ The game's music and sound effects are written here as notes and rendered: the m
 
 - `songs.py`: the three music loops, each 32 bars and built on one shared theme: menu (synthwave, F major, 100 BPM), play (calm electronic, D major, 90 BPM), and Blitz (electro house, A minor, 128 BPM).
 - `effects.py`: every sound effect, packed into one sprite file.
-- `instruments.py`: the instruments both use.
+- `instruments.py`: the recorded instruments the effects use.
 - `render.py`: renders and exports them.
 
 ## Rendering
