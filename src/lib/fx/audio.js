@@ -30,12 +30,12 @@ const SFX_GAIN = 0.9;
 const MUSIC_GAIN = 0.4;
 const FADE_OUT = 1.2;
 const FADE_IN = 0.8;
-// Each loop is exactly 32 bars (at 96, 78, and 120 BPM), its tails already mixed into
+// Each loop is exactly 32 bars (at 100, 90, and 128 BPM), its tails already mixed into
 // its start. Looping at the bar line keeps any padding a decoder adds out of the seam.
 const LOOP_SECONDS = {
-	menu: (32 * 4 * 60) / 96,
-	play: (32 * 4 * 60) / 78,
-	blitz: (32 * 4 * 60) / 120
+	menu: (32 * 4 * 60) / 100,
+	play: (32 * 4 * 60) / 90,
+	blitz: (32 * 4 * 60) / 128
 };
 // Hurrying plays the loop a semitone higher, and so 6% faster.
 const HURRY_RATE = 2 ** (1 / 12);
