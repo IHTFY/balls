@@ -22,6 +22,7 @@ let ctx = null;
 let particles = [];
 let frame = 0;
 let last = 0;
+let elapsed = 0;
 let reduced = false;
 
 /** @param {HTMLCanvasElement} canvas */
@@ -89,25 +90,30 @@ function draw(ctx, p) {
 
 /** @param {number} now */
 function loop(now) {
-	const dt = Math.min(0.05, (now - last) / 1000);
+	elapsed += Math.min(0.05, (now - last) / 1000);
 	last = now;
 	if (!ctx) return;
-	ctx.clearRect(0, 0, innerWidth, innerHeight);
-	particles = particles.filter((p) => (p.life -= dt) > 0);
-	for (const p of particles) {
-		p.vy += p.gravity * dt;
-		if (p.kind === 'confetti') {
-			p.vx *= 0.985;
-			p.vy = Math.min(p.vy, 160);
-		} else {
-			p.vx *= 0.96;
-			p.vy *= 0.96;
+	// Keep the original 60 FPS physics, with a tolerance for timestamp rounding.
+	const dt = 1 / 60;
+	while (elapsed + 1e-9 >= dt) {
+		elapsed -= dt;
+		particles = particles.filter((p) => (p.life -= dt) > 0);
+		for (const p of particles) {
+			p.vy += p.gravity * dt;
+			if (p.kind === 'confetti') {
+				p.vx *= 0.985;
+				p.vy = Math.min(p.vy, 160);
+			} else {
+				p.vx *= 0.96;
+				p.vy *= 0.96;
+			}
+			p.x += p.vx * dt;
+			p.y += p.vy * dt;
+			p.angle += p.spin * dt;
 		}
-		p.x += p.vx * dt;
-		p.y += p.vy * dt;
-		p.angle += p.spin * dt;
-		draw(ctx, p);
 	}
+	ctx.clearRect(0, 0, innerWidth, innerHeight);
+	for (const p of particles) draw(ctx, p);
 	ctx.globalAlpha = 1;
 	frame = particles.length ? requestAnimationFrame(loop) : 0;
 }
@@ -132,6 +138,7 @@ function add(p) {
 function start() {
 	if (!frame && ctx) {
 		last = performance.now();
+		elapsed = 0;
 		frame = requestAnimationFrame(loop);
 	}
 }
