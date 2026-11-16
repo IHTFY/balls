@@ -52,6 +52,12 @@ export const mapChapters = (unlocked) =>
 		(_, c) => c
 	);
 
+/**
+ * The level after `level`; the last level is followed by itself.
+ * @param {number} level
+ */
+export const nextLevel = (level) => Math.min(MAX_LEVEL, level + 1);
+
 /** @param {number} level */
 export const isBoss = (level) => level % 10 === 0;
 

@@ -7,7 +7,7 @@ import {
 	dailySpec,
 	levelSeed,
 	levelSpec,
-	MAX_LEVEL,
+	nextLevel,
 	ZEN_PRESETS
 } from '../game/levels.js';
 import { dateKey, isNextDay } from '../game/profile.js';
@@ -164,7 +164,7 @@ export function replay() {
 
 /** The next puzzle in the current mode. */
 export function next() {
-	if (session.mode === 'level') startLevel(session.level + 1);
+	if (session.mode === 'level') startLevel(nextLevel(session.level));
 	else if (session.mode === 'zen') startZen(session.preset, true);
 	else if (session.mode === 'blitz') startBlitz();
 }
@@ -266,7 +266,7 @@ export function finish() {
 		profile.stars[key] = Math.max(previousStars, stars);
 		newBest = !profile.best[key] || r.moves < profile.best[key];
 		if (newBest) profile.best[key] = r.moves;
-		profile.unlocked = Math.min(MAX_LEVEL, Math.max(profile.unlocked, session.level + 1));
+		profile.unlocked = Math.max(profile.unlocked, nextLevel(session.level));
 		if (session.boss) stats.bossesBeaten++;
 	} else if (session.mode === 'daily') {
 		const today = session.date;

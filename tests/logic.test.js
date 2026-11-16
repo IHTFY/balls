@@ -8,7 +8,8 @@ import {
 	levelSeed,
 	levelSpec,
 	MAX_COLORS,
-	MAX_LEVEL
+	MAX_LEVEL,
+	nextLevel
 } from '../src/lib/game/levels.js';
 import { canMove, isSolved, usefulMoves } from '../src/lib/game/rules.js';
 import {
@@ -174,6 +175,12 @@ test('levels below 1 or not whole numbers play as level 1', () => {
 		assert.equal(puzzle.tubes.length, spec.colors + spec.empty);
 	}
 	assert.ok(levelSpec(MAX_LEVEL).colors <= MAX_COLORS);
+});
+
+test('the last level is followed by itself', () => {
+	assert.equal(nextLevel(1), 2);
+	assert.equal(nextLevel(MAX_LEVEL - 1), MAX_LEVEL);
+	assert.equal(nextLevel(MAX_LEVEL), MAX_LEVEL);
 });
 
 test('daily puzzles depend only on the date', () => {
