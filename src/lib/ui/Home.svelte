@@ -214,6 +214,7 @@
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
+		gap: 10px;
 		width: 100%;
 		padding-inline: 4px;
 	}
@@ -229,6 +230,8 @@
 		min-height: 44px;
 		padding: 4px 16px 4px 6px;
 		text-align: left;
+		/* On a narrow screen the rank gives way to the coins and the gear. */
+		min-width: 0;
 	}
 	/* The rank sits in a slanted lime frame, like a jersey number. */
 	.rank .orb {
@@ -245,15 +248,21 @@
 	}
 	.rank-text {
 		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: 5px;
 		font-family: var(--display);
 		font-size: 15px;
+		min-width: 0;
 	}
 	.rank-text b {
 		font-weight: 800;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 	.rank .tube-bar {
 		width: 104px;
+		max-width: 100%;
 		height: 6px;
 	}
 	.logo {

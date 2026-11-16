@@ -3,6 +3,16 @@ import { generatePuzzle } from '../../src/lib/game/generator.js';
 import { dailySeed, dailySpec } from '../../src/lib/game/levels.js';
 import { open, readBoard, results, solveBoard, tap, waitForBoard } from './helpers.js';
 
+/**
+ * The element's box in CSS px.
+ * @param {import('@playwright/test').Locator} locator
+ */
+async function boxOf(locator) {
+	const box = await locator.boundingBox();
+	expect(box, 'the element is on the page').not.toBeNull();
+	return /** @type {NonNullable<typeof box>} */ (box);
+}
+
 test('a new player solves level 1 and unlocks level 2', async ({ page }) => {
 	await page.goto('/');
 	await expect(page.getByRole('button', { name: /Play.*Level 1/ })).toBeVisible();
@@ -127,6 +137,72 @@ test('a stuck board says so', async ({ page }) => {
 	await expect(page.getByRole('alert')).toContainText('No moves left');
 });
 
+test('the stuck banner lets taps through to the tubes under it', async ({ page }) => {
+	const ball = (/** @type {number} */ id, /** @type {number} */ color) => ({
+		id,
+		color,
+		hidden: false
+	});
+	// Eleven full tubes, each with a different color on top: nothing can move.
+	const start = Array.from({ length: 11 }, (_, i) => [
+		ball(i * 2, i),
+		ball(i * 2 + 1, (i + 1) % 11)
+	]);
+	await open(page, {
+		unlocked: 3,
+		saved: {
+			mode: 'level',
+			level: 3,
+			seed: 1,
+			colors: 11,
+			boss: false,
+			mystery: false,
+			game: {
+				start,
+				tubes: start,
+				history: [],
+				capacity: 2,
+				par: 3,
+				moves: 0,
+				seconds: 0,
+				undos: 0,
+				hintsUsed: 0,
+				tubesAdded: 0,
+				bestCombo: 0
+			}
+		}
+	});
+	await page.getByRole('button', { name: /Level 3/ }).click();
+	const banner = page.getByRole('alert');
+	await expect(banner).toContainText('No moves left');
+	// The banner's slide-in has to finish before its position is final.
+	await page.waitForTimeout(500);
+	const box = await boxOf(banner);
+	const hit = await page.evaluate(
+		({ x, y }) => document.elementFromPoint(x, y)?.closest('[role="alert"]') !== null,
+		{ x: box.x + box.width / 2, y: box.y + box.height / 2 }
+	);
+	expect(hit, 'a tap on the banner would not reach what is under it').toBe(false);
+});
+
+for (const [name, profile] of /** @type {const} */ ([
+	['a new player', {}],
+	['the top rank with a five-digit coin count', { score: 3e6, coins: 12345 }]
+])) {
+	test(`the home top row fits a 320 px screen for ${name}`, async ({ page }) => {
+		await page.setViewportSize({ width: 320, height: 640 });
+		await open(page, profile);
+		const rank = page.getByRole('button', { name: /^Rank / });
+		await expect(rank).toBeVisible();
+		const settings = await boxOf(page.getByRole('button', { name: 'Settings' }));
+		const coins = await boxOf(page.locator('.top-right > :first-child'));
+		const rankBox = await boxOf(rank);
+		expect(settings.x + settings.width).toBeLessThanOrEqual(320);
+		expect(coins.x + coins.width).toBeLessThanOrEqual(settings.x);
+		expect(rankBox.x + rankBox.width).toBeLessThanOrEqual(coins.x);
+	});
+}
+
 test('blitz plays its own music loop', async ({ page }) => {
 	/** @type {string[]} */
 	const loops = [];
@@ -188,6 +264,8 @@ test('the shop sells and equips a theme after a confirming tap', async ({ page }
 	await page.getByRole('button', { name: /Shop/ }).click();
 	const card = page.locator('.card', { hasText: 'Deep Ocean' });
 	await card.getByRole('button', { name: /300/ }).click();
+	// A tap right after the first is a double tap, not a confirmation.
+	await page.waitForTimeout(500);
 	await card.getByRole('button', { name: 'Tap to confirm' }).click();
 	await expect(card.getByRole('button', { name: /Equipped/ })).toBeVisible();
 	await expect(page.locator('.coins').first()).toContainText('700');
@@ -195,6 +273,24 @@ test('the shop sells and equips a theme after a confirming tap', async ({ page }
 		getComputedStyle(document.documentElement).getPropertyValue('--accent')
 	);
 	expect(vars.trim()).toBe('#3ff3d0');
+});
+
+test('a quick double tap on a shop price does not buy it', async ({ page }) => {
+	await open(page, { coins: 1000 });
+	await page.getByRole('button', { name: /Shop/ }).click();
+	const card = page.locator('.card', { hasText: 'Deep Ocean' });
+	const price = card.getByRole('button', { name: /300/ });
+	// Two taps in the same frame land well inside the confirming tap's delay.
+	await price.evaluate((button) => {
+		const tap = /** @type {HTMLElement} */ (button);
+		tap.click();
+		tap.click();
+	});
+	await expect(card.getByRole('button', { name: 'Tap to confirm' })).toBeVisible();
+	await expect(page.locator('.coins').first()).toContainText('1,000');
+	await page.waitForTimeout(500);
+	await card.getByRole('button', { name: 'Tap to confirm' }).click();
+	await expect(card.getByRole('button', { name: /Equipped/ })).toBeVisible();
 });
 
 test('a dark theme drops the panel colors a light theme set', async ({ page }) => {
