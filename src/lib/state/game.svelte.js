@@ -13,7 +13,7 @@ import { validSnapshot } from '../game/snapshot.js';
  *   | { type: 'move', from: number, to: number, balls: Ball[] }
  *   | { type: 'reveal', tube: number }
  *   | { type: 'complete', tube: number, color: number, combo: number }
- *   | { type: 'win' }
+ *   | { type: 'win', version: number }
  *   | { type: 'undo', from: number, to: number }
  *   | { type: 'restart' }
  *   | { type: 'addTube' }} GameEvent
@@ -253,7 +253,7 @@ export class Game {
 		}
 		if (isSolved(this.colorTubes, this.capacity)) {
 			this.won = true;
-			this.emit({ type: 'win' });
+			this.emit({ type: 'win', version: this.version });
 		}
 	}
 

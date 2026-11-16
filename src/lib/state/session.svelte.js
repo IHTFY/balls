@@ -68,6 +68,8 @@ export const session = $state({
 });
 
 let token = 0;
+let boardToken = -1;
+let finishedToken = -1;
 /** @type {Promise<import('../puzzles.js').Puzzle> | null} */
 let upcoming = null;
 
@@ -91,6 +93,7 @@ async function begin(mode, spec, seed, ready) {
 	const puzzle = await (ready ?? generate(spec, seed));
 	if (mine !== token) return;
 	game.load(puzzle.tubes, puzzle.capacity, puzzle.par, puzzle.mystery);
+	boardToken = mine;
 	session.loading = false;
 	save();
 }
@@ -115,6 +118,7 @@ function resume(matches) {
 		result: null,
 		loading: false
 	});
+	boardToken = token;
 	return true;
 }
 
@@ -158,6 +162,7 @@ export function replay() {
 		game.par,
 		session.mystery
 	);
+	boardToken = ++token;
 	session.result = null;
 	save();
 }
@@ -234,8 +239,20 @@ function baseResult() {
 	};
 }
 
-/** Records a solved puzzle and prepares the results screen. */
-export function finish() {
+/**
+ * Records a solved puzzle and prepares the results screen.
+ * @param {number} [version] the position that emitted the win
+ */
+export function finish(version = game.version) {
+	if (
+		session.loading ||
+		boardToken !== token ||
+		finishedToken === token ||
+		version !== game.version ||
+		!game.won
+	)
+		return;
+	finishedToken = token;
 	const r = baseResult();
 	const stats = profile.stats;
 	const stars = starsFor(r.moves, r.par);
@@ -325,9 +342,13 @@ function blitzSolved(r) {
 	// A short pause lets the win celebration play before the next board drops in.
 	const ready = upcoming ?? generate(spec, seed);
 	upcoming = null;
+	const mine = token;
 	setTimeout(() => {
-		if (session.mode !== 'blitz' || b.over) return;
-		begin('blitz', spec, seed, ready).then(() => {
+		if (mine !== token || session.mode !== 'blitz' || b !== session.blitz || b.over) return;
+		const loading = begin('blitz', spec, seed, ready);
+		const nextToken = token;
+		loading.then(() => {
+			if (nextToken !== token || b !== session.blitz || b.over) return;
 			upcoming = generate(blitzSpec(b.solved + 1), randomSeed());
 		});
 	}, 900);
