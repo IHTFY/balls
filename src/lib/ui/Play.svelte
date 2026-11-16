@@ -108,13 +108,30 @@
 	);
 
 	$effect(() => {
-		const timer = setInterval(() => {
-			if (document.visibilityState === 'visible' && !nav.dialog) {
-				tick();
-				if (blitz && session.blitz.left <= 10 && session.blitz.left > 0) sound.tick();
-			}
-		}, 1000);
-		return () => clearInterval(timer);
+		if (nav.dialog || session.loading || game.won || session.result || !game.start.length) return;
+		let last = document.visibilityState === 'visible' ? performance.now() : null;
+		const update = () => {
+			if (last === null) return;
+			const seconds = Math.floor((performance.now() - last) / 1000);
+			if (seconds <= 0) return;
+			last += seconds * 1000;
+			tick(seconds);
+			if (blitz && session.blitz.left <= 10 && session.blitz.left > 0) sound.tick();
+		};
+		const visibility = () => {
+			update();
+			last = document.visibilityState === 'visible' ? performance.now() : null;
+		};
+		const timer = setInterval(update, 1000);
+		// Flush before the app's lifecycle listeners persist the profile.
+		document.addEventListener('visibilitychange', visibility, { capture: true });
+		window.addEventListener('pagehide', update, { capture: true });
+		return () => {
+			update();
+			clearInterval(timer);
+			document.removeEventListener('visibilitychange', visibility, { capture: true });
+			window.removeEventListener('pagehide', update, { capture: true });
+		};
 	});
 
 	// First-time coaching on level 1: point at the next tube to tap.

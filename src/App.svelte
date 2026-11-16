@@ -47,9 +47,12 @@
 		};
 	});
 
-	// Save shortly after any change; the play timer changes the profile every second.
+	// Clock-only changes flush on hide or close; player actions save shortly afterward.
+	const progress = $derived(
+		JSON.stringify(profile, (key, value) => (key === 'seconds' ? 0 : value))
+	);
 	$effect(() => {
-		JSON.stringify(profile);
+		progress;
 		const timer = setTimeout(persist, 500);
 		return () => clearTimeout(timer);
 	});
