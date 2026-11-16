@@ -94,8 +94,8 @@
 			else if (e.type === 'win') {
 				setTimeout(() => sound.win(), reduced ? 0 : 420);
 				buzz([30, 60, 30, 60, 90]);
-				if (session.mode === 'level' && session.level === 1) profile.tutorialDone = true;
-				finish();
+				finish(e.version);
+				if (session.result?.mode === 'level' && session.level === 1) profile.tutorialDone = true;
 			} else if (e.type === 'undo') {
 				sound.undo();
 				profile.stats.undos++;
@@ -203,6 +203,7 @@
 	}
 
 	function undo() {
+		if (session.loading) return;
 		if (!game.undo()) sound.invalid();
 	}
 
@@ -221,12 +222,19 @@
 
 	/** @param {[number, number][]} moves single-ball moves that win from here */
 	function playFinish(moves) {
-		if (left || finishing || game.won) return;
+		if (left || session.loading || finishing || game.won) return;
+		const board = game.start;
 		finishing = true;
 		run = 0;
 		game.selected = -1;
 		const step = () => {
-			if (!moves.length || !canMove(game.colorTubes, ...moves[0], game.capacity)) {
+			if (
+				left ||
+				session.loading ||
+				board !== game.start ||
+				!moves.length ||
+				!canMove(game.colorTubes, ...moves[0], game.capacity)
+			) {
 				finishing = false;
 				return;
 			}
@@ -241,7 +249,8 @@
 
 	/** @param {KeyboardEvent} e */
 	function onKey(e) {
-		if (nav.dialog || session.result || finishing || e.metaKey || e.altKey) return;
+		if (nav.dialog || session.loading || session.result || finishing || e.metaKey || e.altKey)
+			return;
 		const key = e.key.toLowerCase();
 		if (e.ctrlKey && key !== 'z') return;
 		if (/^[0-9]$/.test(key)) {
@@ -317,7 +326,7 @@
 				targets={profile.settings.targets && !finishing}
 				{reduced}
 				{pointer}
-				onTap={(i) => !finishing && game.tap(i)}
+				onTap={(i) => !session.loading && !finishing && game.tap(i)}
 			/>
 		{/if}
 		{#if coaching && !session.loading && !game.won}
@@ -365,14 +374,14 @@
 		<button
 			class="tool lit"
 			onclick={undo}
-			disabled={!game.history.length || game.won || finishing}
+			disabled={session.loading || !game.history.length || game.won || finishing}
 		>
 			<span class="bubble"><Undo2 size={22} /></span><span>Undo</span>
 		</button>
 		<button
 			class="tool lit"
 			onclick={() => game.restart()}
-			disabled={!game.history.length || game.won || finishing}
+			disabled={session.loading || !game.history.length || game.won || finishing}
 		>
 			<span class="bubble"><RotateCcw size={22} /></span><span>Restart</span>
 		</button>
@@ -380,7 +389,7 @@
 			<button
 				class="tool lit"
 				onclick={hint}
-				disabled={session.hintBusy || game.won || finishing}
+				disabled={session.loading || session.hintBusy || game.won || finishing}
 				aria-label={profile.hints > 0
 					? `Hint, ${profile.hints} left`
 					: `Hint for ${HINT_PRICE} coins`}
@@ -393,7 +402,7 @@
 			<button
 				class="tool"
 				onclick={tube}
-				disabled={game.won || finishing || game.tubesAdded >= MAX_ADDED_TUBES}
+				disabled={session.loading || game.won || finishing || game.tubesAdded >= MAX_ADDED_TUBES}
 				aria-label={profile.tubes > 0
 					? `Add tube, ${profile.tubes} left`
 					: `Add tube for ${TUBE_PRICE} coins`}
