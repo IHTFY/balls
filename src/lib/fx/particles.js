@@ -22,7 +22,6 @@ let ctx = null;
 let particles = [];
 let frame = 0;
 let last = 0;
-let elapsed = 0;
 let reduced = false;
 
 /** @param {HTMLCanvasElement} canvas */
@@ -90,22 +89,22 @@ function draw(ctx, p) {
 
 /** @param {number} now */
 function loop(now) {
-	elapsed += Math.min(0.05, (now - last) / 1000);
+	let remaining = Math.max(0, Math.min(0.05, (now - last) / 1000));
 	last = now;
 	if (!ctx) return;
-	// Keep the original 60 FPS physics, with a tolerance for timestamp rounding.
-	const dt = 1 / 60;
-	while (elapsed + 1e-9 >= dt) {
-		elapsed -= dt;
+	// Limit integration error while consuming even fractional frames immediately.
+	while (remaining > 0) {
+		const dt = Math.min(remaining, 1 / 60);
+		remaining -= dt;
 		particles = particles.filter((p) => (p.life -= dt) > 0);
 		for (const p of particles) {
 			p.vy += p.gravity * dt;
 			if (p.kind === 'confetti') {
-				p.vx *= 0.985;
+				p.vx *= 0.985 ** (dt * 60);
 				p.vy = Math.min(p.vy, 160);
 			} else {
-				p.vx *= 0.96;
-				p.vy *= 0.96;
+				p.vx *= 0.96 ** (dt * 60);
+				p.vy *= 0.96 ** (dt * 60);
 			}
 			p.x += p.vx * dt;
 			p.y += p.vy * dt;
@@ -138,7 +137,6 @@ function add(p) {
 function start() {
 	if (!frame && ctx) {
 		last = performance.now();
-		elapsed = 0;
 		frame = requestAnimationFrame(loop);
 	}
 }

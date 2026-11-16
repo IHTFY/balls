@@ -5,12 +5,13 @@ let fresh = 0;
 
 /**
  * @param {import('node:test').TestContext} t
- * @param {number} fps
  * @param {'confetti' | 'burst'} effect
+ * @param {number[]} timestamps
+ * @param {number} [started]
  */
-async function replay(t, fps, effect) {
+async function animate(t, effect, timestamps, started = 0) {
 	t.mock.method(Math, 'random', () => 0.5);
-	t.mock.method(performance, 'now', () => 0);
+	t.mock.method(performance, 'now', () => started);
 	/** @type {FrameRequestCallback | undefined} */
 	let scheduled;
 	/** @type {{ x: number, y: number }[]} */
@@ -42,19 +43,35 @@ async function replay(t, fps, effect) {
 		/** @type {unknown} */ ({ getContext: () => context })
 	);
 	const detach = particles.attachCanvas(canvas);
+	const frames = [];
 	try {
 		if (effect === 'confetti') particles.confetti(['#fff'], 1);
 		else particles.burst(200, 400, ['#fff'], 2);
-		for (let i = 1; i <= fps / 2; i++) {
+		for (const now of timestamps) {
 			positions = [];
 			assert.ok(scheduled);
-			scheduled((i * 1000) / fps);
+			scheduled(now);
+			frames.push(positions);
 		}
 		assert.ok(positions.length > 0);
-		return positions;
+		return frames;
 	} finally {
 		detach();
 	}
+}
+
+/**
+ * @param {import('node:test').TestContext} t
+ * @param {number} fps
+ * @param {'confetti' | 'burst'} effect
+ */
+async function replay(t, fps, effect) {
+	const frames = await animate(
+		t,
+		effect,
+		Array.from({ length: fps / 2 }, (_, i) => ((i + 1) * 1000) / fps)
+	);
+	return frames[frames.length - 1];
 }
 
 for (const effect of /** @type {const} */ (['confetti', 'burst'])) {
@@ -73,6 +90,42 @@ for (const effect of /** @type {const} */ (['confetti', 'burst'])) {
 				assert.ok(Math.abs(normal[i][axis] - fast[i][axis]) <= 2);
 			}
 		}
+	});
+
+	for (const fps of [60, 120, 144]) {
+		test(`${effect} moves every frame at ${fps} FPS with clock jitter`, async (t) => {
+			const timestamps = Array.from(
+				{ length: 30 },
+				(_, i) => ((i + 1) * 1000) / fps + (i % 2 ? 0.4 : -0.4)
+			);
+			const frames = await animate(t, effect, timestamps);
+			for (let i = 1; i < frames.length; i++) {
+				assert.notEqual(frames[i][0].x, frames[i - 1][0].x, `frozen frame ${i}`);
+				assert.notEqual(frames[i][0].y, frames[i - 1][0].y, `frozen frame ${i}`);
+			}
+		});
+	}
+
+	test(`${effect} caps a hidden-tab pause at 50 ms and resumes moving`, async (t) => {
+		const paused = await animate(t, effect, [0, 10_000, 10_000 + 1000 / 60]);
+		const capped = await animate(t, effect, [0, 50, 50 + 1000 / 60]);
+		for (let frame = 0; frame < paused.length; frame++) {
+			assert.equal(paused[frame].length, capped[frame].length);
+			for (let i = 0; i < paused[frame].length; i++) {
+				for (const axis of /** @type {const} */ (['x', 'y']))
+					assert.ok(Math.abs(paused[frame][i][axis] - capped[frame][i][axis]) < 1e-9);
+			}
+		}
+		assert.notEqual(paused[1][0].x, paused[0][0].x);
+		assert.notEqual(paused[2][0].x, paused[1][0].x);
+	});
+
+	test(`${effect} ignores a first timestamp before the start clock`, async (t) => {
+		const frames = await animate(t, effect, [99, 99, 1000], 100);
+		assert.equal(frames[0][0].x, effect === 'confetti' ? -10 : 200);
+		assert.equal(frames[0][0].y, effect === 'confetti' ? 680 : 400);
+		assert.deepEqual(frames[0], frames[1]);
+		assert.notEqual(frames[2][0].x, frames[1][0].x);
 	});
 }
 
