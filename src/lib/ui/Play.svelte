@@ -656,6 +656,8 @@
 		width: max-content;
 		max-width: calc(100% - 24px);
 		z-index: 5;
+		/* A message only: taps go through to the tubes under it. */
+		pointer-events: none;
 	}
 	.finishing {
 		display: flex;

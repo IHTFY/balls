@@ -29,6 +29,10 @@
 	let confirming = $state('');
 	/** @type {ReturnType<typeof setTimeout> | undefined} */
 	let confirmTimer;
+	/** When the confirming prompt appeared. */
+	let confirmingSince = 0;
+	/** A second tap sooner than this is a double tap, not a confirmation. */
+	const CONFIRM_DELAY_MS = 400;
 
 	/** @param {Record<string, string>} vars */
 	const style = (vars) =>
@@ -52,9 +56,11 @@
 			});
 			return;
 		}
+		if (confirming === key && performance.now() - confirmingSince < CONFIRM_DELAY_MS) return;
 		if (confirming !== key) {
 			sound.tap();
 			confirming = key;
+			confirmingSince = performance.now();
 			clearTimeout(confirmTimer);
 			confirmTimer = setTimeout(() => (confirming = ''), 3000);
 			return;
