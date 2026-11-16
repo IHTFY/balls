@@ -1,5 +1,7 @@
 // The saved player profile, and recovery from missing or damaged saves.
 import { SKINS, THEMES } from './cosmetics.js';
+import { MAX_LEVEL } from './levels.js';
+import { MAX_SCORE } from './scoring.js';
 
 export const STORAGE_KEY = 'balls.profile.v1';
 
@@ -102,7 +104,7 @@ function fields(defaults, raw, check) {
 }
 
 /**
- * Keys that are positive level numbers, with values passing `check`.
+ * Keys that are level numbers from 1 to the last level, with values passing `check`.
  * @param {unknown} raw
  * @param {(value: number) => boolean} check
  */
@@ -111,7 +113,9 @@ function levelRecord(raw, check) {
 	const out = {};
 	if (!isRecord(raw)) return out;
 	for (const [key, value] of Object.entries(/** @type {Record<string, unknown>} */ (raw))) {
-		if (/^[1-9]\d*$/.test(key) && typeof value === 'number' && check(value)) out[key] = value;
+		const level = /^[1-9]\d*$/.test(key) ? Number(key) : 0;
+		if (level >= 1 && level <= MAX_LEVEL && typeof value === 'number' && check(value))
+			out[key] = value;
 	}
 	return out;
 }
@@ -157,10 +161,10 @@ export function sanitizeProfile(raw) {
 
 	return {
 		coins: count(r.coins, base.coins),
-		unlocked: Math.max(count(r.unlocked, 1), highestCleared + 1),
+		unlocked: Math.min(MAX_LEVEL, Math.max(count(r.unlocked, 1), highestCleared + 1)),
 		stars,
 		best: levelRecord(r.best, (v) => Number.isInteger(v) && v > 0),
-		score: count(r.score, 0),
+		score: Math.min(MAX_SCORE, count(r.score, 0)),
 		hints: count(r.hints, base.hints),
 		tubes: count(r.tubes, base.tubes),
 		owned,

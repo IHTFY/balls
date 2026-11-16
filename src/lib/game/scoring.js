@@ -81,11 +81,17 @@ const RANKS = [
 /** Lifetime points needed to reach rank level `n` (0-based). */
 const rankThreshold = (/** @type {number} */ n) => Math.round(1500 * n ** 1.6);
 
+/** Lifetime points stop counting here, where whole numbers are still exact. */
+export const MAX_SCORE = Number.MAX_SAFE_INTEGER;
+
 /**
  * @param {number} score lifetime points
  */
 export function rankFor(score) {
-	let level = 0;
+	score = Math.min(MAX_SCORE, Math.max(0, score));
+	// Invert the threshold curve, then step past its rounding.
+	let level = Math.floor((score / 1500) ** (1 / 1.6));
+	while (level > 0 && score < rankThreshold(level)) level--;
 	while (score >= rankThreshold(level + 1)) level++;
 	const floor = rankThreshold(level);
 	const next = rankThreshold(level + 1);

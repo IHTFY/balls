@@ -7,6 +7,7 @@ import {
 	dailySpec,
 	levelSeed,
 	levelSpec,
+	MAX_LEVEL,
 	ZEN_PRESETS
 } from '../game/levels.js';
 import { dateKey, isNextDay } from '../game/profile.js';
@@ -265,7 +266,7 @@ export function finish() {
 		profile.stars[key] = Math.max(previousStars, stars);
 		newBest = !profile.best[key] || r.moves < profile.best[key];
 		if (newBest) profile.best[key] = r.moves;
-		profile.unlocked = Math.max(profile.unlocked, session.level + 1);
+		profile.unlocked = Math.min(MAX_LEVEL, Math.max(profile.unlocked, session.level + 1));
 		if (session.boss) stats.bossesBeaten++;
 	} else if (session.mode === 'daily') {
 		const today = session.date;

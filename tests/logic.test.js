@@ -2,9 +2,23 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { ACHIEVEMENTS, newlyEarned } from '../src/lib/game/achievements.js';
 import { generatePuzzle } from '../src/lib/game/generator.js';
-import { dailySeed, dailySpec, levelSeed, levelSpec, MAX_COLORS } from '../src/lib/game/levels.js';
+import {
+	dailySeed,
+	dailySpec,
+	levelSeed,
+	levelSpec,
+	MAX_COLORS,
+	MAX_LEVEL
+} from '../src/lib/game/levels.js';
 import { canMove, isSolved, usefulMoves } from '../src/lib/game/rules.js';
-import { dailyCoins, levelCoins, rankFor, scoreFor, starsFor } from '../src/lib/game/scoring.js';
+import {
+	dailyCoins,
+	levelCoins,
+	MAX_SCORE,
+	rankFor,
+	scoreFor,
+	starsFor
+} from '../src/lib/game/scoring.js';
 import { solve } from '../src/lib/game/solver.js';
 import { LETTERS, PALETTE, SKINS } from '../src/lib/game/cosmetics.js';
 import { defaultProfile } from '../src/lib/game/profile.js';
@@ -150,6 +164,18 @@ test('the level curve stays within the palette and keeps growing', () => {
 	}
 });
 
+test('levels below 1 or not whole numbers play as level 1', () => {
+	for (const level of [-100, 0, NaN, 2.5, Infinity]) {
+		const spec = levelSpec(level);
+		assert.deepEqual(spec, levelSpec(1), `level ${level}`);
+		const started = performance.now();
+		const puzzle = generatePuzzle(spec, levelSeed(level));
+		assert.ok(performance.now() - started < 1000, `level ${level} took too long`);
+		assert.equal(puzzle.tubes.length, spec.colors + spec.empty);
+	}
+	assert.ok(levelSpec(MAX_LEVEL).colors <= MAX_COLORS);
+});
+
 test('daily puzzles depend only on the date', () => {
 	const a = generatePuzzle(dailySpec('2026-10-07'), dailySeed('2026-10-07'));
 	const b = generatePuzzle(dailySpec('2026-10-07'), dailySeed('2026-10-07'));
@@ -195,6 +221,32 @@ test('coins pay fully once, then only for new stars', () => {
 	assert.equal(levelCoins(3, 0, true), 50);
 	assert.equal(levelCoins(3, 3, false), 2);
 	assert.equal(levelCoins(3, 1, false), 12);
+});
+
+test('ranks match stepping through every threshold (characterization)', () => {
+	// The rank threshold curve and the stepping loop rankFor used before it was
+	// made to run in constant time.
+	const threshold = (/** @type {number} */ n) => Math.round(1500 * n ** 1.6);
+	const stepped = (/** @type {number} */ score) => {
+		let level = 0;
+		while (score >= threshold(level + 1)) level++;
+		return level + 1;
+	};
+	for (let n = 0; n <= 2000; n++) {
+		for (const score of [threshold(n) - 1, threshold(n), threshold(n) + 1]) {
+			if (score >= 0) assert.equal(rankFor(score).level, stepped(score), `score ${score}`);
+		}
+	}
+});
+
+test('a huge score ranks at once', () => {
+	for (const score of [1e100, Number.MAX_VALUE, MAX_SCORE]) {
+		const started = performance.now();
+		const r = rankFor(score);
+		assert.ok(performance.now() - started < 1000, `score ${score} took too long`);
+		assert.ok(Number.isFinite(r.level) && r.level > 1);
+		assert.ok(r.progress >= 0 && r.progress < 1, `progress ${r.progress}`);
+	}
 });
 
 test('ranks rise with score', () => {
