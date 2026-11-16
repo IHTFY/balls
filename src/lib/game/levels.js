@@ -3,6 +3,8 @@ import { hashString } from './rng.js';
 
 export const LEVELS_PER_CHAPTER = 20;
 export const MAX_COLORS = 14;
+/** The last level. Far past where anyone plays, it keeps saved progress and the map finite. */
+export const MAX_LEVEL = 10_000;
 
 const CHAPTERS = [
 	'First Drops',
@@ -37,14 +39,34 @@ export const chapterName = (chapter) =>
 		? CHAPTERS[chapter]
 		: `${CHAPTERS[NAMED_CHAPTERS - 1]} ${chapter - NAMED_CHAPTERS + 2}`;
 
+/**
+ * Chapters on the level map: every named one, and past those one chapter
+ * ahead of the player, never past the chapter holding the last level.
+ * @param {number} unlocked
+ */
+export const mapChapters = (unlocked) =>
+	Array.from(
+		{
+			length: Math.min(chapterOf(MAX_LEVEL) + 1, Math.max(NAMED_CHAPTERS, chapterOf(unlocked) + 2))
+		},
+		(_, c) => c
+	);
+
+/**
+ * The level after `level`; the last level is followed by itself.
+ * @param {number} level
+ */
+export const nextLevel = (level) => Math.min(MAX_LEVEL, level + 1);
+
 /** @param {number} level */
 export const isBoss = (level) => level % 10 === 0;
 
 /**
- * @param {number} level 1-based
+ * @param {number} level 1-based; anything but a whole number from 1 up is read as level 1
  * @returns {import('./generator.js').PuzzleSpec & { boss: boolean }}
  */
 export function levelSpec(level) {
+	if (!Number.isInteger(level) || level < 1) level = 1;
 	const boss = isBoss(level);
 	if (level === 1) return { colors: 2, capacity: 3, empty: 1, boss };
 	if (level === 2) return { colors: 3, capacity: 3, empty: 2, boss };

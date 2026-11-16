@@ -3,7 +3,7 @@ import { canMove, isSolved, isTubeComplete, topRun, usefulMoves } from '../game/
 import { validSnapshot } from '../game/snapshot.js';
 
 /** @typedef {import('../game/snapshot.js').Ball} Ball */
-/** @typedef {{ from: number, to: number, count: number }} HistoryEntry */
+/** @typedef {import('../game/snapshot.js').HistoryEntry} HistoryEntry */
 
 /**
  * @typedef {{ type: 'select', tube: number }

@@ -7,6 +7,8 @@ import {
 	sanitizeProfile,
 	totalStars
 } from '../src/lib/game/profile.js';
+import { chapterOf, mapChapters, MAX_LEVEL } from '../src/lib/game/levels.js';
+import { MAX_SCORE } from '../src/lib/game/scoring.js';
 import { validSnapshot } from '../src/lib/game/snapshot.js';
 
 test('missing or malformed saves fall back to defaults', () => {
@@ -48,6 +50,23 @@ test('valid values survive and invalid ones are replaced', () => {
 	assert.equal(p.daily.streak, 2);
 	assert.equal(p.daily.last, null);
 	assert.equal(totalStars(p), 5);
+});
+
+test('saved levels stay within the level range and the map still builds', () => {
+	const p = sanitizeProfile({ stars: { 2: 3, ['9'.repeat(400)]: 3, [MAX_LEVEL + 1]: 1 } });
+	assert.ok(Number.isFinite(p.unlocked) && p.unlocked <= MAX_LEVEL, `unlocked ${p.unlocked}`);
+	assert.deepEqual(p.stars, { 2: 3 }, 'stars past the last level are dropped');
+	assert.equal(p.unlocked, 3);
+	assert.equal(sanitizeProfile({ unlocked: 1e300 }).unlocked, MAX_LEVEL);
+	assert.equal(sanitizeProfile({ best: { [MAX_LEVEL + 1]: 5 } }).best[MAX_LEVEL + 1], undefined);
+	const last = mapChapters(MAX_LEVEL);
+	assert.equal(last.at(-1), chapterOf(MAX_LEVEL), 'the map ends at the last level');
+	assert.deepEqual(mapChapters(sanitizeProfile({ unlocked: 1e300 }).unlocked), last);
+});
+
+test('the saved score is capped', () => {
+	assert.equal(sanitizeProfile({ score: 1e100 }).score, MAX_SCORE);
+	assert.equal(sanitizeProfile({ score: 1234 }).score, 1234);
 });
 
 test('a profile round-trips through JSON unchanged', () => {
@@ -105,5 +124,26 @@ test('saved games are only resumed when they are legal positions', () => {
 	assert.ok(
 		!validSnapshot({ ...good, tubes: [[{ id: 0, color: 0 }], good.tubes[1], good.tubes[2]] }),
 		'a malformed ball'
+	);
+	assert.ok(
+		validSnapshot({
+			...good,
+			tubes: [[ball(0, 0), ball(3, 0)], [ball(2, 1)], [ball(1, 1)]],
+			history: [...good.history, { from: 1, to: 0, count: 1 }],
+			moves: 2
+		}),
+		'a longer game'
+	);
+	assert.ok(
+		!validSnapshot({ ...good, moves: 0 }),
+		'the move count does not match the history, so undo would go below zero'
+	);
+	assert.ok(
+		!validSnapshot({ ...good, moves: 2, history: [...good.history, { from: 0, to: 2, count: 1 }] }),
+		'history moves a ball that is not where it says'
+	);
+	assert.ok(
+		!validSnapshot({ ...good, history: [{ from: 1, to: 2, count: 1 }] }),
+		'history does not lead to this board'
 	);
 });

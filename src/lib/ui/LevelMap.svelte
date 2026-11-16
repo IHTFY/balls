@@ -10,7 +10,7 @@
 		chapterOf,
 		LEVELS_PER_CHAPTER,
 		levelSpec,
-		NAMED_CHAPTERS
+		mapChapters
 	} from '../game/levels.js';
 	import { totalStars } from '../game/profile.js';
 	import { sound } from '../fx/audio.js';
@@ -20,11 +20,8 @@
 	import CoinChip from './CoinChip.svelte';
 
 	const current = $derived(chapterOf(profile.unlocked));
-	// Every named chapter is on the map from the start; past those, one chapter
-	// ahead of the player. Levels only show for the current and next chapter.
-	const chapters = $derived(
-		Array.from({ length: Math.max(NAMED_CHAPTERS, current + 2) }, (_, c) => c)
-	);
+	// Levels only show for the current and next chapter.
+	const chapters = $derived(mapChapters(profile.unlocked));
 
 	/** @param {number} chapter */
 	const levelsOf = (chapter) =>
