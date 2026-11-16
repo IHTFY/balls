@@ -89,25 +89,30 @@ function draw(ctx, p) {
 
 /** @param {number} now */
 function loop(now) {
-	const dt = Math.min(0.05, (now - last) / 1000);
+	let remaining = Math.max(0, Math.min(0.05, (now - last) / 1000));
 	last = now;
 	if (!ctx) return;
-	ctx.clearRect(0, 0, innerWidth, innerHeight);
-	particles = particles.filter((p) => (p.life -= dt) > 0);
-	for (const p of particles) {
-		p.vy += p.gravity * dt;
-		if (p.kind === 'confetti') {
-			p.vx *= 0.985;
-			p.vy = Math.min(p.vy, 160);
-		} else {
-			p.vx *= 0.96;
-			p.vy *= 0.96;
+	// Limit integration error while consuming even fractional frames immediately.
+	while (remaining > 0) {
+		const dt = Math.min(remaining, 1 / 60);
+		remaining -= dt;
+		particles = particles.filter((p) => (p.life -= dt) > 0);
+		for (const p of particles) {
+			p.vy += p.gravity * dt;
+			if (p.kind === 'confetti') {
+				p.vx *= 0.985 ** (dt * 60);
+				p.vy = Math.min(p.vy, 160);
+			} else {
+				p.vx *= 0.96 ** (dt * 60);
+				p.vy *= 0.96 ** (dt * 60);
+			}
+			p.x += p.vx * dt;
+			p.y += p.vy * dt;
+			p.angle += p.spin * dt;
 		}
-		p.x += p.vx * dt;
-		p.y += p.vy * dt;
-		p.angle += p.spin * dt;
-		draw(ctx, p);
 	}
+	ctx.clearRect(0, 0, innerWidth, innerHeight);
+	for (const p of particles) draw(ctx, p);
 	ctx.globalAlpha = 1;
 	frame = particles.length ? requestAnimationFrame(loop) : 0;
 }
