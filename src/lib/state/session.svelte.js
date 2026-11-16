@@ -209,13 +209,18 @@ export const hasSave = (matches) => {
 	return !!s && s.game?.moves > 0 && matches(s);
 };
 
-/** One second of play. */
-export function tick() {
+/** @param {number} [seconds] whole seconds of active play since the previous tick */
+export function tick(seconds = 1) {
 	if (session.loading || game.won || session.result) return;
-	game.seconds++;
-	profile.stats.seconds++;
-	if (session.mode !== 'blitz' || session.blitz.over) return;
-	session.blitz.left--;
+	if (session.mode === 'blitz') {
+		if (session.blitz.over) return;
+		seconds = Math.min(seconds, session.blitz.left);
+	}
+	game.seconds += seconds;
+	profile.stats.seconds += seconds;
+	save();
+	if (session.mode !== 'blitz') return;
+	session.blitz.left -= seconds;
 	if (session.blitz.left <= 0) endBlitz();
 }
 
@@ -390,6 +395,7 @@ export async function requestHint() {
 		profile.hints--;
 		game.hintsUsed++;
 		profile.stats.hintsUsed++;
+		save();
 		return 'ok';
 	}
 	if (result.status === 'unsolvable') {
