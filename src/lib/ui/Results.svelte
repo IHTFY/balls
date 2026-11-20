@@ -27,14 +27,15 @@
 	// decides between the two while the screen is open. A box that was asked for does not come
 	// back after it left, since the loader fills each game over's box only once.
 	const adKey = $derived(`${result.mode}/${result.ended}`);
+	const wanted = $derived(
+		adForScreen('results', { buyer: isBuyer(), played: true, beside: !!playPlacement() })
+	);
+	// Whether the box is up now: it stays while it is wanted, even once it was asked for, and
+	// comes back after it left only if it never got an ad.
+	let held = false;
 	const ad = $derived.by(() => {
-		// Read first, so a change of window or purchase re-decides even after a box was asked for.
-		const placed = adForScreen('results', {
-			buyer: isBuyer(),
-			played: true,
-			beside: !!playPlacement()
-		});
-		return adAsked(adKey) ? null : placed;
+		held = !!wanted && (held || !adAsked(adKey));
+		return held ? wanted : null;
 	});
 	/** @type {HTMLDivElement | undefined} */
 	let actions = $state();
