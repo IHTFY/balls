@@ -8,6 +8,8 @@ import { notify } from './toasts.svelte.js';
  * @type {string | null}
  */
 let stored = null;
+/** The save adopted ahead of its own event, until that event arrives. */
+let early = /** @type {string | null} */ (null);
 
 function load() {
 	/** @type {string | null} */
@@ -39,18 +41,31 @@ export function persist() {
 	try {
 		localStorage.setItem(STORAGE_KEY, json);
 		stored = json;
+		early = null;
 	} catch {
 		/* Progress lasts until the page closes. */
 	}
 }
 
 // Another open copy of the game saved: take its profile, saved game included, so this copy's
-// next write builds on it instead of replacing it.
+// next write builds on it instead of replacing it. Storage events can arrive late, so the profile
+// adopted is the one storage holds now, not the event's, and a late event is skipped when this
+// copy already holds what storage does: an event for an older value, or the later event for a
+// save already adopted early, would undo changes made since. An event for the value this copy
+// holds, with none pending, is a reset to that same value, and applies.
 window.addEventListener('storage', (event) => {
 	if (event.key !== STORAGE_KEY || event.newValue === null) return;
 	try {
-		Object.assign(profile, sanitizeProfile(JSON.parse(event.newValue)));
-		stored = event.newValue;
+		const current = localStorage.getItem(STORAGE_KEY);
+		if (current === null) return;
+		if (current === stored) {
+			const pending = event.newValue === early;
+			if (pending) early = null;
+			if (pending || event.newValue !== current) return;
+		}
+		Object.assign(profile, sanitizeProfile(JSON.parse(current)));
+		stored = current;
+		early = event.newValue === current ? null : current;
 	} catch {
 		/* An unreadable save from the other copy: keep this one's. */
 	}
