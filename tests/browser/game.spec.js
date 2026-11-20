@@ -460,6 +460,50 @@ function openSave(board) {
 	return { ...mysterySave(tubes), mystery: false };
 }
 
+test('keyboard focus stays inside Settings, so Restart cannot be pressed behind it', async ({
+	page
+}) => {
+	await open(page);
+	await page.getByRole('button', { name: /Play.*Level 1/ }).click();
+	await waitForBoard(page);
+	await page.keyboard.press('1');
+	await page.keyboard.press('3');
+	await expect(page.getByText('Moves', { exact: true }).locator('..')).toContainText('1');
+
+	await page.getByRole('button', { name: 'Settings' }).focus();
+	await page.keyboard.press('Enter');
+	const dialog = page.getByRole('dialog', { name: 'Settings' });
+	await expect(dialog).toBeVisible();
+	/** The focused control, named by where it sits among the dialog's controls (-1 outside it). */
+	const focused = () =>
+		dialog.evaluate((el) => {
+			const stops = [...el.querySelectorAll('button, input, a[href]')].filter(
+				(c) => /** @type {HTMLElement} */ (c).tabIndex >= 0
+			);
+			return {
+				at: stops.indexOf(/** @type {Element} */ (document.activeElement)),
+				of: stops.length
+			};
+		});
+	const start = await focused();
+	expect(start.of).toBeGreaterThan(2);
+	expect(start.at).toBe(0);
+	// Tab visits every control once and comes back to the first.
+	const forward = [];
+	for (let i = 0; i < start.of; i++) {
+		await page.keyboard.press('Tab');
+		forward.push((await focused()).at);
+	}
+	expect(forward).toEqual([...Array(start.of - 1).keys()].map((i) => i + 1).concat(0));
+	// Shift+Tab from the first goes to the last, and back down.
+	await page.keyboard.press('Shift+Tab');
+	expect((await focused()).at).toBe(start.of - 1);
+	await page.keyboard.press('Shift+Tab');
+	expect((await focused()).at).toBe(start.of - 2);
+	await page.keyboard.press('Enter');
+	await expect(page.getByText('Moves', { exact: true }).locator('..')).toContainText('1');
+});
+
 test('the back button steps back through the app instead of leaving it', async ({ page }) => {
 	// A page before the game, for Back to leave to.
 	await page.goto('/icons/icon-192.png');

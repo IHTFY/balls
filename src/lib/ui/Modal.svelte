@@ -36,6 +36,27 @@
 				};
 	}
 
+	/**
+	 * Keeps Tab and Shift+Tab moving among the dialog's own controls, since the page behind it is
+	 * covered. Focus is moved here rather than left to the browser, which may skip buttons.
+	 * @param {KeyboardEvent} e
+	 */
+	function onkeydown(e) {
+		if (e.key === 'Escape') return onclose?.();
+		// A dialog that is fading out is inert, and the one that replaced it owns the keys.
+		if (e.key !== 'Tab' || panel.closest('[inert]')) return;
+		const stops = /** @type {HTMLElement[]} */ ([
+			...panel.querySelectorAll('button, a[href], input, select, textarea, [tabindex]')
+		]).filter((el) => el.tabIndex >= 0 && !el.hasAttribute('disabled') && el.offsetParent);
+		e.preventDefault();
+		if (!stops.length) return;
+		const at = stops.findIndex((el) => el === document.activeElement);
+		const step = e.shiftKey ? -1 : 1;
+		const next =
+			at < 0 ? (e.shiftKey ? stops.length - 1 : 0) : (at + step + stops.length) % stops.length;
+		stops[next].focus();
+	}
+
 	$effect(() => {
 		const previous = /** @type {HTMLElement | null} */ (document.activeElement);
 		/** @type {HTMLElement | null} */ (panel.querySelector('.primary, button'))?.focus({
@@ -45,7 +66,7 @@
 	});
 </script>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && onclose?.()} />
+<svelte:window {onkeydown} />
 
 <div class="backdrop" class:sheet transition:fade={{ duration: 180 }}>
 	<button class="dismiss" aria-label="Close" tabindex="-1" onclick={() => onclose?.()}></button>
