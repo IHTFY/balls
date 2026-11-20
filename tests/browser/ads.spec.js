@@ -377,7 +377,7 @@ test('a rejected token that stays in storage does not remove the ad when the tab
 		page.evaluate(() => {
 			for (const state of ['hidden', 'visible']) {
 				Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
-				document.dispatchEvent(new Event('visibilitychange'));
+				document.dispatchEvent(new Event('visibilitychange', { bubbles: true }));
 			}
 		});
 	await comeBack();

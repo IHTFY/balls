@@ -81,20 +81,24 @@ const load = () =>
 		document.head.appendChild(script);
 	}));
 
-/** The ad-free token this browser holds, unchecked (the loader checks it), or null with none. */
+/**
+ * The ad-free tokens this browser holds, unchecked (the loader checks them), as one string that
+ * changes when either one does, or null with none.
+ */
 export function adFreeToken() {
+	let stored = '';
+	let cookie = null;
 	try {
-		const token = localStorage.getItem('ihtfy-ad-free');
-		if (token) return token;
+		stored = localStorage.getItem('ihtfy-ad-free') ?? '';
 	} catch {
 		// Storage off: the cookie may still hold the token.
 	}
 	try {
-		return document.cookie.match(/(?:^|;\s*)ihtfy-ad-free=([^;]*)/)?.[1] ?? null;
+		cookie = document.cookie.match(/(?:^|;\s*)ihtfy-ad-free=([^;]*)/)?.[1] ?? null;
 	} catch {
 		// A sandboxed frame may not read cookies.
-		return null;
 	}
+	return stored || cookie !== null ? `${stored}|${cookie ?? ''}` : null;
 }
 
 /** Whether this browser holds an ad-free token, unchecked; the loader checks it. */
@@ -139,7 +143,7 @@ export function showAd(box, key) {
 	// hidden meanwhile (a phone turned on its side) waits until it shows again.
 	return load().then(
 		() => {
-			if (!box.isConnected || box.checkVisibility?.() === false) return false;
+			if (!box.isConnected || box.getClientRects?.().length === 0) return false;
 			asked.add(key);
 			/** @type {any} */ (window).ihtfyAds.show(box, key);
 			return true;

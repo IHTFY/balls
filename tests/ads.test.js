@@ -159,6 +159,20 @@ test('an ad-free cookie alone loads the loader at startup', async () => {
 	assert.equal(added.length, 1);
 });
 
+test('the token string changes when a cookie token joins a stored one', async () => {
+	const { adFreeToken } = await loadAds();
+	assert.equal(adFreeToken(), null);
+	cookie = 'ihtfy-ad-free=c.c.c';
+	const cookieOnly = adFreeToken();
+	assert.notEqual(cookieOnly, null);
+	cookie = '';
+	storage['ihtfy-ad-free'] = 'l.l.l';
+	const storedOnly = adFreeToken();
+	cookie = 'ihtfy-ad-free=c.c.c';
+	const both = adFreeToken();
+	assert.equal(new Set([cookieOnly, storedOnly, both]).size, 3);
+});
+
 test('a frame that cannot read cookies still starts', async () => {
 	cookieBlocked = true;
 	const { loadForBuyer } = await loadAds();
@@ -360,7 +374,7 @@ test('a screen ad never takes a size wider than the window', async () => {
 test('a box hidden while the loader arrives is not handed to it', async () => {
 	const { adAsked, showAd } = await loadAds();
 	const hidden = box();
-	/** @type {any} */ (hidden).checkVisibility = () => false;
+	/** @type {any} */ (hidden).getClientRects = () => [];
 	/** @type {any} */ (globalThis).ihtfyAds = { show: () => assert.fail('asked for a hidden box') };
 	assert.equal(showAd(hidden, 'results/1') instanceof Promise, true);
 	await placeAll();
