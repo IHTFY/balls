@@ -537,6 +537,79 @@ test('the back button steps back through the app instead of leaving it', async (
 	await expect(page).toHaveURL(/icon-192\.png$/);
 });
 
+test('reloading during play leaves no extra step in the back history', async ({ page }) => {
+	await page.goto('/icons/icon-192.png');
+	await open(page, { unlocked: 4 });
+	await page.getByRole('button', { name: /Level 4/ }).click();
+	await waitForBoard(page);
+	const { tubes } = await readBoard(page);
+	await tap(page, 1);
+	await tap(
+		page,
+		tubes.findIndex((t) => t.length === 0)
+	);
+	await page.reload();
+	await expect(page.getByRole('button', { name: /Continue.*Level 4/ })).toBeVisible();
+	await page.waitForFunction(() => !history.state?.guard);
+	// A second reload at home does not drop the entry that backs out of the app.
+	await page.reload();
+	await expect(page.getByRole('button', { name: /Continue.*Level 4/ })).toBeVisible();
+	await page.goBack();
+	await expect(page).toHaveURL(/icon-192\.png$/);
+});
+
+test('navigating right after a reload during a dialog still steps back to home, then leaves', async ({
+	page
+}) => {
+	await page.goto('/icons/icon-192.png');
+	await open(page, { unlocked: 4 });
+	await page.getByRole('button', { name: 'Settings' }).click();
+	await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+	await page.reload();
+	// Tap away from home immediately, without waiting for the reload's history drop.
+	await page.getByRole('button', { name: /Level 4/ }).click();
+	await waitForBoard(page);
+	await page.waitForFunction(() => Boolean(history.state?.guard));
+	await page.goBack();
+	await expect(page.getByRole('button', { name: /Play.*Level 4/ })).toBeVisible();
+	await page.goBack();
+	await expect(page).toHaveURL(/icon-192\.png$/);
+});
+
+test('forward from home skips past a leftover guard entry to reach a later cross-origin page', async ({
+	page
+}) => {
+	await page.route('https://example.test/**', (route) =>
+		route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Later</title>' })
+	);
+	await page.goto('/icons/icon-192.png');
+	await open(page, { unlocked: 4 });
+	await page.getByRole('button', { name: 'Settings' }).click();
+	await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
+	await page.goto('https://example.test/later');
+	await page.goBack();
+	await expect(page.getByRole('button', { name: /Play.*Level 4/ })).toBeVisible();
+	await page.waitForFunction(() => !history.state?.guard);
+	await page.goForward();
+	await expect(page).toHaveURL('https://example.test/later');
+});
+
+test('a guard entry at the start of history with a later page clears instead of wedging Back', async ({
+	page
+}) => {
+	await open(page, { unlocked: 4 });
+	await page.evaluate(() => history.replaceState({ guard: true }, ''));
+	await page.goto('/icons/icon-512.png');
+	await page.goBack();
+	await expect(page.getByRole('button', { name: /Play.*Level 4/ })).toBeVisible();
+	await page.waitForFunction(() => !history.state?.guard);
+	await page.getByRole('button', { name: /Level 4/ }).click();
+	await waitForBoard(page);
+	await page.waitForFunction(() => Boolean(history.state?.guard));
+	await page.goBack();
+	await expect(page.getByRole('button', { name: /Play.*Level 4/ })).toBeVisible();
+});
+
 test('a picked-up ball lights up the tubes it can go to', async ({ page }) => {
 	await open(page, { unlocked: 18, saved: openSave([[0, 1], [1, 1, 1], [0, 0], []]) });
 	await page.getByRole('button', { name: /Level 18/ }).click();

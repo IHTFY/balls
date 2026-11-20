@@ -85,28 +85,94 @@
 	// from the home screen one extra history entry is kept; Back consumes it, the app
 	// takes one step back, and the entry is pushed again unless that step reached home.
 	const atHome = $derived(nav.screen === 'home' && !nav.dialog);
-	let guarded = false;
-	let skipPop = false;
-	$effect(() => {
-		if (!atHome && !guarded) {
-			history.pushState(null, '');
-			guarded = true;
-		} else if (atHome && guarded) {
-			// Reached home from inside the app: drop the entry so the next Back leaves.
-			guarded = false;
-			skipPop = true;
+	let dropping = $state(false);
+	/** @type {ReturnType<typeof setTimeout> | undefined} */
+	let dropTimer;
+	let entryIndex = currentEntryIndex();
+
+	function navApi() {
+		return /** @type {{ canGoBack?: boolean; currentEntry?: { index?: number } } | undefined} */ (
+			/** @type {{ navigation?: unknown }} */ (window).navigation
+		);
+	}
+
+	function currentEntryIndex() {
+		const index = navApi()?.currentEntry?.index;
+		return typeof index === 'number' && index >= 0 ? index : null;
+	}
+
+	function clearDropTimer() {
+		clearTimeout(dropTimer);
+		dropTimer = undefined;
+	}
+
+	function pushGuard() {
+		history.pushState({ guard: true }, '');
+		entryIndex = currentEntryIndex();
+	}
+
+	function dropGuard() {
+		const api = navApi();
+		const knowBack = typeof api?.canGoBack === 'boolean';
+		const hasBack = knowBack ? api.canGoBack : history.length > 1;
+		if (hasBack) {
+			dropping = true;
+			if (!knowBack) {
+				clearDropTimer();
+				// Without the Navigation API, history.length > 1 can include forward-only
+				// entries, so history.back() may never fire popstate.
+				dropTimer = setTimeout(() => {
+					dropTimer = undefined;
+					if (!dropping) return;
+					if (history.state?.guard) history.replaceState(null, '');
+					dropping = false;
+				}, 250);
+			}
 			history.back();
+		} else {
+			history.replaceState(null, '');
+		}
+	}
+
+	$effect(() => {
+		const home = atHome;
+		if (dropping) return;
+		const guarded = Boolean(history.state?.guard);
+		if (!home && !guarded) {
+			pushGuard();
+		} else if (home && guarded) {
+			// Drop the entry on returning home or after a reload so the next Back leaves.
+			dropGuard();
 		}
 	});
 
 	function onpopstate() {
-		if (skipPop) {
-			skipPop = false;
+		const nextIndex = currentEntryIndex();
+		const forward = entryIndex !== null && nextIndex !== null && nextIndex > entryIndex;
+		entryIndex = nextIndex;
+		if (dropping) {
+			clearDropTimer();
+			dropping = false;
+			return;
+		}
+		if (atHome) {
+			if (history.state?.guard) {
+				if (forward) history.forward();
+				else if (entryIndex !== null) dropGuard();
+			}
 			return;
 		}
 		back();
-		if (atHome) guarded = false;
-		else history.pushState(null, '');
+		if (!atHome) pushGuard();
+	}
+
+	/** @param {PageTransitionEvent} event */
+	function onpageshow(event) {
+		if (!event.persisted) return;
+		entryIndex = currentEntryIndex();
+		clearDropTimer();
+		dropping = false;
+		if (atHome && history.state?.guard) dropGuard();
 	}
 
 	function wakeAudio() {
@@ -115,7 +181,13 @@
 	}
 </script>
 
-<svelte:window onpointerdown={wakeAudio} onkeydown={wakeAudio} onpagehide={persist} {onpopstate} />
+<svelte:window
+	onpointerdown={wakeAudio}
+	onkeydown={wakeAudio}
+	onpagehide={persist}
+	{onpageshow}
+	{onpopstate}
+/>
 <svelte:document
 	onvisibilitychange={() => {
 		const hidden = document.visibilityState === 'hidden';
