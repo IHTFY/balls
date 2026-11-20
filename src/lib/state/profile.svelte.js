@@ -45,15 +45,16 @@ export function persist() {
 }
 
 // Another open copy of the game saved: take its profile, saved game included, so this copy's
-// next write builds on it instead of replacing it. Storage events can arrive late, after this
-// copy or another one has saved something newer, so an event whose value is no longer what
-// storage holds is skipped: the event for the newer save follows.
+// next write builds on it instead of replacing it. Storage events can arrive late, so the profile
+// adopted is the one storage holds now, not the event's. An event for an older value is ignored
+// once this copy has already read or written what storage holds.
 window.addEventListener('storage', (event) => {
 	if (event.key !== STORAGE_KEY || event.newValue === null) return;
 	try {
-		if (localStorage.getItem(STORAGE_KEY) !== event.newValue) return;
-		Object.assign(profile, sanitizeProfile(JSON.parse(event.newValue)));
-		stored = event.newValue;
+		const current = localStorage.getItem(STORAGE_KEY);
+		if (current === null || (current === stored && event.newValue !== current)) return;
+		Object.assign(profile, sanitizeProfile(JSON.parse(current)));
+		stored = current;
 	} catch {
 		/* An unreadable save from the other copy: keep this one's. */
 	}

@@ -71,6 +71,20 @@ test('another copy changing the profile and resetting it before either event arr
 	assert.equal(saved().settings.music, JSON.parse(base).settings.music);
 });
 
+test('a delayed event adopts a newer save made in another copy since, before this copy saves', () => {
+	persist();
+	const level2 = JSON.stringify({ ...JSON.parse(JSON.stringify(profile)), unlocked: 2 });
+	const level3 = JSON.stringify({ ...JSON.parse(level2), unlocked: 3 });
+	localStorage.setItem(STORAGE_KEY, level2);
+	localStorage.setItem(STORAGE_KEY, level3);
+	notify(level2);
+	profile.settings.sound = !profile.settings.sound;
+	persist();
+	assert.equal(saved().unlocked, 3);
+	notify(level3);
+	assert.equal(profile.unlocked, 3);
+});
+
 test('a removed or unreadable save leaves this copy as it is', () => {
 	profile.coins = 31;
 	persist();
