@@ -81,28 +81,21 @@ const load = () =>
 		document.head.appendChild(script);
 	}));
 
-/**
- * The ad-free tokens this browser holds, unchecked (the loader checks them), as one string that
- * changes when either one does, or null with none.
- */
-export function adFreeToken() {
-	let stored = '';
-	let cookie = null;
+/** Whether this browser holds an ad-free token, unchecked; the loader checks it. */
+export function mayBeAdFree() {
+	let found = false;
 	try {
-		stored = localStorage.getItem('ihtfy-ad-free') ?? '';
+		found = !!localStorage.getItem('ihtfy-ad-free');
 	} catch {
 		// Storage off: the cookie may still hold the token.
 	}
 	try {
-		cookie = document.cookie.match(/(?:^|;\s*)ihtfy-ad-free=([^;]*)/)?.[1] ?? null;
+		found ||= /(?:^|;\s*)ihtfy-ad-free=/.test(document.cookie);
 	} catch {
 		// A sandboxed frame may not read cookies.
 	}
-	return stored || cookie !== null ? `${stored}|${cookie ?? ''}` : null;
+	return found;
 }
-
-/** Whether this browser holds an ad-free token, unchecked; the loader checks it. */
-export const mayBeAdFree = () => adFreeToken() !== null;
 
 /**
  * Whether this visitor is a buyer once the shared loader has checked the token. It resolves

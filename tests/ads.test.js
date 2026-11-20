@@ -159,20 +159,6 @@ test('an ad-free cookie alone loads the loader at startup', async () => {
 	assert.equal(added.length, 1);
 });
 
-test('the token string changes when a cookie token joins a stored one', async () => {
-	const { adFreeToken } = await loadAds();
-	assert.equal(adFreeToken(), null);
-	cookie = 'ihtfy-ad-free=c.c.c';
-	const cookieOnly = adFreeToken();
-	assert.notEqual(cookieOnly, null);
-	cookie = '';
-	storage['ihtfy-ad-free'] = 'l.l.l';
-	const storedOnly = adFreeToken();
-	cookie = 'ihtfy-ad-free=c.c.c';
-	const both = adFreeToken();
-	assert.equal(new Set([cookieOnly, storedOnly, both]).size, 3);
-});
-
 test('a frame that cannot read cookies still starts', async () => {
 	cookieBlocked = true;
 	const { loadForBuyer } = await loadAds();

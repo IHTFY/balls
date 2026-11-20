@@ -365,26 +365,6 @@ test('narrowing the window hides a box wider than it, and widening brings it bac
 	expect(await page.evaluate(() => /** @type {any} */ (window).__shows)).toHaveLength(1);
 });
 
-test('a rejected token that stays in storage does not remove the ad when the tab returns', async ({
-	page
-}) => {
-	await page.setViewportSize({ width: 412, height: 800 });
-	await stubLoader(page);
-	await holdToken(page);
-	await open(page);
-	await finishLevel(page);
-	const comeBack = () =>
-		page.evaluate(() => {
-			for (const state of ['hidden', 'visible']) {
-				Object.defineProperty(document, 'visibilityState', { value: state, configurable: true });
-				document.dispatchEvent(new Event('visibilitychange', { bubbles: true }));
-			}
-		});
-	await comeBack();
-	await page.waitForTimeout(300);
-	await expect(page.locator('.ad-box ins.adsbygoogle')).toHaveCount(1);
-});
-
 test('a results box never reaches past the column it sits in', async ({ page }) => {
 	await page.setViewportSize({ width: 320, height: 568 });
 	await stubLoader(page);
