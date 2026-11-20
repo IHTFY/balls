@@ -21,11 +21,17 @@ export const SCREEN_AD_SIZES = ['300x250', '320x100', '320x50'];
 export const AD_ASIDE_EXTRA = 78;
 
 /**
- * The largest screen ad size whose aside fits in `space` px, or null when none does.
+ * The largest screen ad size whose aside fits in `space` px and `across` px, or null when none does.
  * @param {number} space the height from the end of the content to the bottom of the screen
+ * @param {number} [across] the width of the window
  */
-export function fitAdSize(space) {
-	return SCREEN_AD_SIZES.find((s) => AD_ASIDE_EXTRA + Number(s.split('x')[1]) <= space) ?? null;
+export function fitAdSize(space, across = Infinity) {
+	return (
+		SCREEN_AD_SIZES.find((s) => {
+			const [w, h] = s.split('x').map(Number);
+			return AD_ASIDE_EXTRA + h <= space && w <= across;
+		}) ?? null
+	);
 }
 
 /**
@@ -117,7 +123,8 @@ const asked = new Set();
 export const adAsked = (/** @type {string} */ key) => asked.has(key);
 
 /**
- * Fills `box` with an ad for the game over named `key`; offline or on failure it stays empty.
+ * Fills `box` with an ad for the game over named `key`; offline, on failure, or while it is
+ * hidden it stays empty.
  * Resolves to whether the loader was asked to place the ad.
  * @param {HTMLElement} box
  * @param {string} key
@@ -125,10 +132,11 @@ export const adAsked = (/** @type {string} */ key) => asked.has(key);
  */
 export function showAd(box, key) {
 	if (!navigator.onLine) return Promise.resolve(false);
-	// A box that left the page meanwhile would hold the key and block its replacement.
+	// A box that left the page meanwhile would hold the key and block its replacement, and one
+	// hidden meanwhile (a phone turned on its side) waits until it shows again.
 	return load().then(
 		() => {
-			if (!box.isConnected) return false;
+			if (!box.isConnected || box.checkVisibility?.() === false) return false;
 			asked.add(key);
 			/** @type {any} */ (window).ihtfyAds.show(box, key);
 			return true;

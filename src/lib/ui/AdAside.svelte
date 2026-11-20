@@ -4,11 +4,12 @@
 	/**
 	 * One ad under the content above it: the Privacy link first, then the label, and
 	 * the box last, so the box keeps over 50 px from every link (the loader adds
-	 * "Remove ads" beside Privacy). It takes the largest size that fits on the
-	 * screen below `above`, once, and none if no size fits. The box keeps its size
-	 * whether or not an ad fills it. When the window changes (a phone turned on its
-	 * side) and the box no longer fits in the first screen, the aside is hidden, with
-	 * its ad kept and no new one asked for, and it shows again where it fits.
+	 * "Remove ads" beside Privacy). It takes the largest size that fits on the screen
+	 * below `above`, and none if no size fits; a window that later has room for one
+	 * gets the first that fits. The box keeps its size whether or not an ad fills it.
+	 * When the window changes (a phone turned on its side) and the box no longer fits
+	 * in the first screen or the window's width, the aside is hidden, with its ad kept
+	 * and no new one asked for, and it shows again where it fits.
 	 * @type {{ above: HTMLElement | undefined, slot: string, adKey: string }}
 	 */
 	let { above, slot, adKey } = $props();
@@ -35,15 +36,23 @@
 	$effect(() => {
 		if (!above || measured) return;
 		measured = true;
-		size = fitAdSize(room());
+		size = fitAdSize(room(), innerWidth);
 	});
 
 	function onresize() {
-		if (size && above) fits = AD_ASIDE_EXTRA + Number(height) <= room();
+		if (!above) return;
+		// No size fit at first (a phone on its side): the first one that fits now is taken.
+		if (!size) size = fitAdSize(room(), innerWidth);
+		else fits = AD_ASIDE_EXTRA + Number(height) <= room() && Number(width) <= innerWidth;
 	}
 
+	// A hidden box asks nothing; it asks when the window lets it show again, unless it asked
+	// before: the ad it got stays in the box.
+	let requested = false;
 	$effect(() => {
-		if (box) showAd(box, adKey);
+		if (!box || !fits || requested) return;
+		requested = true;
+		showAd(box, adKey).then((placed) => (requested = placed));
 	});
 </script>
 

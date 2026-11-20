@@ -8,7 +8,18 @@ import { checkAdFree, mayBeAdFree, PLAY_AD_SIZES } from '../ads.js';
  * does not count, so no box is reserved while the check is pending.
  */
 export const purchase = $state({ buyer: mayBeAdFree() });
-if (purchase.buyer) checkAdFree().then((buyer) => (purchase.buyer = buyer));
+
+const verify = () => checkAdFree().then((buyer) => (purchase.buyer = buyer));
+if (purchase.buyer) verify();
+
+// A token bought in another tab arrives while this one is in the background, and a check that
+// could not finish offline gets another try when the connection returns.
+addEventListener('online', () => purchase.buyer && verify());
+addEventListener('visibilitychange', () => {
+	if (document.visibilityState !== 'visible' || purchase.buyer || !mayBeAdFree()) return;
+	purchase.buyer = true;
+	verify();
+});
 
 const queries = PLAY_AD_SIZES.map((p) => new MediaQuery(p.query));
 

@@ -334,6 +334,37 @@ test('turning a phone on its side hides a results box that no longer fits, and a
 	expect(await page.evaluate(() => /** @type {any} */ (window).__shows)).toHaveLength(1);
 });
 
+test('a phone that finishes a level on its side gets the box when it is turned upright', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 568, height: 320 });
+	await stubLoader(page);
+	await open(page);
+	await page.getByRole('button', { name: /Play.*Level 1/ }).click();
+	await waitForBoard(page);
+	await solveBoard(page);
+	await expect(results(page)).toBeVisible();
+	await expect(page.locator('.ad-box')).toHaveCount(0);
+	await page.setViewportSize({ width: 360, height: 640 });
+	await expect(page.locator('.ad-box ins.adsbygoogle')).toBeVisible();
+	expect((await measure(page)).bottom).toBeLessThanOrEqual(640);
+});
+
+test('narrowing the window hides a box wider than it, and widening brings it back', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 360, height: 800 });
+	await stubLoader(page);
+	await open(page);
+	await finishLevel(page);
+	expect((await measure(page)).size).toBe('300x250');
+	await page.setViewportSize({ width: 280, height: 800 });
+	await expect(page.locator('.ad')).toBeHidden();
+	await page.setViewportSize({ width: 360, height: 800 });
+	await expect(page.locator('.ad-box ins.adsbygoogle')).toBeVisible();
+	expect(await page.evaluate(() => /** @type {any} */ (window).__shows)).toHaveLength(1);
+});
+
 test('widening the results screen never shows two boxes', async ({ page }) => {
 	await page.setViewportSize({ width: 1280, height: 800 });
 	await stubLoader(page);

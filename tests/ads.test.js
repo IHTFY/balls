@@ -348,6 +348,25 @@ test('a screen ad takes the largest size that fits and none when nothing does', 
 	assert.equal(fitAdSize(-20), null);
 });
 
+test('a screen ad never takes a size wider than the window', async () => {
+	const { AD_ASIDE_EXTRA, fitAdSize } = await loadAds();
+	const tall = AD_ASIDE_EXTRA + 250;
+	assert.equal(fitAdSize(tall, 300), '300x250');
+	assert.equal(fitAdSize(tall, 299), null);
+	assert.equal(fitAdSize(tall, 320), '300x250');
+	assert.equal(fitAdSize(AD_ASIDE_EXTRA + 100, 319), null);
+});
+
+test('a box hidden while the loader arrives is not handed to it', async () => {
+	const { adAsked, showAd } = await loadAds();
+	const hidden = box();
+	/** @type {any} */ (hidden).checkVisibility = () => false;
+	/** @type {any} */ (globalThis).ihtfyAds = { show: () => assert.fail('asked for a hidden box') };
+	assert.equal(showAd(hidden, 'results/1') instanceof Promise, true);
+	await placeAll();
+	assert.equal(adAsked('results/1'), false);
+});
+
 test('adAsked is true once a box was handed to the loader under that key', async () => {
 	const { adAsked, showAd } = await loadAds();
 	assert.equal(adAsked('home/1'), false);
