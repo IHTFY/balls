@@ -81,21 +81,24 @@ const load = () =>
 		document.head.appendChild(script);
 	}));
 
-/** Whether this browser holds an ad-free token, unchecked; the loader checks it. */
-export function mayBeAdFree() {
-	let found = false;
+/** The ad-free token this browser holds, unchecked (the loader checks it), or null with none. */
+export function adFreeToken() {
 	try {
-		found = !!localStorage.getItem('ihtfy-ad-free');
+		const token = localStorage.getItem('ihtfy-ad-free');
+		if (token) return token;
 	} catch {
 		// Storage off: the cookie may still hold the token.
 	}
 	try {
-		found ||= /(?:^|;\s*)ihtfy-ad-free=/.test(document.cookie);
+		return document.cookie.match(/(?:^|;\s*)ihtfy-ad-free=([^;]*)/)?.[1] ?? null;
 	} catch {
 		// A sandboxed frame may not read cookies.
+		return null;
 	}
-	return found;
 }
+
+/** Whether this browser holds an ad-free token, unchecked; the loader checks it. */
+export const mayBeAdFree = () => adFreeToken() !== null;
 
 /**
  * Whether this visitor is a buyer once the shared loader has checked the token. It resolves

@@ -31,19 +31,26 @@
 		return innerHeight - (content.getBoundingClientRect().bottom + scrolled) - gap;
 	}
 
+	/** The width of the column the aside sits in, which a fixed-width box must not pass. */
+	function across() {
+		const column = /** @type {HTMLElement} */ (above).parentElement ?? document.body;
+		const style = getComputedStyle(column);
+		return column.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+	}
+
 	// Measured as soon as the content above is in the page; the size is chosen then and stays.
 	let measured = false;
 	$effect(() => {
 		if (!above || measured) return;
 		measured = true;
-		size = fitAdSize(room(), innerWidth);
+		size = fitAdSize(room(), across());
 	});
 
 	function onresize() {
 		if (!above) return;
 		// No size fit at first (a phone on its side): the first one that fits now is taken.
-		if (!size) size = fitAdSize(room(), innerWidth);
-		else fits = AD_ASIDE_EXTRA + Number(height) <= room() && Number(width) <= innerWidth;
+		if (!size) size = fitAdSize(room(), across());
+		else fits = AD_ASIDE_EXTRA + Number(height) <= room() && Number(width) <= across();
 	}
 
 	// A hidden box asks nothing; it asks when the window lets it show again, unless it asked
