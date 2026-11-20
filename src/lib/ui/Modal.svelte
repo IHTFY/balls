@@ -36,6 +36,30 @@
 				};
 	}
 
+	/** Keeps Tab and Shift+Tab cycling inside the dialog, since the page behind it is covered. */
+	/** @param {KeyboardEvent} e */
+	function onkeydown(e) {
+		if (e.key === 'Escape') return onclose?.();
+		if (e.key !== 'Tab') return;
+		const stops = /** @type {HTMLElement[]} */ ([
+			...panel.querySelectorAll('button, a[href], input, select, textarea, [tabindex]')
+		]).filter((el) => el.tabIndex >= 0 && !el.hasAttribute('disabled') && el.offsetParent);
+		const first = stops[0];
+		const last = stops.at(-1);
+		if (!first || !last) return e.preventDefault();
+		const active = document.activeElement;
+		if (!panel.contains(active)) {
+			e.preventDefault();
+			(e.shiftKey ? last : first).focus();
+		} else if (e.shiftKey && active === first) {
+			e.preventDefault();
+			last.focus();
+		} else if (!e.shiftKey && active === last) {
+			e.preventDefault();
+			first.focus();
+		}
+	}
+
 	$effect(() => {
 		const previous = /** @type {HTMLElement | null} */ (document.activeElement);
 		/** @type {HTMLElement | null} */ (panel.querySelector('.primary, button'))?.focus({
@@ -45,7 +69,7 @@
 	});
 </script>
 
-<svelte:window onkeydown={(e) => e.key === 'Escape' && onclose?.()} />
+<svelte:window {onkeydown} />
 
 <div class="backdrop" class:sheet transition:fade={{ duration: 180 }}>
 	<button class="dismiss" aria-label="Close" tabindex="-1" onclick={() => onclose?.()}></button>

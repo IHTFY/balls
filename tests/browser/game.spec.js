@@ -460,6 +460,33 @@ function openSave(board) {
 	return { ...mysterySave(tubes), mystery: false };
 }
 
+test('keyboard focus stays inside Settings, so Restart cannot be pressed behind it', async ({
+	page
+}) => {
+	await open(page);
+	await page.getByRole('button', { name: /Play.*Level 1/ }).click();
+	await waitForBoard(page);
+	await page.keyboard.press('1');
+	await page.keyboard.press('3');
+	await expect(page.getByText('Moves', { exact: true }).locator('..')).toContainText('1');
+
+	await page.getByRole('button', { name: 'Settings' }).focus();
+	await page.keyboard.press('Enter');
+	const dialog = page.getByRole('dialog', { name: 'Settings' });
+	await expect(dialog).toBeVisible();
+	const inDialog = () => dialog.evaluate((el) => el.contains(document.activeElement));
+	for (let i = 0; i < 4; i++) {
+		await page.keyboard.press('Shift+Tab');
+		expect(await inDialog(), `Shift+Tab press ${i + 1}`).toBe(true);
+	}
+	for (let i = 0; i < 40; i++) {
+		await page.keyboard.press('Tab');
+		expect(await inDialog(), `Tab press ${i + 1}`).toBe(true);
+	}
+	await page.keyboard.press('Enter');
+	await expect(page.getByText('Moves', { exact: true }).locator('..')).toContainText('1');
+});
+
 test('the back button steps back through the app instead of leaving it', async ({ page }) => {
 	// A page before the game, for Back to leave to.
 	await page.goto('/icons/icon-192.png');
