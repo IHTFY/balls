@@ -576,19 +576,22 @@ test('navigating right after a reload during a dialog still steps back to home, 
 	await expect(page).toHaveURL(/icon-192\.png$/);
 });
 
-test('forward from home skips past a leftover guard entry to reach a later page', async ({
+test('forward from home skips past a leftover guard entry to reach a later cross-origin page', async ({
 	page
 }) => {
+	await page.route('https://example.test/**', (route) =>
+		route.fulfill({ contentType: 'text/html', body: '<!doctype html><title>Later</title>' })
+	);
 	await page.goto('/icons/icon-192.png');
 	await open(page, { unlocked: 4 });
 	await page.getByRole('button', { name: 'Settings' }).click();
 	await expect(page.getByRole('dialog', { name: 'Settings' })).toBeVisible();
-	await page.goto('/icons/icon-512.png');
+	await page.goto('https://example.test/later');
 	await page.goBack();
 	await expect(page.getByRole('button', { name: /Play.*Level 4/ })).toBeVisible();
 	await page.waitForFunction(() => !history.state?.guard);
 	await page.goForward();
-	await expect(page).toHaveURL(/icon-512\.png$/);
+	await expect(page).toHaveURL('https://example.test/later');
 });
 
 test('a guard entry at the start of history with a later page clears instead of wedging Back', async ({

@@ -86,10 +86,12 @@
 	// takes one step back, and the entry is pushed again unless that step reached home.
 	const atHome = $derived(nav.screen === 'home' && !nav.dialog);
 	let dropping = $state(false);
+	/** @type {ReturnType<typeof setTimeout> | undefined} */
+	let dropTimer;
 	let entryIndex = currentEntryIndex();
 
 	function navApi() {
-		return /** @type {{ canGoBack?: boolean; canGoForward?: boolean; currentEntry?: { index?: number } } | undefined} */ (
+		return /** @type {{ canGoBack?: boolean; currentEntry?: { index?: number } } | undefined} */ (
 			/** @type {{ navigation?: unknown }} */ (window).navigation
 		);
 	}
@@ -99,6 +101,11 @@
 		return typeof index === 'number' && index >= 0 ? index : null;
 	}
 
+	function clearDropTimer() {
+		clearTimeout(dropTimer);
+		dropTimer = undefined;
+	}
+
 	function pushGuard() {
 		history.pushState({ guard: true }, '');
 		entryIndex = currentEntryIndex();
@@ -106,9 +113,21 @@
 
 	function dropGuard() {
 		const api = navApi();
-		const hasBack = typeof api?.canGoBack === 'boolean' ? api.canGoBack : history.length > 1;
+		const knowBack = typeof api?.canGoBack === 'boolean';
+		const hasBack = knowBack ? api.canGoBack : history.length > 1;
 		if (hasBack) {
 			dropping = true;
+			if (!knowBack) {
+				clearDropTimer();
+				// Without the Navigation API, history.length > 1 can include forward-only
+				// entries, so history.back() may never fire popstate.
+				dropTimer = setTimeout(() => {
+					dropTimer = undefined;
+					if (!dropping) return;
+					if (history.state?.guard) history.replaceState(null, '');
+					dropping = false;
+				}, 250);
+			}
 			history.back();
 		} else {
 			history.replaceState(null, '');
@@ -132,14 +151,14 @@
 		const forward = entryIndex !== null && nextIndex !== null && nextIndex > entryIndex;
 		entryIndex = nextIndex;
 		if (dropping) {
+			clearDropTimer();
 			dropping = false;
 			return;
 		}
 		if (atHome) {
-			const api = navApi();
-			if (history.state?.guard && api) {
-				if (forward && api.canGoForward) history.forward();
-				else dropGuard();
+			if (history.state?.guard) {
+				if (forward) history.forward();
+				else if (entryIndex !== null) dropGuard();
 			}
 			return;
 		}
@@ -151,6 +170,7 @@
 	function onpageshow(event) {
 		if (!event.persisted) return;
 		entryIndex = currentEntryIndex();
+		clearDropTimer();
 		dropping = false;
 		if (atHome && history.state?.guard) dropGuard();
 	}
