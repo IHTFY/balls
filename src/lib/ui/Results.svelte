@@ -3,7 +3,8 @@
 	import { backOut, elasticOut } from 'svelte/easing';
 	import Flame from '@lucide/svelte/icons/flame';
 	import Share2 from '@lucide/svelte/icons/share-2';
-	import { adForScreen, mayBeAdFree, playAdBeside } from '../ads.js';
+	import { adAsked, adForScreen } from '../ads.js';
+	import { isBuyer, playPlacement } from '../state/ads.svelte.js';
 	import { sound } from '../fx/audio.js';
 	import { clock } from '../game/format.js';
 	import { notify } from '../state/toasts.svelte.js';
@@ -21,11 +22,20 @@
 	const blitz = $derived(result.mode === 'blitz');
 	const rankUp = $derived(result.rankAfter.level > result.rankBefore.level);
 
-	// One ad per game over, under the buttons so it is in view with the result. A buyer gets no box at all, and neither does a window with the play ad beside the puzzle.
-	const ad = adForScreen('results', {
-		buyer: mayBeAdFree(),
-		played: true,
-		beside: playAdBeside()
+	// One ad per game over, under the buttons so it is in view with the result. A buyer gets no
+	// box, and neither does a window with the play ad beside the puzzle: the window's size
+	// decides between the two while the screen is open. A box that was asked for does not come
+	// back after it left, since the loader fills each game over's box only once.
+	const adKey = $derived(`${result.mode}/${result.ended}`);
+	const wanted = $derived(
+		adForScreen('results', { buyer: isBuyer(), played: true, beside: !!playPlacement() })
+	);
+	// Whether the box is up now: it stays while it is wanted, even once it was asked for, and
+	// comes back after it left only if it never got an ad.
+	let held = false;
+	const ad = $derived.by(() => {
+		held = !!wanted && (held || !adAsked(adKey));
+		return held ? wanted : null;
 	});
 	/** @type {HTMLDivElement | undefined} */
 	let actions = $state();
@@ -163,7 +173,7 @@
 			{/if}
 		</div>
 
-		{#if ad}<AdAside above={actions} slot={ad.slot} adKey="{result.mode}/{result.ended}" />{/if}
+		{#if ad}<AdAside above={actions} slot={ad.slot} {adKey} />{/if}
 
 		<div class="details">
 			{#if result.lines.length}

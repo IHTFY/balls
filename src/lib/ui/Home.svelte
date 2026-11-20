@@ -30,7 +30,8 @@
 		session,
 		startLevel
 	} from '../state/session.svelte.js';
-	import { adAsked, adForScreen, mayBeAdFree } from '../ads.js';
+	import { adAsked, adForScreen } from '../ads.js';
+	import { isBuyer } from '../state/ads.svelte.js';
 	import AdAside from './AdAside.svelte';
 	import CoinChip from './CoinChip.svelte';
 	import UpdatePrompt from './UpdatePrompt.svelte';
@@ -51,10 +52,9 @@
 	// button floats over the bottom or a dialog covers the screen, and not again
 	// for the same game once it was asked for (the loader fills one box per key).
 	const adKey = $derived(`home/${session.lastEnded}`);
-	const buyer = mayBeAdFree();
 	const ad = $derived(
 		adForScreen('home', {
-			buyer,
+			buyer: isBuyer(),
 			played: session.lastEnded > 0 && !adAsked(adKey),
 			covered: gift || !!nav.dialog
 		})

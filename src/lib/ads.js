@@ -21,11 +21,17 @@ export const SCREEN_AD_SIZES = ['300x250', '320x100', '320x50'];
 export const AD_ASIDE_EXTRA = 78;
 
 /**
- * The largest screen ad size whose aside fits in `space` px, or null when none does.
+ * The largest screen ad size whose aside fits in `space` px and `across` px, or null when none does.
  * @param {number} space the height from the end of the content to the bottom of the screen
+ * @param {number} [across] the width of the window
  */
-export function fitAdSize(space) {
-	return SCREEN_AD_SIZES.find((s) => AD_ASIDE_EXTRA + Number(s.split('x')[1]) <= space) ?? null;
+export function fitAdSize(space, across = Infinity) {
+	return (
+		SCREEN_AD_SIZES.find((s) => {
+			const [w, h] = s.split('x').map(Number);
+			return AD_ASIDE_EXTRA + h <= space && w <= across;
+		}) ?? null
+	);
 }
 
 /**
@@ -57,9 +63,6 @@ export const PLAY_AD_SIZES = [
 	{ query: '(min-width: 1566px) and (min-height: 700px)', size: '300x600' },
 	{ query: '(min-width: 1426px) and (min-height: 700px)', size: '160x600' }
 ];
-
-/** Whether the window is wide enough for the ad beside the puzzle. */
-export const playAdBeside = () => PLAY_AD_SIZES.some((p) => matchMedia(p.query).matches);
 
 /** @type {Promise<unknown> | null} */
 let loader = null;
@@ -94,6 +97,21 @@ export function mayBeAdFree() {
 	return found;
 }
 
+/**
+ * Whether this visitor is a buyer once the shared loader has checked the token. It resolves
+ * false at once with no token, and false when the loader says the token does not count. It
+ * resolves true for a valid token, and also when the check cannot finish (the loader will
+ * not load or throws), so the boxes stay collapsed rather than appear and stay empty.
+ * @returns {Promise<boolean>}
+ */
+export function checkAdFree() {
+	if (!mayBeAdFree()) return Promise.resolve(false);
+	return load()
+		.then(() => /** @type {any} */ (window).ihtfyAds.adFree())
+		.then((free) => free !== false)
+		.catch(() => true);
+}
+
 /** Loads the loader now if this browser holds an ad-free token, so it can hide every ad box. */
 export function loadForBuyer() {
 	if (mayBeAdFree()) load().catch(() => {});
@@ -101,11 +119,15 @@ export function loadForBuyer() {
 
 const asked = new Set();
 
+/** Forgets that `key` was asked for, once its box left the page without getting an ad. */
+export const releaseAd = (/** @type {string} */ key) => asked.delete(key);
+
 /** Whether an ad was already asked for under `key`, which the loader never fills a second box for. */
 export const adAsked = (/** @type {string} */ key) => asked.has(key);
 
 /**
- * Fills `box` with an ad for the game over named `key`; offline or on failure it stays empty.
+ * Fills `box` with an ad for the game over named `key`; offline, on failure, or while it is
+ * hidden it stays empty.
  * Resolves to whether the loader was asked to place the ad.
  * @param {HTMLElement} box
  * @param {string} key
@@ -113,10 +135,11 @@ export const adAsked = (/** @type {string} */ key) => asked.has(key);
  */
 export function showAd(box, key) {
 	if (!navigator.onLine) return Promise.resolve(false);
-	// A box that left the page meanwhile would hold the key and block its replacement.
+	// A box that left the page meanwhile would hold the key and block its replacement, and one
+	// hidden meanwhile (a phone turned on its side) waits until it shows again.
 	return load().then(
 		() => {
-			if (!box.isConnected) return false;
+			if (!box.isConnected || box.getClientRects?.().length === 0) return false;
 			asked.add(key);
 			/** @type {any} */ (window).ihtfyAds.show(box, key);
 			return true;
