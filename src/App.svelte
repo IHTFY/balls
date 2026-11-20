@@ -85,28 +85,40 @@
 	// from the home screen one extra history entry is kept; Back consumes it, the app
 	// takes one step back, and the entry is pushed again unless that step reached home.
 	const atHome = $derived(nav.screen === 'home' && !nav.dialog);
-	let guarded = false;
-	let skipPop = false;
-	$effect(() => {
-		if (!atHome && !guarded) {
-			history.pushState(null, '');
-			guarded = true;
-		} else if (atHome && guarded) {
-			// Reached home from inside the app: drop the entry so the next Back leaves.
-			guarded = false;
-			skipPop = true;
+	let dropping = $state(false);
+
+	function dropGuard() {
+		if (history.length > 1) {
+			dropping = true;
 			history.back();
+		} else {
+			history.replaceState(null, '');
+		}
+	}
+
+	$effect(() => {
+		const home = atHome;
+		if (dropping) return;
+		const guarded = Boolean(history.state?.guard);
+		if (!home && !guarded) {
+			history.pushState({ guard: true }, '');
+		} else if (home && guarded) {
+			// Drop the entry on returning home or after a reload so the next Back leaves.
+			dropGuard();
 		}
 	});
 
 	function onpopstate() {
-		if (skipPop) {
-			skipPop = false;
+		if (dropping) {
+			dropping = false;
+			return;
+		}
+		if (atHome) {
+			if (history.state?.guard) dropGuard();
 			return;
 		}
 		back();
-		if (atHome) guarded = false;
-		else history.pushState(null, '');
+		if (!atHome) history.pushState({ guard: true }, '');
 	}
 
 	function wakeAudio() {
