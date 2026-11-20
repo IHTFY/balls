@@ -48,18 +48,37 @@ test('an idle copy takes a profile reset made in another copy', () => {
 	assert.equal(saved().unlocked, 1);
 });
 
-test('a delayed event after another copy saved a newer profile adopts the newer one', () => {
-	const first = { ...JSON.parse(JSON.stringify(profile)), coins: 10 };
-	const second = { ...first, coins: 20 };
-	localStorage.setItem(STORAGE_KEY, JSON.stringify(second));
-	notify(JSON.stringify(first));
+test('delayed events for saves that were replaced since are skipped, the last one applies', () => {
+	const first = JSON.stringify({ ...JSON.parse(JSON.stringify(profile)), coins: 10 });
+	const second = JSON.stringify({ ...JSON.parse(first), coins: 20 });
+	localStorage.setItem(STORAGE_KEY, second);
+	notify(first);
+	assert.notEqual(profile.coins, 10);
+	notify(second);
 	assert.equal(profile.coins, 20);
+});
+
+test('another copy changing the profile and resetting it before either event arrives', () => {
+	persist();
+	const base = localStorage.getItem(STORAGE_KEY) ?? '';
+	profile.settings.music = !profile.settings.music;
+	const changed = JSON.stringify({ ...JSON.parse(base), coins: 200 });
+	localStorage.setItem(STORAGE_KEY, changed);
+	localStorage.setItem(STORAGE_KEY, base);
+	notify(changed);
+	notify(base);
+	persist();
+	assert.equal(saved().settings.music, JSON.parse(base).settings.music);
 });
 
 test('a removed or unreadable save leaves this copy as it is', () => {
 	profile.coins = 31;
 	persist();
+	const previous = localStorage.getItem(STORAGE_KEY);
+	localStorage.removeItem(STORAGE_KEY);
+	notify(previous);
 	notify(null);
+	assert.equal(profile.coins, 31);
 	localStorage.setItem(STORAGE_KEY, '{not json');
 	notify('{not json');
 	assert.equal(profile.coins, 31);
