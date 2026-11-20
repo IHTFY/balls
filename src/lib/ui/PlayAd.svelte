@@ -1,6 +1,6 @@
 <script>
-	import { MediaQuery } from 'svelte/reactivity';
-	import { PLAY_AD_SIZES, PLAY_AD_SLOT, mayBeAdFree, playAdKey, showPlayAd } from '../ads.js';
+	import { PLAY_AD_SLOT, playAdKey, showPlayAd } from '../ads.js';
+	import { playPlacement, purchase } from '../state/ads.svelte.js';
 	import { session } from '../state/session.svelte.js';
 
 	/**
@@ -11,10 +11,8 @@
 	 */
 	let { children } = $props();
 
-	// A buyer gets no box at all, even before the loader has checked the token.
-	const buyer = mayBeAdFree();
-	const queries = PLAY_AD_SIZES.map((p) => new MediaQuery(p.query));
-	const placement = $derived(buyer ? undefined : PLAY_AD_SIZES.find((_, i) => queries[i].current));
+	// A buyer gets no box at all, nor does anyone while the loader is still checking a token.
+	const placement = $derived(purchase.buyer ? undefined : playPlacement());
 	const [width, height] = $derived(placement?.size.split('x') ?? []);
 
 	let key = $state('');

@@ -4,7 +4,8 @@ import { open, results, solveBoard, waitForBoard } from './helpers.js';
 // A stand-in for the shared loader: it fills the box with an ad-sized element and
 // adds the "Remove ads" link beside Privacy as the real one does, and nothing
 // reaches the network.
-const LOADER = `window.ihtfyAds = { show(box) {
+const loader = (adFree = 'async () => false') => `window.ihtfyAds = { show(box) {
+	(window.__shows ??= []).push(box.dataset.adSize);
 	const aside = box.closest('aside');
 	const privacy = [...aside.querySelectorAll('a[href]')].find((a) => a.pathname === '/privacy/');
 	if (privacy && !aside.textContent.includes('Remove ads')) {
@@ -21,17 +22,20 @@ const LOADER = `window.ihtfyAds = { show(box) {
 	ins.className = 'adsbygoogle';
 	ins.style.cssText = 'display:inline-block;width:' + w + 'px;height:' + h + 'px';
 	box.append(ins);
-}, adFree: async () => false };`;
+}, adFree: ${adFree} };`;
 
 test.use({ serviceWorkers: 'block' });
 
-/** @param {import('@playwright/test').Page} page */
-async function stubLoader(page) {
+/**
+ * @param {import('@playwright/test').Page} page
+ * @param {string} [adFree] the loader's purchase check, as source: a stand-in for the real one
+ */
+async function stubLoader(page, adFree) {
 	/** @type {string[]} */
 	const requested = [];
 	await page.route('https://ihtfy.com/ads/v1.js', (route) => {
 		requested.push(route.request().url());
-		return route.fulfill({ contentType: 'text/javascript', body: LOADER });
+		return route.fulfill({ contentType: 'text/javascript', body: loader(adFree) });
 	});
 	return requested;
 }
@@ -245,7 +249,7 @@ test('no screen but the results screen and the home screen ever holds a box', as
 
 test('a buyer gets no box and no reserved space', async ({ page }) => {
 	await page.setViewportSize({ width: 412, height: 800 });
-	await stubLoader(page);
+	await stubLoader(page, 'async () => true');
 	await page.addInitScript(() => localStorage.setItem('ihtfy-ad-free', 'x.y.z'));
 	await open(page);
 	await page.getByRole('button', { name: /Play.*Level 1/ }).click();
@@ -254,4 +258,95 @@ test('a buyer gets no box and no reserved space', async ({ page }) => {
 	await expect(results(page)).toBeVisible();
 	await expect(page.locator('aside, .ad-box')).toHaveCount(0);
 	await expect(page.getByText('Advertisements')).toHaveCount(0);
+});
+
+/** A purchase check that stays pending until the test settles it. */
+const PENDING = `() => new Promise((resolve) => { window.__settle = resolve; })`;
+
+/** @param {import('@playwright/test').Page} page */
+const holdToken = (page) =>
+	page.addInitScript(() => localStorage.setItem('ihtfy-ad-free', 'x.y.z'));
+
+/** @param {import('@playwright/test').Page} page @param {boolean} free */
+const settle = (page, free) =>
+	page.evaluate((value) => /** @type {any} */ (window).__settle(value), free);
+
+test('a token that fails the purchase check gets its results box once the check ends', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 412, height: 800 });
+	await stubLoader(page, PENDING);
+	await holdToken(page);
+	await open(page);
+	await page.getByRole('button', { name: /Play.*Level 1/ }).click();
+	await waitForBoard(page);
+	await solveBoard(page);
+	await expect(results(page)).toBeVisible();
+	// While the check is pending the space stays collapsed.
+	await expect(page.locator('aside, .ad-box')).toHaveCount(0);
+	await settle(page, false);
+	await expect(page.locator('.ad-box ins.adsbygoogle')).toHaveCount(1);
+	expect((await measure(page)).bottom).toBeLessThanOrEqual(800);
+});
+
+test('a token that passes the purchase check keeps every box away', async ({ page }) => {
+	await page.setViewportSize({ width: 412, height: 800 });
+	await stubLoader(page, PENDING);
+	await holdToken(page);
+	await open(page);
+	await page.getByRole('button', { name: /Play.*Level 1/ }).click();
+	await waitForBoard(page);
+	await solveBoard(page);
+	await expect(results(page)).toBeVisible();
+	await settle(page, true);
+	await page.waitForTimeout(300);
+	await expect(page.locator('aside, .ad-box')).toHaveCount(0);
+});
+
+test('a token that fails the purchase check gets the ad beside the puzzle on a wide screen', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 1600, height: 900 });
+	await stubLoader(page, PENDING);
+	await holdToken(page);
+	await open(page);
+	await page.getByRole('button', { name: /Play.*Level 1/ }).click();
+	await waitForBoard(page);
+	await expect(page.locator('aside, .ad-box')).toHaveCount(0);
+	await settle(page, false);
+	await expect(page.locator('.ad-box ins.adsbygoogle')).toHaveCount(1);
+	expect(await page.locator('.ad-box').getAttribute('data-ad-size')).toBe('300x600');
+});
+
+test('turning a phone on its side hides a results box that no longer fits, and asks for no new one', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 360, height: 568 });
+	await stubLoader(page);
+	await open(page);
+	await finishLevel(page);
+	expect((await measure(page)).size).toBe('320x100');
+	await page.setViewportSize({ width: 568, height: 360 });
+	await expect(page.locator('.ad')).toBeHidden();
+	await expect(page.getByRole('button', { name: 'Next ›' })).toBeVisible();
+	await page.setViewportSize({ width: 360, height: 568 });
+	await expect(page.locator('.ad-box ins.adsbygoogle')).toBeVisible();
+	expect(await page.evaluate(() => /** @type {any} */ (window).__shows)).toHaveLength(1);
+});
+
+test('widening the results screen never shows two boxes', async ({ page }) => {
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await stubLoader(page);
+	await open(page);
+	await finishLevel(page);
+	expect((await measure(page)).size).toBe('300x250');
+	const visibleBoxes = () =>
+		page.locator('.ad-box').evaluateAll((els) => els.filter((el) => el.getClientRects().length));
+	await page.setViewportSize({ width: 1600, height: 800 });
+	await expect(page.locator('.ad-box[data-ad-size="300x600"] ins.adsbygoogle')).toHaveCount(1);
+	expect(await visibleBoxes()).toHaveLength(1);
+	await expect(results(page).locator('.ad-box')).toHaveCount(0);
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await expect(page.locator('.ad-box[data-ad-size="300x600"]')).toHaveCount(0);
+	expect(await visibleBoxes()).toHaveLength(0);
 });

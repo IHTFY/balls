@@ -1,12 +1,14 @@
 <script>
-	import { fitAdSize, showAd } from '../ads.js';
+	import { AD_ASIDE_EXTRA, fitAdSize, showAd } from '../ads.js';
 
 	/**
 	 * One ad under the content above it: the Privacy link first, then the label, and
 	 * the box last, so the box keeps over 50 px from every link (the loader adds
 	 * "Remove ads" beside Privacy). It takes the largest size that fits on the
 	 * screen below `above`, once, and none if no size fits. The box keeps its size
-	 * whether or not an ad fills it.
+	 * whether or not an ad fills it. When the window changes (a phone turned on its
+	 * side) and the box no longer fits in the first screen, the aside is hidden, with
+	 * its ad kept and no new one asked for, and it shows again where it fits.
 	 * @type {{ above: HTMLElement | undefined, slot: string, adKey: string }}
 	 */
 	let { above, slot, adKey } = $props();
@@ -16,23 +18,39 @@
 	let box = $state();
 	const [width, height] = $derived(size?.split('x') ?? []);
 
-	// Measured once, as soon as the content above is in the page.
+	let fits = $state(true);
+
+	/** The height from the end of the content to the bottom of the screen, as if scrolled to the top. */
+	function room() {
+		const content = /** @type {HTMLElement} */ (above);
+		let scrolled = 0;
+		for (let el = content.parentElement; el; el = el.parentElement) scrolled += el.scrollTop;
+		// The grid gap between the content and the aside takes room too.
+		const gap = parseFloat(getComputedStyle(content.parentElement ?? content).rowGap) || 0;
+		return innerHeight - (content.getBoundingClientRect().bottom + scrolled) - gap;
+	}
+
+	// Measured as soon as the content above is in the page; the size is chosen then and stays.
 	let measured = false;
 	$effect(() => {
 		if (!above || measured) return;
 		measured = true;
-		// The grid gap between the content and the aside takes room too.
-		const gap = parseFloat(getComputedStyle(above.parentElement ?? above).rowGap) || 0;
-		size = fitAdSize(innerHeight - above.getBoundingClientRect().bottom - gap);
+		size = fitAdSize(room());
 	});
+
+	function onresize() {
+		if (size && above) fits = AD_ASIDE_EXTRA + Number(height) <= room();
+	}
 
 	$effect(() => {
 		if (box) showAd(box, adKey);
 	});
 </script>
 
+<svelte:window {onresize} />
+
 {#if size}
-	<aside class="ad">
+	<aside class="ad" class:away={!fits}>
 		<a href="https://ihtfy.com/privacy/" target="_blank" rel="noopener">Privacy</a>
 		<small>Advertisements</small>
 		<div
@@ -47,6 +65,9 @@
 {/if}
 
 <style>
+	.ad.away {
+		display: none;
+	}
 	.ad {
 		display: grid;
 		justify-items: center;

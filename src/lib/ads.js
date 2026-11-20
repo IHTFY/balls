@@ -58,9 +58,6 @@ export const PLAY_AD_SIZES = [
 	{ query: '(min-width: 1426px) and (min-height: 700px)', size: '160x600' }
 ];
 
-/** Whether the window is wide enough for the ad beside the puzzle. */
-export const playAdBeside = () => PLAY_AD_SIZES.some((p) => matchMedia(p.query).matches);
-
 /** @type {Promise<unknown> | null} */
 let loader = null;
 
@@ -92,6 +89,21 @@ export function mayBeAdFree() {
 		// A sandboxed frame may not read cookies.
 	}
 	return found;
+}
+
+/**
+ * Whether this visitor is a buyer once the shared loader has checked the token. It resolves
+ * false at once with no token, and false when the loader says the token does not count. It
+ * resolves true for a valid token, and also when the check cannot finish (the loader will
+ * not load or throws), so the boxes stay collapsed rather than appear and stay empty.
+ * @returns {Promise<boolean>}
+ */
+export function checkAdFree() {
+	if (!mayBeAdFree()) return Promise.resolve(false);
+	return load()
+		.then(() => /** @type {any} */ (window).ihtfyAds.adFree())
+		.then((free) => free !== false)
+		.catch(() => true);
 }
 
 /** Loads the loader now if this browser holds an ad-free token, so it can hide every ad box. */

@@ -356,3 +356,51 @@ test('adAsked is true once a box was handed to the loader under that key', async
 	await placeAll();
 	assert.equal(adAsked('home/1'), true);
 });
+
+/** Lets the stored token's check run: the loader arrives and answers `adFree`. */
+const answerCheck = async (/** @type {() => Promise<unknown>} */ adFree) => {
+	Object.assign(/** @type {any} */ (globalThis).ihtfyAds, { adFree });
+	added.at(-1)?.dispatchEvent(new Event('load'));
+	await tick();
+};
+
+test('with no token the purchase check ends at once and loads nothing', async () => {
+	const { checkAdFree } = await loadAds();
+	assert.equal(await checkAdFree(), false);
+	assert.equal(added.length, 0);
+});
+
+test('a token stays a buyer until the shared check ends, then follows its answer', async () => {
+	storage['ihtfy-ad-free'] = 'x.y.z';
+	const { checkAdFree } = await loadAds();
+	let settled = 'pending';
+	/** @type {(free: boolean) => void} */
+	let answer = () => {};
+	const check = checkAdFree().then((free) => (settled = free ? 'buyer' : 'not a buyer'));
+	await answerCheck(() => new Promise((resolve) => (answer = resolve)));
+	assert.equal(settled, 'pending');
+	answer(false);
+	await check;
+	assert.equal(settled, 'not a buyer');
+});
+
+test('a token the shared check accepts stays a buyer', async () => {
+	storage['ihtfy-ad-free'] = 'x.y.z';
+	const { checkAdFree } = await loadAds();
+	const check = checkAdFree();
+	await answerCheck(async () => true);
+	assert.equal(await check, true);
+});
+
+test('a purchase check that cannot finish keeps the boxes collapsed', async () => {
+	storage['ihtfy-ad-free'] = 'x.y.z';
+	const { checkAdFree } = await loadAds();
+	const failedLoad = checkAdFree();
+	added[0].dispatchEvent(new Event('error'));
+	assert.equal(await failedLoad, true);
+	const failedCheck = checkAdFree();
+	await answerCheck(async () => {
+		throw new Error('The check broke');
+	});
+	assert.equal(await failedCheck, true);
+});
