@@ -4,7 +4,7 @@
 	import Flame from '@lucide/svelte/icons/flame';
 	import Share2 from '@lucide/svelte/icons/share-2';
 	import { adAsked, adForScreen } from '../ads.js';
-	import { playPlacement, purchase } from '../state/ads.svelte.js';
+	import { isBuyer, playPlacement } from '../state/ads.svelte.js';
 	import { sound } from '../fx/audio.js';
 	import { clock } from '../game/format.js';
 	import { notify } from '../state/toasts.svelte.js';
@@ -27,11 +27,15 @@
 	// decides between the two while the screen is open. A box that was asked for does not come
 	// back after it left, since the loader fills each game over's box only once.
 	const adKey = $derived(`${result.mode}/${result.ended}`);
-	const ad = $derived(
-		adAsked(adKey)
-			? null
-			: adForScreen('results', { buyer: purchase.buyer, played: true, beside: !!playPlacement() })
-	);
+	const ad = $derived.by(() => {
+		// Read first, so a change of window or purchase re-decides even after a box was asked for.
+		const placed = adForScreen('results', {
+			buyer: isBuyer(),
+			played: true,
+			beside: !!playPlacement()
+		});
+		return adAsked(adKey) ? null : placed;
+	});
 	/** @type {HTMLDivElement | undefined} */
 	let actions = $state();
 	/** @type {HTMLElement | undefined} */

@@ -1,5 +1,5 @@
 <script>
-	import { AD_ASIDE_EXTRA, fitAdSize, showAd } from '../ads.js';
+	import { AD_ASIDE_EXTRA, fitAdSize, releaseAd, showAd } from '../ads.js';
 
 	/**
 	 * One ad under the content above it: the Privacy link first, then the label, and
@@ -60,6 +60,16 @@
 		if (!box || !fits || requested) return;
 		requested = true;
 		showAd(box, adKey).then((placed) => (requested = placed));
+	});
+
+	// A box that leaves the page empty (the window widened into the side rail while the ad was
+	// loading) lets its key go, so the same screen can ask again when it comes back.
+	$effect(() => {
+		const el = box;
+		const key = adKey;
+		return () => {
+			if (el && !el.hasChildNodes()) releaseAd(key);
+		};
 	});
 </script>
 

@@ -1,6 +1,6 @@
 <script>
 	import { PLAY_AD_SLOT, playAdKey, showPlayAd } from '../ads.js';
-	import { playPlacement, purchase } from '../state/ads.svelte.js';
+	import { isBuyer, playPlacement } from '../state/ads.svelte.js';
 	import { session } from '../state/session.svelte.js';
 
 	/**
@@ -12,7 +12,7 @@
 	let { children } = $props();
 
 	// A buyer gets no box at all, nor does anyone while the loader is still checking a token.
-	const placement = $derived(purchase.buyer ? undefined : playPlacement());
+	const placement = $derived(isBuyer() ? undefined : playPlacement());
 	const [width, height] = $derived(placement?.size.split('x') ?? []);
 
 	let key = $state('');

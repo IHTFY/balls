@@ -119,6 +119,9 @@ export function loadForBuyer() {
 
 const asked = new Set();
 
+/** Forgets that `key` was asked for, once its box left the page without getting an ad. */
+export const releaseAd = (/** @type {string} */ key) => asked.delete(key);
+
 /** Whether an ad was already asked for under `key`, which the loader never fills a second box for. */
 export const adAsked = (/** @type {string} */ key) => asked.has(key);
 

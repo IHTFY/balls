@@ -382,6 +382,63 @@ test('a results box never reaches past the column it sits in', async ({ page }) 
 	}
 });
 
+test('a token bought in another tab keeps an offline results screen free of boxes', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 412, height: 800 });
+	await stubLoader(page);
+	await open(page);
+	await page.getByRole('button', { name: /Play.*Level 1/ }).click();
+	await waitForBoard(page);
+	await page.evaluate(() => localStorage.setItem('ihtfy-ad-free', 'x.y.z'));
+	await page.context().setOffline(true);
+	await solveBoard(page);
+	await expect(results(page)).toBeVisible();
+	await page.waitForTimeout(300);
+	await expect(page.locator('aside, .ad-box')).toHaveCount(0);
+});
+
+test('an ad that was still loading when the window widened is asked for again after it narrows', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 1280, height: 800 });
+	// A loader that places its ads only when told to, and drops a box that left the page.
+	await page.route('https://ihtfy.com/ads/v1.js', (route) =>
+		route.fulfill({
+			contentType: 'text/javascript',
+			body: `window.__waiting = [];
+window.ihtfyAds = {
+	show(box) { window.__waiting.push(box); },
+	adFree: async () => false
+};
+window.__place = () => {
+	for (const box of window.__waiting.splice(0)) {
+		if (box.isConnected) box.append(Object.assign(document.createElement('ins'), { className: 'adsbygoogle' }));
+	}
+};`
+		})
+	);
+	await open(page);
+	await page.getByRole('button', { name: /Play.*Level 1/ }).click();
+	await waitForBoard(page);
+	await solveBoard(page);
+	await expect(results(page)).toBeVisible();
+	await expect(results(page).locator('.ad-box')).toHaveCount(1);
+	await expect
+		.poll(() => page.evaluate(() => /** @type {any} */ (window).__waiting?.length))
+		.toBe(1);
+	await page.setViewportSize({ width: 1600, height: 800 });
+	await expect(results(page).locator('.ad-box')).toHaveCount(0);
+	await page.evaluate(() => /** @type {any} */ (window).__place());
+	await page.setViewportSize({ width: 1280, height: 800 });
+	await expect(results(page).locator('.ad-box')).toHaveCount(1);
+	await expect
+		.poll(() => page.evaluate(() => /** @type {any} */ (window).__waiting.length))
+		.toBe(1);
+	await page.evaluate(() => /** @type {any} */ (window).__place());
+	await expect(page.locator('.ad-box ins.adsbygoogle')).toHaveCount(1);
+});
+
 test('widening the results screen never shows two boxes', async ({ page }) => {
 	await page.setViewportSize({ width: 1280, height: 800 });
 	await stubLoader(page);

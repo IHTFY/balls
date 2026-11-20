@@ -3,13 +3,17 @@
 import { MediaQuery } from 'svelte/reactivity';
 import { checkAdFree, mayBeAdFree, PLAY_AD_SIZES } from '../ads.js';
 
-/**
- * `buyer` holds for anyone with an ad-free token until the shared loader's check says the token
- * does not count, so no box is reserved while the check is pending.
- */
-export const purchase = $state({ buyer: mayBeAdFree() });
+/** Whether the shared loader's check said the stored token does not count. */
+const verdict = $state({ rejected: false });
 
-if (purchase.buyer) checkAdFree().then((buyer) => (purchase.buyer = buyer));
+if (mayBeAdFree()) checkAdFree().then((buyer) => (verdict.rejected = !buyer));
+
+/**
+ * Whether this visitor counts as an ad-free buyer: anyone holding a token, read at each screen so
+ * a purchase made in another tab counts, until the shared loader's check says the token does not
+ * count. No box is reserved while that check is pending.
+ */
+export const isBuyer = () => mayBeAdFree() && !verdict.rejected;
 
 const queries = PLAY_AD_SIZES.map((p) => new MediaQuery(p.query));
 

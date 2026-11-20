@@ -31,7 +31,7 @@
 		startLevel
 	} from '../state/session.svelte.js';
 	import { adAsked, adForScreen } from '../ads.js';
-	import { purchase } from '../state/ads.svelte.js';
+	import { isBuyer } from '../state/ads.svelte.js';
 	import AdAside from './AdAside.svelte';
 	import CoinChip from './CoinChip.svelte';
 	import UpdatePrompt from './UpdatePrompt.svelte';
@@ -54,7 +54,7 @@
 	const adKey = $derived(`home/${session.lastEnded}`);
 	const ad = $derived(
 		adForScreen('home', {
-			buyer: purchase.buyer,
+			buyer: isBuyer(),
 			played: session.lastEnded > 0 && !adAsked(adKey),
 			covered: gift || !!nav.dialog
 		})
