@@ -36,28 +36,25 @@
 				};
 	}
 
-	/** Keeps Tab and Shift+Tab cycling inside the dialog, since the page behind it is covered. */
-	/** @param {KeyboardEvent} e */
+	/**
+	 * Keeps Tab and Shift+Tab moving among the dialog's own controls, since the page behind it is
+	 * covered. Focus is moved here rather than left to the browser, which may skip buttons.
+	 * @param {KeyboardEvent} e
+	 */
 	function onkeydown(e) {
 		if (e.key === 'Escape') return onclose?.();
-		if (e.key !== 'Tab') return;
+		// A dialog that is fading out is inert, and the one that replaced it owns the keys.
+		if (e.key !== 'Tab' || panel.closest('[inert]')) return;
 		const stops = /** @type {HTMLElement[]} */ ([
 			...panel.querySelectorAll('button, a[href], input, select, textarea, [tabindex]')
 		]).filter((el) => el.tabIndex >= 0 && !el.hasAttribute('disabled') && el.offsetParent);
-		const first = stops[0];
-		const last = stops.at(-1);
-		if (!first || !last) return e.preventDefault();
-		const active = document.activeElement;
-		if (!panel.contains(active)) {
-			e.preventDefault();
-			(e.shiftKey ? last : first).focus();
-		} else if (e.shiftKey && active === first) {
-			e.preventDefault();
-			last.focus();
-		} else if (!e.shiftKey && active === last) {
-			e.preventDefault();
-			first.focus();
-		}
+		e.preventDefault();
+		if (!stops.length) return;
+		const at = stops.findIndex((el) => el === document.activeElement);
+		const step = e.shiftKey ? -1 : 1;
+		const next =
+			at < 0 ? (e.shiftKey ? stops.length - 1 : 0) : (at + step + stops.length) % stops.length;
+		stops[next].focus();
 	}
 
 	$effect(() => {
