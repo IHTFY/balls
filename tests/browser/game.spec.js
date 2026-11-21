@@ -727,22 +727,35 @@ test('the page lets people zoom', async ({ page }) => {
 const zoom = (/** @type {import('@playwright/test').Page} */ page) =>
 	page.evaluate(() => /** @type {VisualViewport} */ (visualViewport).scale);
 
+/** The zoomed-in part of the page: where its corner is and how much of the page it shows. */
+const view = (/** @type {import('@playwright/test').Page} */ page) =>
+	page.evaluate(() => {
+		const { offsetLeft, offsetTop, width, height } = /** @type {VisualViewport} */ (visualViewport);
+		return { left: offsetLeft, top: offsetTop, width, height };
+	});
+
 /**
- * Two fingers on the middle of the element, moved apart or together.
+ * Two fingers on the middle of the element, moved apart or together. Touch points are measured
+ * from the corner of the zoomed view, and both stay inside it.
  * @param {import('@playwright/test').Page} page
  * @param {import('@playwright/test').Locator} locator
  * @param {'apart' | 'together'} way
  */
 async function pinch(page, locator, way) {
-	const session = await page.context().newCDPSession(page);
 	const box = await boxOf(locator);
-	const x = box.x + box.width / 2;
-	const y = box.y + box.height / 2;
+	const seen = await view(page);
+	const x = box.x + box.width / 2 - seen.left;
+	const y = box.y + box.height / 2 - seen.top;
+	const wide = Math.min(100, x - 4, seen.width - x - 4);
+	expect(wide, 'both fingers fit in the view').toBeGreaterThan(40);
+	expect(y, 'the fingers are in the view').toBeGreaterThan(0);
+	expect(y).toBeLessThan(seen.height);
 	const fingers = (/** @type {number} */ gap) => [
 		{ x: x - gap, y, id: 0 },
 		{ x: x + gap, y, id: 1 }
 	];
-	const [from, to] = way === 'apart' ? [20, 100] : [100, 20];
+	const [from, to] = way === 'apart' ? [wide / 5, wide] : [wide, wide / 5];
+	const session = await page.context().newCDPSession(page);
 	await session.send('Input.dispatchTouchEvent', {
 		type: 'touchStart',
 		touchPoints: fingers(from)
@@ -773,9 +786,20 @@ test('a pinch or a double tap on the board does not zoom it, and a pinch on the 
 
 	// A double tap picks the top ball up and puts it back, at the same size.
 	const before = await readBoard(page);
-	const first = await boxOf(page.locator('[data-tube="0"]'));
+	const tube = page.locator('[data-tube="0"]');
+	await tube.evaluate((el) => {
+		const picked = /** @type {(string | null)[]} */ ([]);
+		new MutationObserver(() => picked.push(el.getAttribute('aria-pressed'))).observe(el, {
+			attributeFilter: ['aria-pressed']
+		});
+		Object.assign(window, { picked });
+	});
+	const first = await boxOf(tube);
 	await page.touchscreen.tap(first.x + first.width / 2, first.y + first.height / 2);
 	await page.touchscreen.tap(first.x + first.width / 2, first.y + first.height / 2);
+	await expect
+		.poll(() => page.evaluate(() => /** @type {any} */ (window).picked))
+		.toEqual(['true', 'false']);
 	await page.waitForTimeout(500);
 	expect(await zoom(page)).toBe(1);
 	expect(await readBoard(page)).toEqual(before);
@@ -789,13 +813,6 @@ test('a pinch or a double tap on the board does not zoom it, and a pinch on the 
 	await solveBoard(page);
 	await expect(results(page)).toBeVisible();
 });
-
-/** The zoomed-in part of the page: where its corner is and how much of the page it shows. */
-const view = (/** @type {import('@playwright/test').Page} */ page) =>
-	page.evaluate(() => {
-		const { offsetLeft, offsetTop, width, height } = /** @type {VisualViewport} */ (visualViewport);
-		return { left: offsetLeft, top: offsetTop, width, height };
-	});
 
 /**
  * One finger put down at a point of the zoomed view, measured from its corner, and dragged up or
@@ -861,7 +878,7 @@ test('zoomed in on a dialog, one finger dragged down it moves the view up the pa
 		await page.waitForTimeout(100);
 		expect(await boxOf(title)).toEqual(before);
 	}).toPass();
-	await pinch(page, title, 'apart');
+	await pinch(page, page.getByRole('dialog'), 'apart');
 	expect(await zoom(page)).toBeGreaterThan(1.5);
 
 	const zoomed = await view(page);

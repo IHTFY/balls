@@ -587,6 +587,13 @@
 		margin: 4px 0;
 		touch-action: pan-x pan-y;
 	}
+	/* Safari on iPhone and iPad zooms on a double tap unless the value is manipulation, so quick
+	   taps on the tubes keep that value there, and a pinch on the board still zooms. */
+	@supports (-webkit-touch-callout: none) {
+		.board-wrap {
+			touch-action: manipulation;
+		}
+	}
 	.loading {
 		position: absolute;
 		inset: 0;
