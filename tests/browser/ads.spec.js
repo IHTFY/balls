@@ -398,6 +398,107 @@ test('a token bought in another tab keeps an offline results screen free of boxe
 	await expect(page.locator('aside, .ad-box')).toHaveCount(0);
 });
 
+/** A purchase check that counts its runs and accepts only the token `good.y.z`, stored or in a cookie. */
+const CHECKS = `async () => {
+	window.__checks = (window.__checks ?? 0) + 1;
+	return localStorage.getItem('ihtfy-ad-free') === 'good.y.z' ||
+		document.cookie.includes('ihtfy-ad-free=good.y.z');
+}`;
+
+/** A purchase arriving from another tab: the site-wide cookie, beside whatever is stored here. */
+const buyElsewhere = (/** @type {import('@playwright/test').Page} */ page) =>
+	page.evaluate(() => {
+		document.cookie = 'ihtfy-ad-free=good.y.z';
+	});
+
+/** The tab coming back into view, as far as the page can tell. */
+const returnToTab = (/** @type {import('@playwright/test').Page} */ page) =>
+	page.evaluate(() => {
+		document.dispatchEvent(new Event('visibilitychange'));
+	});
+
+const comeOnline = (/** @type {import('@playwright/test').Page} */ page) =>
+	page.evaluate(() => {
+		dispatchEvent(new Event('online'));
+	});
+
+test('a purchase in another tab takes the box away when the tab returns, beside a rejected token', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 412, height: 800 });
+	await stubLoader(page, CHECKS);
+	await holdToken(page);
+	await open(page);
+	// The stored token does not count, so the results screen has its ad.
+	await finishLevel(page);
+	await buyElsewhere(page);
+	await returnToTab(page);
+	await expect(page.locator('aside, .ad-box')).toHaveCount(0);
+});
+
+test('a purchase check that could not finish runs again when the connection returns', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 412, height: 800 });
+	let down = true;
+	await page.route('https://ihtfy.com/ads/v1.js', (route) =>
+		down ? route.abort() : route.fulfill({ contentType: 'text/javascript', body: loader() })
+	);
+	await holdToken(page);
+	await open(page);
+	await page.getByRole('button', { name: /Play.*Level 1/ }).click();
+	await waitForBoard(page);
+	await solveBoard(page);
+	await expect(results(page)).toBeVisible();
+	// Nothing could check the token, so no box is reserved.
+	await page.waitForTimeout(300);
+	await expect(page.locator('aside, .ad-box')).toHaveCount(0);
+	down = false;
+	await comeOnline(page);
+	await expect(page.locator('.ad-box ins.adsbygoogle')).toHaveCount(1);
+});
+
+test('a rejected token left in storage is not checked again and keeps its ad', async ({ page }) => {
+	await page.setViewportSize({ width: 412, height: 800 });
+	await stubLoader(page, CHECKS);
+	await holdToken(page);
+	await open(page);
+	await finishLevel(page);
+	await page.locator('.ad-box ins.adsbygoogle').evaluate((ins) => (ins.id = 'first-ad'));
+	const checks = () => page.evaluate(() => /** @type {any} */ (window).__checks);
+	const before = await checks();
+	await returnToTab(page);
+	await comeOnline(page);
+	await page.waitForTimeout(300);
+	await expect(page.locator('#first-ad')).toBeVisible();
+	expect(await checks()).toBe(before);
+	expect(await page.evaluate(() => /** @type {any} */ (window).__shows.length)).toBe(1);
+});
+
+test('a late answer for an older token does not replace the answer for a newer one', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 412, height: 800 });
+	// Each check waits in line until the test answers it.
+	await stubLoader(page, `() => new Promise((resolve) => (window.__answers ??= []).push(resolve))`);
+	await holdToken(page);
+	await open(page);
+	await page.getByRole('button', { name: /Play.*Level 1/ }).click();
+	await waitForBoard(page);
+	await solveBoard(page);
+	await expect(results(page)).toBeVisible();
+	const waiting = () => page.evaluate(() => /** @type {any} */ (window).__answers?.length ?? 0);
+	await expect.poll(waiting).toBe(1);
+	await buyElsewhere(page);
+	await returnToTab(page);
+	await expect.poll(waiting).toBe(2);
+	// The check that saw the purchase ends first; the one for the old token alone ends after it.
+	await page.evaluate(() => /** @type {any} */ (window).__answers[1](true));
+	await page.evaluate(() => /** @type {any} */ (window).__answers[0](false));
+	await page.waitForTimeout(300);
+	await expect(page.locator('aside, .ad-box')).toHaveCount(0);
+});
+
 test('an ad that was still loading when the window widened is asked for again after it narrows', async ({
 	page
 }) => {

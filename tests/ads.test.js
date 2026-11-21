@@ -385,41 +385,62 @@ const answerCheck = async (/** @type {() => Promise<unknown>} */ adFree) => {
 
 test('with no token the purchase check ends at once and loads nothing', async () => {
 	const { checkAdFree } = await loadAds();
-	assert.equal(await checkAdFree(), false);
+	assert.equal(await checkAdFree(), null);
 	assert.equal(added.length, 0);
 });
 
-test('a token stays a buyer until the shared check ends, then follows its answer', async () => {
+test('the purchase check waits for the shared check, then gives its answer', async () => {
 	storage['ihtfy-ad-free'] = 'x.y.z';
 	const { checkAdFree } = await loadAds();
+	/** @type {unknown} */
 	let settled = 'pending';
 	/** @type {(free: boolean) => void} */
 	let answer = () => {};
-	const check = checkAdFree().then((free) => (settled = free ? 'buyer' : 'not a buyer'));
+	const check = checkAdFree().then((result) => (settled = result));
 	await answerCheck(() => new Promise((resolve) => (answer = resolve)));
 	assert.equal(settled, 'pending');
 	answer(false);
 	await check;
-	assert.equal(settled, 'not a buyer');
+	assert.deepEqual(settled, { tokens: 'x.y.z', free: false });
 });
 
-test('a token the shared check accepts stays a buyer', async () => {
+test('a token the shared check accepts counts', async () => {
 	storage['ihtfy-ad-free'] = 'x.y.z';
 	const { checkAdFree } = await loadAds();
 	const check = checkAdFree();
 	await answerCheck(async () => true);
-	assert.equal(await check, true);
+	assert.deepEqual(await check, { tokens: 'x.y.z', free: true });
 });
 
-test('a purchase check that cannot finish keeps the boxes collapsed', async () => {
+test('a purchase check that cannot finish gives no answer', async () => {
 	storage['ihtfy-ad-free'] = 'x.y.z';
 	const { checkAdFree } = await loadAds();
 	const failedLoad = checkAdFree();
 	added[0].dispatchEvent(new Event('error'));
-	assert.equal(await failedLoad, true);
+	assert.equal(await failedLoad, null);
 	const failedCheck = checkAdFree();
 	await answerCheck(async () => {
 		throw new Error('The check broke');
 	});
-	assert.equal(await failedCheck, true);
+	assert.equal(await failedCheck, null);
+});
+
+test('the tokens held are the stored one and every cookie, in one order', async () => {
+	const { adFreeTokens } = await loadAds();
+	assert.equal(adFreeTokens(), '');
+	storage['ihtfy-ad-free'] = 'b.b.b';
+	cookie = 'ihtfy-ad-free=c.c.c; other=1; ihtfy-ad-free=a.a.a; ihtfy-ad-free=b.b.b';
+	assert.equal(adFreeTokens(), 'a.a.a b.b.b c.c.c');
+	cookie = 'ihtfy-ad-free=a.a.a; ihtfy-ad-free=c.c.c';
+	assert.equal(adFreeTokens(), 'a.a.a b.b.b c.c.c');
+});
+
+test('the answer is for the tokens held when the shared check starts', async () => {
+	storage['ihtfy-ad-free'] = 'old.o.o';
+	const { checkAdFree } = await loadAds();
+	const check = checkAdFree();
+	// A purchase lands while the loader is still on its way.
+	cookie = 'ihtfy-ad-free=new.n.n';
+	await answerCheck(async () => true);
+	assert.deepEqual(await check, { tokens: 'new.n.n old.o.o', free: true });
 });
