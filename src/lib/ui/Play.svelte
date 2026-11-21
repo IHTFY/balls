@@ -471,10 +471,16 @@
 	   it is a large share of the first frame after Play on a phone, so it is left out here. */
 	.hud > :global(.icon-button)::before,
 	.hud :global(.coins)::before,
-	.stats::before,
 	.toolbar::before {
 		-webkit-backdrop-filter: none;
 		backdrop-filter: none;
+	}
+	/* On a short screen the stats sit over the title (below), where the blur keeps them readable. */
+	@media (min-height: 521px) {
+		.stats::before {
+			-webkit-backdrop-filter: none;
+			backdrop-filter: none;
+		}
 	}
 	.hud {
 		display: grid;
