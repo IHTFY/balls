@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import './helpers/runes-loader.js';
 
-const { game, session, startBlitz, startLevel, startDaily, replay, save, finish } =
+const { game, session, startBlitz, tick, startLevel, startZen, startDaily, replay, save, finish } =
 	await import('../src/lib/state/session.svelte.js');
 const { profile, resetProfile } = await import('../src/lib/state/profile.svelte.js');
+import { levelSeed } from '../src/lib/game/levels.js';
+import { MAX_SCORE } from '../src/lib/game/scoring.js';
 import { usefulMoves } from '../src/lib/game/rules.js';
 import { solve } from '../src/lib/game/solver.js';
 
@@ -108,4 +110,151 @@ test('a resumed board can still earn its own reward', async () => {
 	assert.equal(session.result?.title, 'Level 1');
 	await settle();
 	assert.equal(session.result?.title, 'Level 1');
+});
+
+/**
+ * Saves a move on level 1, damages the save with `patch`, leaves, and resumes it.
+ * @param {Record<string, unknown>} patch
+ */
+async function resumeDamagedSave(patch) {
+	resetProfile();
+	profile.score = 12345;
+	startLevel(1);
+	await settle();
+	const [from, to] = usefulMoves(game.colorTubes, game.capacity)[0];
+	game.tap(from);
+	game.tap(to);
+	save();
+	Object.assign(/** @type {object} */ (profile.saved), patch);
+	startLevel(2);
+	startLevel(1);
+	assert.equal(session.loading, false, 'the save resumed');
+}
+
+/** @type {[string, Record<string, unknown>][]} */
+const damagedColors = [
+	['colors missing', { colors: undefined }],
+	['colors not a number', { colors: 'many' }],
+	['colors not a whole number', { colors: 2.5 }],
+	['colors zero', { colors: 0 }]
+];
+
+for (const [name, patch] of damagedColors) {
+	test(`a saved game with ${name} still scores and keeps lifetime points`, async () => {
+		await resumeDamagedSave(patch);
+		assert.equal(session.colors, 2, "the level's own color count");
+		finish(solveCurrentBoard());
+		assert.equal(Number.isFinite(session.result?.score), true);
+		assert.ok(profile.score > 12345, 'the score was added to lifetime points');
+		assert.ok(Number.isFinite(profile.score));
+	});
+}
+
+test('a saved game with other damaged fields falls back to the level', async () => {
+	await resumeDamagedSave({ boss: 'yes', mystery: 1, seed: 'x' });
+	assert.equal(session.boss, false);
+	assert.equal(session.mystery, false);
+	assert.equal(session.seed, levelSeed(1));
+});
+
+test('an intact saved game keeps its own seed', async () => {
+	await resumeDamagedSave({ seed: 99 });
+	assert.equal(session.seed, 99);
+});
+
+test('a saved boss or mystery flag does not change the rewards of an ordinary level', async () => {
+	await resumeDamagedSave({});
+	finish(solveCurrentBoard());
+	const honest = { score: session.result?.score, coins: session.result?.coins };
+	await resumeDamagedSave({ boss: true, mystery: true });
+	assert.equal(session.boss, false);
+	assert.equal(session.mystery, false);
+	finish(solveCurrentBoard());
+	assert.deepEqual({ score: session.result?.score, coins: session.result?.coins }, honest);
+	assert.equal(profile.stats.bossesBeaten, 0);
+	assert.equal(profile.stats.mysterySolved, 0);
+});
+
+test('hidden balls in a saved board do not make an ordinary level a Mystery', async () => {
+	await resumeDamagedSave({});
+	finish(solveCurrentBoard());
+	const honest = { score: session.result?.score, coins: session.result?.coins };
+	resetProfile();
+	profile.score = 12345;
+	startLevel(1);
+	await settle();
+	const [from, to] = usefulMoves(game.colorTubes, game.capacity)[0];
+	game.tap(from);
+	game.tap(to);
+	save();
+	// A forged flag on a board that otherwise stays valid.
+	const saved = /** @type {any} */ (profile.saved);
+	for (const tubes of [saved.game.start, saved.game.tubes])
+		for (const tube of tubes) for (const ball of tube) ball.hidden = true;
+	startLevel(2);
+	startLevel(1);
+	assert.equal(session.loading, false, 'the save resumed');
+	assert.equal(session.mystery, false);
+	finish(solveCurrentBoard());
+	assert.deepEqual({ score: session.result?.score, coins: session.result?.coins }, honest);
+	assert.equal(profile.stats.mysterySolved, 0);
+});
+
+test("a saved color count that does not match the board is replaced by the board's own", async () => {
+	await resumeDamagedSave({});
+	finish(solveCurrentBoard());
+	const honest = session.result?.score;
+	await resumeDamagedSave({ colors: 99 });
+	assert.equal(session.colors, 2);
+	finish(solveCurrentBoard());
+	assert.equal(session.result?.score, honest, 'points are for two colors, not 99');
+});
+
+test('replaying a resumed Zen game with a damaged seed plays the same puzzle', async (t) => {
+	// The first seed's first useful move leaves the board unsolvable, so the first move comes from
+	// the solver. Later calls, such as the fallback when the save resumes, get a different board.
+	let calls = 0;
+	t.mock.method(Math, 'random', () => (calls++ === 0 ? 42813 : 7) / 2 ** 32);
+	resetProfile();
+	startZen('easy');
+	await settle();
+	const solution = solve(game.colorTubes, game.capacity);
+	assert.equal(solution.status, 'solved');
+	const [from, to] = solution.moves[0];
+	game.tap(from);
+	game.tap(to);
+	save();
+	const colors = () => JSON.stringify(game.start.map((tube) => tube.map((ball) => ball.color)));
+	const original = colors();
+	Object.assign(/** @type {object} */ (profile.saved), { seed: 'x' });
+	startZen('easy');
+	assert.equal(session.loading, false, 'the save resumed');
+	assert.equal(colors(), original);
+	finish(solveCurrentBoard());
+	replay();
+	await settle();
+	assert.equal(colors(), original);
+	assert.equal(game.moves, 0);
+});
+
+test('lifetime points stop at the maximum when an award would pass it', async () => {
+	resetProfile();
+	profile.score = MAX_SCORE - 1;
+	startLevel(1);
+	await settle();
+	finish(solveCurrentBoard());
+	assert.equal(profile.score, MAX_SCORE);
+});
+
+test('Blitz points stop at the maximum lifetime score', async (t) => {
+	t.mock.timers.enable({ apis: ['setTimeout'] });
+	resetProfile();
+	profile.score = MAX_SCORE - 1;
+	startBlitz();
+	await settle();
+	session.blitz.score = 500;
+	session.blitz.left = 0;
+	tick(1);
+	assert.equal(session.blitz.over, true);
+	assert.equal(profile.score, MAX_SCORE);
 });
