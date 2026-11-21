@@ -7,7 +7,7 @@
 		     consent message; these hosts are theirs (see README, "Ads"). -->
 		<meta
 			http-equiv="Content-Security-Policy"
-			content="default-src 'self'; script-src 'self' https://ihtfy.com/ads/ https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://ep2.adtrafficquality.google https://fundingchoicesmessages.google.com; worker-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://lh3.googleusercontent.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://ep1.adtrafficquality.google https://fundingchoicesmessages.google.com; frame-src https://googleads.g.doubleclick.net https://ep2.adtrafficquality.google https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'none'"
+			content="default-src 'self'; script-src 'self' 'sha256-lsf77QuRIg2cnjjuzt7xkiMBJIWmgPWIVCsEFmjkwFU=' https://ihtfy.com/ads/ https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://ep2.adtrafficquality.google https://fundingchoicesmessages.google.com; worker-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://lh3.googleusercontent.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://ep1.adtrafficquality.google https://fundingchoicesmessages.google.com; frame-src https://googleads.g.doubleclick.net https://ep2.adtrafficquality.google https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'none'"
 		/>
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 		<title>Balls · Sort Puzzle</title>
@@ -25,8 +25,161 @@
 		<link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
 		<link rel="icon" href="./icons/favicon-32.png" type="image/png" sizes="32x32" />
 		<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+		<style>
+			/* Installed-app launch: the first paint copies Chrome's launch screen (manifest background,
+			   maskable icon at 128px, name near the bottom), then launchExit() animates out of it. */
+			#launch {
+				display: none;
+			}
+			.launching #launch {
+				position: fixed;
+				inset: 0;
+				z-index: 2147483647;
+				display: grid;
+				place-items: center;
+				background: #07131d;
+			}
+			#launch-icon {
+				width: 128px;
+				height: 128px;
+				overflow: visible;
+			}
+			#launch-icon .ball,
+			#launch-icon .cap {
+				transform-box: fill-box;
+				transform-origin: center;
+			}
+			#launch-name {
+				position: absolute;
+				inset: auto 0 56px;
+				font:
+					24px/1 Roboto,
+					system-ui,
+					sans-serif;
+				text-align: center;
+				color: rgb(255 255 255 / 0.87);
+			}
+		</style>
+		<!-- The Content-Security-Policy above allows this script by its hash; a test checks it. -->
+		<script>
+			// Plays once per fresh launch of the installed app: never in a browser tab, on reload, or on return.
+			(() => {
+				const root = document.documentElement;
+				try {
+					const nav = performance.getEntriesByType('navigation')[0];
+					const app = matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches;
+					if (!app || nav?.type !== 'navigate' || sessionStorage.getItem('launched')) return;
+					sessionStorage.setItem('launched', '1');
+				} catch {
+					return;
+				}
+				root.classList.add('launching');
+				const end = () => {
+					clearTimeout(fallback);
+					root.classList.remove('launching');
+					document.getElementById('launch')?.remove();
+				};
+				// The game never stays hidden behind the copy if it fails to call launchExit.
+				const fallback = setTimeout(end, 4000);
+				// play(overlay) starts the game's exit and returns its Web Animations.
+				window.launchExit = (play) => {
+					clearTimeout(fallback);
+					const overlay = document.getElementById('launch');
+					// Too late: the fallback already removed the copy.
+					if (!overlay) return;
+					let animations = [];
+					if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+						try {
+							animations = play(overlay);
+						} catch {
+							animations = [];
+						}
+					}
+					if (!animations.length) {
+						animations = [
+							overlay.animate(
+								{ opacity: [1, 0] },
+								{ duration: 200, easing: 'ease-out', fill: 'forwards' }
+							)
+						];
+					}
+					overlay.addEventListener('pointerdown', () => animations.forEach((a) => a.finish()), {
+						once: true
+					});
+					Promise.all(animations.map((a) => a.finished)).then(end, end);
+				};
+			})();
+		</script>
 	</head>
 	<body>
+		<!-- The launch screen's maskable icon (public/icons/maskable-512.png), drawn inline. -->
+		<div id="launch" aria-hidden="true">
+			<svg id="launch-icon" viewBox="0 0 512 512">
+				<defs>
+					<linearGradient id="launch-bg" x1="0" y1="0" x2="0" y2="1">
+						<stop offset="0" stop-color="#0a1824" />
+						<stop offset="0.5" stop-color="#07131d" />
+						<stop offset="1" stop-color="#050d15" />
+					</linearGradient>
+					<radialGradient id="launch-teal" cx="25%" cy="20%" r="70%">
+						<stop offset="0" stop-color="#086e7d" stop-opacity="0.7" />
+						<stop offset="1" stop-color="#086e7d" stop-opacity="0" />
+					</radialGradient>
+					<radialGradient id="launch-violet" cx="85%" cy="85%" r="70%">
+						<stop offset="0" stop-color="#5037aa" stop-opacity="0.65" />
+						<stop offset="1" stop-color="#5037aa" stop-opacity="0" />
+					</radialGradient>
+					<radialGradient id="launch-shade" cx="35%" cy="30%" r="75%">
+						<stop offset="0" stop-color="#fff" stop-opacity="0.35" />
+						<stop offset="0.5" stop-color="#fff" stop-opacity="0" />
+						<stop offset="1" stop-color="#000" stop-opacity="0.4" />
+					</radialGradient>
+				</defs>
+				<g class="backdrop">
+					<rect width="512" height="512" fill="url(#launch-bg)" />
+					<rect width="512" height="512" fill="url(#launch-teal)" />
+					<rect width="512" height="512" fill="url(#launch-violet)" />
+				</g>
+				<g transform="translate(256 262) scale(0.72) translate(-256 -256)">
+					<rect
+						class="glass"
+						x="176"
+						y="70"
+						width="160"
+						height="380"
+						rx="80"
+						fill="rgb(200 225 255 / 0.12)"
+						stroke="rgb(210 232 255 / 0.85)"
+						stroke-width="14"
+					/>
+					<rect
+						class="cap"
+						x="160"
+						y="58"
+						width="192"
+						height="28"
+						rx="14"
+						fill="rgb(210 232 255 / 0.9)"
+					/>
+					<g class="ball">
+						<circle cx="256" cy="370" r="52" fill="#ff3b47" />
+						<circle cx="256" cy="370" r="52" fill="url(#launch-shade)" />
+						<ellipse cx="238" cy="350" rx="22" ry="14" fill="#fff" opacity="0.7" />
+					</g>
+					<g class="ball">
+						<circle cx="256" cy="258" r="52" fill="#2f7bff" />
+						<circle cx="256" cy="258" r="52" fill="url(#launch-shade)" />
+						<ellipse cx="238" cy="238" rx="22" ry="14" fill="#fff" opacity="0.7" />
+					</g>
+					<g class="ball">
+						<circle cx="256" cy="146" r="52" fill="#ffd51f" />
+						<circle cx="256" cy="146" r="52" fill="url(#launch-shade)" />
+						<ellipse cx="238" cy="126" rx="22" ry="14" fill="#fff" opacity="0.7" />
+					</g>
+				</g>
+			</svg>
+			<span id="launch-name">Balls · Sort Puzzle</span>
+		</div>
 		<div id="app"></div>
 		<script type="module" src="/src/main.js"></script>
 	</body>
