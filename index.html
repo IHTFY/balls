@@ -7,7 +7,7 @@
 		     consent message; these hosts are theirs (see README, "Ads"). -->
 		<meta
 			http-equiv="Content-Security-Policy"
-			content="default-src 'self'; script-src 'self' 'sha256-IQEYYI+opLgGrIM81UjcKqXBqlavjRIewFyAnff0A7I=' https://ihtfy.com/ads/ https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://ep2.adtrafficquality.google https://fundingchoicesmessages.google.com; worker-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://lh3.googleusercontent.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://ep1.adtrafficquality.google https://fundingchoicesmessages.google.com; frame-src https://googleads.g.doubleclick.net https://ep2.adtrafficquality.google https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'none'"
+			content="default-src 'self'; script-src 'self' 'sha256-Yxs3U5ocKKbNFQHjihJGDyjuazEk6ay65KjyrrTDEcU=' https://ihtfy.com/ads/ https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://ep2.adtrafficquality.google https://fundingchoicesmessages.google.com; worker-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://lh3.googleusercontent.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://ep1.adtrafficquality.google https://fundingchoicesmessages.google.com; frame-src https://googleads.g.doubleclick.net https://ep2.adtrafficquality.google https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'none'"
 		/>
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 		<title>Balls · Sort Puzzle</title>
@@ -67,7 +67,7 @@
 				const root = document.documentElement;
 				try {
 					const nav = performance.getEntriesByType('navigation')[0];
-					const app = matchMedia('(display-mode: standalone), (display-mode: fullscreen)').matches;
+					const app = matchMedia('(display-mode: standalone)').matches;
 					if (!app || nav?.type !== 'navigate' || sessionStorage.getItem('launched')) return;
 					sessionStorage.setItem('launched', '1');
 				} catch {
@@ -89,7 +89,6 @@
 					removeEventListener('keydown', skip, true);
 					root.classList.remove('launching');
 					document.getElementById('launch')?.remove();
-					document.getElementById('app')?.removeAttribute('inert');
 				};
 				// The game never stays hidden behind the copy if it fails to call launchExit.
 				let fallback = setTimeout(end, 4000);
@@ -101,8 +100,6 @@
 					// The copy still goes if the exit fails to start or never ends.
 					clearTimeout(fallback);
 					fallback = setTimeout(end, 3000);
-					// Keyboard focus stays out of the game while the copy covers it.
-					document.getElementById('app')?.setAttribute('inert', '');
 					try {
 						if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
 							try {

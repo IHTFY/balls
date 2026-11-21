@@ -8,7 +8,9 @@ const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 test('the policy allows each inline script by its hash', () => {
 	const policy = html.match(/http-equiv="Content-Security-Policy"\s+content="([^"]*)"/)?.[1] ?? '';
 	const scriptSrc = policy.split(';').find((d) => d.trim().startsWith('script-src')) ?? '';
-	const inline = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]);
+	const inline = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)]
+		.filter((m) => !/\ssrc=/.test(m[1]))
+		.map((m) => m[2]);
 	assert.ok(inline.length > 0);
 	for (const body of inline) {
 		const hash = createHash('sha256').update(body).digest('base64');
