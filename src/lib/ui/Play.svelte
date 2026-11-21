@@ -466,6 +466,16 @@
 	.play.away {
 		display: none;
 	}
+	/* Behind these panes there is only the theme's smooth gradient and a few drifting particles, so
+	   their backdrop blur barely shows: the insides look the same without it in every theme. Drawing
+	   it is a large share of the first frame after Play on a phone, so it is left out here. */
+	.hud > :global(.icon-button)::before,
+	.hud :global(.coins)::before,
+	.stats::before,
+	.toolbar::before {
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
 	.hud {
 		display: grid;
 		grid-template-columns: auto 1fr auto;
