@@ -76,7 +76,9 @@ export const defaultProfile = () => ({
 	},
 	tutorialDone: false,
 	/** @type {unknown} an unfinished game, checked again when resumed */
-	saved: null
+	saved: null,
+	/** How many times progress was reset, so other open copies can tell a reset from a save. */
+	resets: 0
 });
 
 /** @typedef {ReturnType<typeof defaultProfile>} Profile */
@@ -181,7 +183,95 @@ export function sanitizeProfile(raw) {
 		},
 		gift: { last: dateOrNull(r.gift?.last), streak: count(r.gift?.streak, 0) },
 		tutorialDone: r.tutorialDone === true,
-		saved: r.saved ?? null
+		saved: r.saved ?? null,
+		resets: count(r.resets, 0)
+	};
+}
+
+// How one value is settled when two open copies of the game both started from `base`. Every
+// rule gives the other copy's value when this copy did not change it.
+/** @typedef {(base: any, mine: any, theirs: any) => any} Rule */
+const same = (/** @type {unknown} */ a, /** @type {unknown} */ b) =>
+	JSON.stringify(a) === JSON.stringify(b);
+/** @type {Rule} this copy's value when it changed here */
+const kept = (base, mine, theirs) => (same(base, mine) ? theirs : mine);
+/** @type {Rule} a count both copies add to or spend from */
+const added = (base, mine, theirs) => Math.max(0, theirs + mine - base);
+/** @type {Rule} the higher of two records */
+const highest = (base, mine, theirs) =>
+	same(base, mine) ? theirs : Math.max(mine ?? 0, theirs ?? 0);
+/** @type {Rule} the lower of two records, where none yet is 0 or missing */
+const lowest = (base, mine, theirs) =>
+	same(base, mine) ? theirs : mine && theirs ? Math.min(mine, theirs) : mine || theirs;
+/** @type {Rule} everything either copy has collected */
+const both = (base, mine, theirs) =>
+	same(base, mine) ? theirs : [...new Set([...theirs, ...mine])];
+
+/** @type {Record<string, Rule>} stats that are records; the rest are running totals */
+const STAT_RULES = {
+	bestCombo: highest,
+	blitzBest: highest,
+	blitzMostSolved: highest,
+	fastest: lowest
+};
+
+/**
+ * Applies a rule to every key of a record, in the other copy's key order.
+ * @template {Record<string, any>} T
+ * @param {T} base
+ * @param {T} mine
+ * @param {T} theirs
+ * @param {(key: string) => Rule} rule
+ * @returns {T}
+ */
+function each(base, mine, theirs, rule) {
+	/** @type {Record<string, any>} */
+	const out = {};
+	for (const key of new Set([...Object.keys(theirs), ...Object.keys(mine)])) {
+		const value = rule(key)(base[key], mine[key], theirs[key]);
+		if (value !== undefined) out[key] = value;
+	}
+	return /** @type {T} */ (out);
+}
+
+/**
+ * The profile another open copy saved (`theirs`) with this copy's unsaved changes (`mine`) put
+ * back on top, where `base` is the save both started from. Totals such as coins take both
+ * copies' changes, records keep the better value, and anything else changed here stays as it
+ * is here. With nothing changed here the result is `theirs`, key for key.
+ * @param {Profile} base
+ * @param {Profile} mine
+ * @param {Profile} theirs
+ * @returns {Profile}
+ */
+export function mergeProfiles(base, mine, theirs) {
+	/** @type {<K extends keyof Profile>(key: K, rule: Rule) => Profile[K]} */
+	const pick = (key, rule) => rule(base[key], mine[key], theirs[key]);
+	return {
+		coins: pick('coins', added),
+		unlocked: pick('unlocked', highest),
+		stars: each(base.stars, mine.stars, theirs.stars, () => highest),
+		best: each(base.best, mine.best, theirs.best, () => lowest),
+		score: Math.min(MAX_SCORE, pick('score', added)),
+		hints: pick('hints', added),
+		tubes: pick('tubes', added),
+		owned: pick('owned', both),
+		theme: pick('theme', kept),
+		skin: pick('skin', kept),
+		settings: each(base.settings, mine.settings, theirs.settings, () => kept),
+		stats: each(base.stats, mine.stats, theirs.stats, (key) => STAT_RULES[key] ?? added),
+		achievements: each(base.achievements, mine.achievements, theirs.achievements, () => kept),
+		daily: {
+			done: each(base.daily.done, mine.daily.done, theirs.daily.done, () => kept),
+			streak: kept(base.daily.streak, mine.daily.streak, theirs.daily.streak),
+			best: highest(base.daily.best, mine.daily.best, theirs.daily.best),
+			last: kept(base.daily.last, mine.daily.last, theirs.daily.last)
+		},
+		gift: pick('gift', kept),
+		tutorialDone: pick('tutorialDone', kept),
+		saved: pick('saved', kept),
+		// Never lowered, even by a copy running a version from before resets were counted.
+		resets: Math.max(mine.resets, theirs.resets)
 	};
 }
 
