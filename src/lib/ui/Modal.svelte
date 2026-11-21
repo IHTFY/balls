@@ -66,7 +66,11 @@
 	}
 
 	$effect(() => {
-		if (showing++ === 0) opener = /** @type {HTMLElement | null} */ (document.activeElement);
+		const active = /** @type {HTMLElement | null} */ (document.activeElement);
+		// Opened from a dialog that is still showing, this one replaces it and keeps its opener.
+		// One opened from the page while another fades out starts again from the control used.
+		const replaces = active === document.body || active?.closest('[role="dialog"]');
+		if (showing++ === 0 || !replaces) opener = active;
 		/** @type {HTMLElement | null} */ (panel.querySelector('.primary, button'))?.focus({
 			preventScroll: true
 		});
