@@ -11,7 +11,7 @@ import {
 	ZEN_PRESETS
 } from '../game/levels.js';
 import { dateKey, isNextDay } from '../game/profile.js';
-import { dailyCoins, levelCoins, rankFor, scoreFor, starsFor } from '../game/scoring.js';
+import { dailyCoins, levelCoins, MAX_SCORE, rankFor, scoreFor, starsFor } from '../game/scoring.js';
 import { generate, search } from '../puzzles.js';
 import { Game } from './game.svelte.js';
 import { checkAchievements, earn, profile, spend } from './profile.svelte.js';
@@ -100,7 +100,8 @@ async function begin(mode, spec, seed, ready) {
 
 /**
  * Picks up a saved game for the same puzzle when there is one.
- * A damaged seed, color count, or flag falls back to the puzzle's own value.
+ * A damaged seed or flag falls back to the puzzle's own value, and the color count is
+ * always the board's own, since it feeds the score.
  * @param {(saved: any) => boolean} matches
  * @param {Spec} spec the puzzle the save is for
  * @param {number} seed the puzzle's seed
@@ -115,7 +116,7 @@ function resume(matches, spec, seed) {
 	}
 	Object.assign(session, {
 		seed: Number.isInteger(saved.seed) && saved.seed >= 0 ? saved.seed : seed,
-		colors: Number.isInteger(saved.colors) && saved.colors > 0 ? saved.colors : spec.colors,
+		colors: new Set(game.start.flat().map((ball) => ball.color)).size,
 		boss: typeof saved.boss === 'boolean' ? saved.boss : !!spec.boss,
 		mystery: typeof saved.mystery === 'boolean' ? saved.mystery : !!spec.mystery,
 		result: null,
@@ -164,7 +165,6 @@ export function startBlitz() {
 /** Plays the same puzzle again from the start. */
 export function replay() {
 	if (session.mode === 'blitz') return startBlitz();
-	if (session.mode === 'zen') return begin('zen', ZEN_PRESETS[session.preset].spec, session.seed);
 	game.load(
 		game.start.map((t) => t.map((b) => b.color)),
 		game.capacity,
@@ -283,7 +283,7 @@ export function finish(version = game.version) {
 
 	const { lines, total } = scoreFor(r);
 	const rankBefore = rankFor(profile.score);
-	if (Number.isFinite(total)) profile.score += total;
+	if (Number.isFinite(total)) profile.score = Math.min(MAX_SCORE, profile.score + total);
 	let coins = 0;
 	let previousStars = 0;
 	let newBest = false;

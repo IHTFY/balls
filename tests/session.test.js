@@ -2,10 +2,11 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import './helpers/runes-loader.js';
 
-const { game, session, startBlitz, startLevel, startDaily, replay, save, finish } =
+const { game, session, startBlitz, startLevel, startZen, startDaily, replay, save, finish } =
 	await import('../src/lib/state/session.svelte.js');
 const { profile, resetProfile } = await import('../src/lib/state/profile.svelte.js');
 import { levelSeed } from '../src/lib/game/levels.js';
+import { MAX_SCORE } from '../src/lib/game/scoring.js';
 import { usefulMoves } from '../src/lib/game/rules.js';
 import { solve } from '../src/lib/game/solver.js';
 
@@ -164,12 +165,42 @@ test('an intact saved game keeps its own seed, colors, and flags', async () => {
 	assert.equal(session.mystery, true);
 });
 
-test('a score that is not a number is never added to lifetime points', async () => {
+test("a saved color count that does not match the board is replaced by the board's own", async () => {
+	await resumeDamagedSave({});
+	finish(solveCurrentBoard());
+	const honest = session.result?.score;
+	await resumeDamagedSave({ colors: 99 });
+	assert.equal(session.colors, 2);
+	finish(solveCurrentBoard());
+	assert.equal(session.result?.score, honest, 'points are for two colors, not 99');
+});
+
+test('replaying a resumed Zen game with a damaged seed plays the same puzzle', async () => {
 	resetProfile();
-	profile.score = 500;
+	startZen('easy');
+	await settle();
+	const [from, to] = usefulMoves(game.colorTubes, game.capacity)[0];
+	game.tap(from);
+	game.tap(to);
+	save();
+	const colors = () => JSON.stringify(game.start.map((tube) => tube.map((ball) => ball.color)));
+	const original = colors();
+	Object.assign(/** @type {object} */ (profile.saved), { seed: 'x' });
+	startZen('easy');
+	assert.equal(session.loading, false, 'the save resumed');
+	assert.equal(colors(), original);
+	finish(solveCurrentBoard());
+	replay();
+	await settle();
+	assert.equal(colors(), original);
+	assert.equal(game.moves, 0);
+});
+
+test('lifetime points stop at the maximum when an award would pass it', async () => {
+	resetProfile();
+	profile.score = MAX_SCORE - 1;
 	startLevel(1);
 	await settle();
-	session.colors = NaN;
 	finish(solveCurrentBoard());
-	assert.equal(profile.score, 500);
+	assert.equal(profile.score, MAX_SCORE);
 });
