@@ -401,31 +401,27 @@ function endBlitz() {
  */
 export async function requestHint() {
 	if (session.hintBusy || game.won || session.loading) return 'busy';
-	const bought = profile.hints <= 0;
-	if (bought) {
-		if (!spend(HINT_PRICE)) return 'empty';
-		profile.hints++;
-	}
+	if (profile.hints <= 0 && profile.coins < HINT_PRICE) return 'empty';
 	session.hintBusy = true;
 	const mine = token;
 	const epoch = hintEpoch;
 	const version = game.version;
-	const result = await search(game.colorTubes, game.capacity, { weight: 1.5, maxNodes: 80_000 });
-	session.hintBusy = false;
-	if (mine !== token || epoch !== hintEpoch || version !== game.version) {
-		// The board was left or changed while searching: the hint is not shown, so it costs nothing.
-		// Another open copy may already have used the bought hint, so only a hint still there is taken back.
-		if (bought && profile.hints > 0) {
-			profile.hints--;
-			profile.coins += HINT_PRICE;
-		}
-		return 'busy';
+	/** @type {Awaited<ReturnType<typeof search>>} */
+	let result;
+	try {
+		result = await search(game.colorTubes, game.capacity, { weight: 1.5, maxNodes: 80_000 });
+	} finally {
+		session.hintBusy = false;
 	}
+	// A board left or changed while searching shows nothing, so nothing is charged.
+	if (mine !== token || epoch !== hintEpoch || version !== game.version) return 'busy';
 	if (result.status === 'solved' && result.moves.length) {
+		// The price is paid only for a hint that is shown. Another open copy may have spent it meanwhile.
+		if (profile.hints > 0) profile.hints--;
+		else if (!spend(HINT_PRICE)) return 'empty';
 		const [from, to] = result.moves[0];
 		game.selected = -1;
 		game.hint = { from, to };
-		profile.hints--;
 		game.hintsUsed++;
 		profile.stats.hintsUsed++;
 		save();

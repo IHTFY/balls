@@ -136,20 +136,73 @@ test('a hint that arrives after leaving the board is not charged or shown', asyn
 	assert.equal(profile.stats.hintsUsed, 0);
 });
 
-test('a hint bought with coins for a discarded result is refunded', async () => {
+test('nothing is charged or saved while the hint search runs', async () => {
 	resetProfile();
 	startLevel(1);
 	await settle();
 	profile.hints = 0;
 	profile.coins = 100;
+	const saved = JSON.stringify(profile.saved);
 	const asked = requestHint();
-	assert.equal(profile.coins, 100 - HINT_PRICE);
-	startLevel(2);
-	assert.equal(await asked, 'busy');
-	await settle();
+	assert.equal(session.hintBusy, true);
 	assert.equal(profile.coins, 100);
 	assert.equal(profile.hints, 0);
 	assert.equal(profile.stats.hintsUsed, 0);
+	assert.equal(JSON.stringify(profile.saved), saved);
+	await asked;
+});
+
+test('a hint with no stock is paid for in coins when it is shown', async () => {
+	resetProfile();
+	startLevel(1);
+	await settle();
+	profile.hints = 0;
+	profile.coins = 100;
+	assert.equal(await requestHint(), 'ok');
+	assert.notEqual(game.hint, null);
+	assert.equal(profile.coins, 100 - HINT_PRICE);
+	assert.equal(profile.hints, 0);
+	assert.equal(profile.stats.hintsUsed, 1);
+});
+
+test('a hint is refused up front when there is neither stock nor coins', async () => {
+	resetProfile();
+	startLevel(1);
+	await settle();
+	profile.hints = 0;
+	profile.coins = HINT_PRICE - 1;
+	assert.equal(await requestHint(), 'empty');
+	assert.equal(session.hintBusy, false);
+	assert.equal(profile.coins, HINT_PRICE - 1);
+});
+
+test('a hint whose coins were spent while searching is not shown', async () => {
+	resetProfile();
+	startLevel(1);
+	await settle();
+	profile.hints = 0;
+	profile.coins = HINT_PRICE;
+	const asked = requestHint();
+	// Another open copy spent the coins meanwhile.
+	profile.coins = 0;
+	assert.equal(await asked, 'empty');
+	assert.equal(game.hint, null);
+	assert.equal(profile.coins, 0);
+	assert.equal(profile.stats.hintsUsed, 0);
+});
+
+test('a rejected hint search clears busy and charges nothing', async () => {
+	resetProfile();
+	startLevel(1);
+	await settle();
+	profile.hints = 1;
+	// A ball color the solver cannot encode makes the search throw.
+	game.tubes = [[{ id: 0, color: /** @type {any} */ (1n), hidden: false }], []];
+	await assert.rejects(requestHint());
+	assert.equal(session.hintBusy, false);
+	assert.equal(profile.hints, 1);
+	assert.equal(profile.stats.hintsUsed, 0);
+	assert.equal(game.hint, null);
 });
 
 test('a hint on the current board is still charged and shown', async () => {
@@ -162,22 +215,6 @@ test('a hint on the current board is still charged and shown', async () => {
 	assert.equal(profile.hints, hints - 1);
 	assert.equal(profile.stats.hintsUsed, 1);
 	assert.equal(game.hintsUsed, 1);
-});
-
-test('a hint refund never takes the hint count below zero', async () => {
-	resetProfile();
-	startLevel(1);
-	await settle();
-	profile.hints = 0;
-	profile.coins = 100;
-	const asked = requestHint();
-	// Another open copy used the bought hint and shared its balance meanwhile.
-	profile.hints = 0;
-	startLevel(2);
-	assert.equal(await asked, 'busy');
-	await settle();
-	assert.equal(profile.hints, 0);
-	assert.equal(profile.coins, 100 - HINT_PRICE, 'coins come back only with the hint');
 });
 
 test('a hint still being searched for when the play screen is left is not charged', async () => {
