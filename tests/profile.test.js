@@ -4,6 +4,7 @@ import {
 	dateKey,
 	defaultProfile,
 	isNextDay,
+	mergeProfiles,
 	sanitizeProfile,
 	totalStars
 } from '../src/lib/game/profile.js';
@@ -75,6 +76,175 @@ test('a profile round-trips through JSON unchanged', () => {
 	p.stars = { 1: 2 };
 	p.unlocked = 2;
 	assert.deepEqual(sanitizeProfile(JSON.parse(JSON.stringify(p))), p);
+});
+
+test('a save from before resets were counted loads with its progress', () => {
+	const old = /** @type {Record<string, unknown>} */ ({
+		...defaultProfile(),
+		coins: 640,
+		unlocked: 9
+	});
+	delete old.resets;
+	const p = sanitizeProfile(JSON.parse(JSON.stringify(old)));
+	assert.equal(p.resets, 0);
+	assert.equal(p.coins, 640);
+	assert.equal(p.unlocked, 9);
+	assert.equal(sanitizeProfile({ resets: 2 }).resets, 2);
+	assert.equal(sanitizeProfile({ resets: 'many' }).resets, 0);
+});
+
+/** @param {(p: ReturnType<typeof defaultProfile>) => void} change */
+function profileWith(change) {
+	const p = sanitizeProfile({
+		coins: 500,
+		unlocked: 4,
+		stars: { 1: 3, 2: 2, 3: 1 },
+		best: { 1: 10, 2: 14, 3: 20 },
+		score: 9000,
+		owned: ['ocean'],
+		stats: { solved: 3, moves: 44, seconds: 300, bestCombo: 2, fastest: 50, blitzBest: 700 },
+		achievements: { first: '2026-10-01' },
+		daily: { done: { '2026-10-01': { moves: 30, stars: 2, seconds: 80 } }, streak: 1, best: 1 },
+		saved: { mode: 'level', level: 4, game: { moves: 2, seconds: 10 } }
+	});
+	change(p);
+	return p;
+}
+
+test('merging keeps every profile field, and changes nothing when only one copy changed', () => {
+	const base = profileWith(() => {});
+	const changed = profileWith((p) => {
+		p.coins = 20;
+		p.unlocked = 6;
+		p.stars[4] = 3;
+		p.best[1] = 8;
+		p.owned.push('neon');
+		p.theme = 'ocean';
+		p.settings.music = false;
+		p.stats.solved = 5;
+		p.stats.fastest = 31;
+		p.achievements.combo = '2026-10-02';
+		p.daily.done['2026-10-02'] = { moves: 12, stars: 3, seconds: 40 };
+		p.daily.streak = 2;
+		p.daily.last = '2026-10-02';
+		p.gift = { last: '2026-10-02', streak: 3 };
+		p.tutorialDone = true;
+		p.saved = null;
+	});
+	assert.deepEqual(Object.keys(mergeProfiles(base, base, base)), Object.keys(defaultProfile()));
+	assert.equal(JSON.stringify(mergeProfiles(base, base, changed)), JSON.stringify(changed));
+	assert.deepEqual(mergeProfiles(base, changed, base), changed);
+	// A reset from a version that did not count resets: an unchanged copy takes it whole.
+	assert.deepEqual(mergeProfiles(base, base, defaultProfile()), defaultProfile());
+	// Such a save never lowers the count of resets this copy holds.
+	const counted = profileWith((p) => (p.resets = 2));
+	assert.equal(mergeProfiles(counted, counted, base).resets, 2);
+});
+
+test('totals changed in two copies at once take both changes', () => {
+	const base = profileWith(() => {});
+	const mine = profileWith((p) => {
+		p.coins += 40;
+		p.score += 500;
+		p.hints -= 1;
+		p.stats.solved += 1;
+		p.stats.seconds += 30;
+	});
+	const theirs = profileWith((p) => {
+		p.coins -= 300;
+		p.score += 250;
+		p.hints += 2;
+		p.tubes += 1;
+		p.stats.solved += 2;
+		p.stats.seconds += 12;
+	});
+	const merged = mergeProfiles(base, mine, theirs);
+	assert.equal(merged.coins, 240);
+	assert.equal(merged.score, 9750);
+	assert.equal(merged.hints, base.hints + 1);
+	assert.equal(merged.tubes, base.tubes + 1);
+	assert.equal(merged.stats.solved, 6);
+	assert.equal(merged.stats.seconds, 342);
+	const spent = profileWith((p) => (p.coins -= 400));
+	assert.equal(mergeProfiles(base, spent, spent).coins, 0, 'coins never go below zero');
+	const rich = profileWith((p) => (p.score = MAX_SCORE - 10));
+	assert.equal(mergeProfiles(base, rich, theirs).score, MAX_SCORE);
+	// The top score in another copy is exact after a merge with nothing changed here.
+	const top = profileWith((p) => (p.score = MAX_SCORE));
+	const near = profileWith((p) => (p.score = MAX_SCORE - 1));
+	assert.equal(mergeProfiles(near, near, top).score, MAX_SCORE);
+});
+
+test('records changed in two copies at once keep the better one', () => {
+	const base = profileWith(() => {});
+	const mine = profileWith((p) => {
+		p.unlocked = 5;
+		p.stars[3] = 2;
+		p.stars[4] = 1;
+		p.best[3] = 18;
+		p.best[4] = 30;
+		p.stats.bestCombo = 5;
+		p.stats.fastest = 45;
+		p.stats.blitzBest = 600;
+		p.daily.best = 3;
+	});
+	const theirs = profileWith((p) => {
+		p.unlocked = 8;
+		p.stars[3] = 3;
+		p.stars[7] = 2;
+		p.best[3] = 16;
+		p.stats.bestCombo = 4;
+		p.stats.fastest = 48;
+		p.stats.blitzBest = 900;
+		p.daily.best = 2;
+	});
+	const merged = mergeProfiles(base, mine, theirs);
+	assert.equal(merged.unlocked, 8);
+	assert.deepEqual(merged.stars, { 1: 3, 2: 2, 3: 3, 4: 1, 7: 2 });
+	assert.deepEqual(merged.best, { 1: 10, 2: 14, 3: 16, 4: 30 });
+	assert.equal(merged.stats.bestCombo, 5);
+	assert.equal(merged.stats.fastest, 45);
+	assert.equal(merged.stats.blitzBest, 900);
+	assert.equal(merged.daily.best, 3);
+	const first = profileWith((p) => (p.stats.fastest = 0));
+	assert.equal(
+		mergeProfiles(
+			first,
+			profileWith(() => {}),
+			first
+		).stats.fastest,
+		50,
+		'a first record is kept'
+	);
+});
+
+test('other values changed in two copies at once stay as this copy has them', () => {
+	const base = profileWith(() => {});
+	const mine = profileWith((p) => {
+		p.settings.sound = false;
+		p.owned.push('sunset');
+		p.theme = 'sunset';
+		p.achievements.combo = '2026-10-02';
+		p.saved = { mode: 'daily', date: '2026-10-02', game: { moves: 1, seconds: 3 } };
+	});
+	const theirs = profileWith((p) => {
+		p.settings.sound = true;
+		p.settings.music = false;
+		p.owned.push('gem');
+		p.theme = 'ocean';
+		p.skin = 'gem';
+		p.achievements.rich = '2026-10-03';
+		p.saved = { mode: 'level', level: 4, game: { moves: 9, seconds: 60 } };
+	});
+	const merged = mergeProfiles(base, mine, theirs);
+	assert.equal(merged.settings.sound, false);
+	assert.equal(merged.settings.music, false);
+	assert.deepEqual(merged.owned, ['midnight', 'glossy', 'ocean', 'gem', 'sunset']);
+	assert.equal(merged.theme, 'sunset');
+	assert.equal(merged.skin, 'gem');
+	assert.deepEqual(Object.keys(merged.achievements), ['first', 'rich', 'combo']);
+	assert.deepEqual(merged.saved, mine.saved);
+	assert.deepEqual(sanitizeProfile(JSON.parse(JSON.stringify(merged))), merged);
 });
 
 test('dates use the local calendar', () => {

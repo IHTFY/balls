@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import './helpers/runes-loader.js';
 import { defaultProfile, STORAGE_KEY } from '../src/lib/game/profile.js';
 
-const { profile, persist } = await import('../src/lib/state/profile.svelte.js');
+const { profile, persist, resetProfile } = await import('../src/lib/state/profile.svelte.js');
 
 /** @param {string | null} newValue */
 function notify(newValue) {
@@ -58,7 +58,7 @@ test('delayed events for saves that were replaced since are skipped, the last on
 	assert.equal(profile.coins, 20);
 });
 
-test('another copy changing the profile and resetting it before either event arrives', () => {
+test('another copy saving a change and then undoing it leaves an unsaved change here alone', () => {
 	persist();
 	const base = localStorage.getItem(STORAGE_KEY) ?? '';
 	profile.settings.music = !profile.settings.music;
@@ -68,7 +68,8 @@ test('another copy changing the profile and resetting it before either event arr
 	notify(changed);
 	notify(base);
 	persist();
-	assert.equal(saved().settings.music, JSON.parse(base).settings.music);
+	assert.equal(saved().settings.music, !JSON.parse(base).settings.music);
+	assert.equal(saved().coins, JSON.parse(base).coins);
 });
 
 test('a delayed event adopts a newer save made in another copy since, before this copy saves', () => {
@@ -113,4 +114,102 @@ test('a removed or unreadable save leaves this copy as it is', () => {
 	localStorage.setItem(STORAGE_KEY, '{not json');
 	notify('{not json');
 	assert.equal(profile.coins, 31);
+	localStorage.setItem(STORAGE_KEY, '');
+	notify('');
+	assert.equal(profile.coins, 31);
+});
+
+test('a level finished here survives a save from another copy that arrives before autosave', () => {
+	persist();
+	const base = JSON.parse(JSON.stringify(profile));
+	const next = base.unlocked + 1;
+	profile.stars[base.unlocked] = 3;
+	profile.unlocked = next;
+	profile.coins += 12;
+	const other = JSON.stringify({
+		...base,
+		settings: { ...base.settings, music: !base.settings.music }
+	});
+	localStorage.setItem(STORAGE_KEY, other);
+	notify(other);
+	assert.equal(profile.unlocked, next, 'the win is still in memory');
+	assert.equal(profile.settings.music, !base.settings.music, "the other copy's setting applies");
+	persist();
+	assert.equal(saved().stars[base.unlocked], 3);
+	assert.equal(saved().unlocked, next);
+	assert.equal(saved().coins, base.coins + 12);
+	assert.equal(saved().settings.music, !base.settings.music);
+});
+
+test('a save builds on what another copy saved even before its event arrives', () => {
+	persist();
+	const base = JSON.parse(JSON.stringify(profile));
+	profile.coins += 5;
+	profile.stats.moves += 7;
+	const other = JSON.stringify({
+		...base,
+		coins: base.coins + 30,
+		stats: { ...base.stats, moves: base.stats.moves + 2 },
+		settings: { ...base.settings, haptics: !base.settings.haptics }
+	});
+	localStorage.setItem(STORAGE_KEY, other);
+	persist();
+	assert.equal(saved().coins, base.coins + 35, 'coins earned in both copies add up');
+	assert.equal(saved().stats.moves, base.stats.moves + 9);
+	assert.equal(saved().settings.haptics, !base.settings.haptics);
+	notify(other);
+	assert.equal(profile.coins, base.coins + 35, 'the late event changes nothing');
+});
+
+test('saves A, B, then A again from another copy keep a change made here after the first event', () => {
+	persist();
+	const base = JSON.parse(JSON.stringify(profile));
+	const a = JSON.stringify({
+		...base,
+		settings: { ...base.settings, music: !base.settings.music }
+	});
+	const b = JSON.stringify(base);
+	localStorage.setItem(STORAGE_KEY, a);
+	localStorage.setItem(STORAGE_KEY, b);
+	localStorage.setItem(STORAGE_KEY, a);
+	notify(a);
+	profile.settings.sound = !base.settings.sound;
+	profile.coins += 9;
+	notify(b);
+	notify(a);
+	assert.equal(profile.settings.sound, !base.settings.sound);
+	persist();
+	assert.equal(saved().settings.sound, !base.settings.sound);
+	assert.equal(saved().coins, base.coins + 9);
+	assert.equal(saved().settings.music, !base.settings.music);
+});
+
+test("taking another copy's save does not write it back", () => {
+	persist();
+	const base = JSON.parse(JSON.stringify(profile));
+	const other = JSON.stringify({
+		...base,
+		coins: base.coins + 1,
+		owned: [...base.owned, 'ocean'],
+		achievements: { ...base.achievements, first: '2026-10-01' }
+	});
+	localStorage.setItem(STORAGE_KEY, other);
+	notify(other);
+	/** @type {string[]} */
+	const writes = [];
+	const setItem = localStorage.setItem;
+	localStorage.setItem = (key, value) => (writes.push(key), setItem(key, value));
+	persist();
+	localStorage.setItem = setItem;
+	assert.deepEqual(writes, []);
+	assert.equal(localStorage.getItem(STORAGE_KEY), other);
+});
+
+test('a reset here counts past a reset in another copy that this copy has not seen yet', () => {
+	persist();
+	const theirs = profile.resets + 1;
+	localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...defaultProfile(), resets: theirs }));
+	resetProfile();
+	assert.equal(profile.resets, theirs + 1);
+	assert.equal(saved().resets, theirs + 1);
 });

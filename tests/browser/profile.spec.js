@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { open, results, solveBoard, waitForBoard } from './helpers.js';
+import { open, results, solveBoard, tap, waitForBoard } from './helpers.js';
 
 /** @param {import('@playwright/test').Page} page */
 const stored = (page) =>
@@ -74,6 +74,60 @@ test('a change in a second copy keeps progress made in the first', async ({ cont
 	const saved = await stored(later);
 	expect(saved.stars['1']).toBe(3);
 	expect(saved.unlocked).toBe(2);
+});
+
+test('a win in one copy and a setting changed in another are both kept', async ({ context }) => {
+	const playing = await context.newPage();
+	await open(playing);
+	await playing.getByRole('button', { name: /Play.*Level 1/ }).click();
+	await waitForBoard(playing);
+
+	const other = await context.newPage();
+	await open(other);
+	await other.getByRole('button', { name: 'Settings' }).click();
+
+	// Two real pages cannot fix which save lands first; tests/storage.test.js covers each order.
+	await solveBoard(playing);
+	await other.getByRole('switch', { name: 'Vibration' }).click();
+	await expect.poll(async () => (await stored(other)).settings.haptics).toBe(false);
+	await expect.poll(async () => (await stored(playing)).stars?.['1']).toBe(3);
+	const saved = await stored(playing);
+	expect(saved.unlocked).toBe(2);
+	expect(saved.settings.haptics).toBe(false);
+	await expect.poll(async () => (await stored(other)).stars?.['1']).toBe(3);
+});
+
+test('resetting progress in one copy restarts another that still shows a board', async ({
+	context
+}) => {
+	const seed = { unlocked: 2, stars: { 1: 3 }, coins: 300 };
+	const playing = await context.newPage();
+	await open(playing, seed);
+	await playing.getByRole('button', { name: /Play.*Level 2/ }).click();
+	await waitForBoard(playing);
+	await tap(playing, 0);
+
+	const other = await context.newPage();
+	await open(other, seed);
+	await other.getByRole('button', { name: 'Settings' }).click();
+	for (const label of ['Reset progress', 'Erase everything?', 'Really? Tap once more'])
+		await other.getByRole('button', { name: label }).click();
+	await expect(other.getByRole('button', { name: /Play.*Level 1/ })).toBeVisible();
+
+	// The copy with the old board starts over too, and the old board is not saved again.
+	await expect(playing.getByRole('button', { name: /Play.*Level 1/ })).toBeVisible();
+	await hideAndClose(other);
+	const saved = await stored(playing);
+	expect(saved.unlocked).toBe(1);
+	expect(saved.stars).toEqual({});
+	expect(saved.coins).toBe(100);
+	expect(saved.saved).toBeNull();
+
+	// A board started after the reset saves as usual.
+	await playing.getByRole('button', { name: /Play.*Level 1/ }).click();
+	await waitForBoard(playing);
+	await tap(playing, 0);
+	await expect.poll(async () => (await stored(playing)).saved?.level).toBe(1);
 });
 
 test('the home screen left open past midnight offers the new daily and gift', async ({ page }) => {
