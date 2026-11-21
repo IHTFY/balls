@@ -70,6 +70,7 @@ export const session = $state({
 let token = 0;
 let boardToken = -1;
 let finishedToken = -1;
+let hintEpoch = 0;
 /** @type {Promise<import('../puzzles.js').Puzzle> | null} */
 let upcoming = null;
 
@@ -83,6 +84,7 @@ const randomSeed = () => Math.floor(Math.random() * 2 ** 32);
  */
 async function begin(mode, spec, seed, ready) {
 	const mine = ++token;
+	cancelHint();
 	session.mode = mode;
 	session.seed = seed;
 	session.colors = spec.colors;
@@ -106,6 +108,7 @@ function resume(matches) {
 	const saved = /** @type {any} */ (profile.saved);
 	if (!saved || !matches(saved)) return false;
 	token++;
+	cancelHint();
 	if (!game.restore($state.snapshot(saved.game))) {
 		profile.saved = null;
 		return false;
@@ -163,6 +166,7 @@ export function replay() {
 		session.mystery
 	);
 	boardToken = ++token;
+	cancelHint();
 	session.result = null;
 	save();
 }
@@ -400,20 +404,32 @@ function endBlitz() {
  */
 export async function requestHint() {
 	if (session.hintBusy || game.won || session.loading) return 'busy';
-	if (profile.hints <= 0) {
-		if (!spend(HINT_PRICE)) return 'empty';
-		profile.hints++;
-	}
+	if (profile.hints <= 0 && profile.coins < HINT_PRICE) return 'empty';
+	const withStock = profile.hints > 0;
 	session.hintBusy = true;
+	const mine = token;
+	const epoch = hintEpoch;
 	const version = game.version;
-	const result = await search(game.colorTubes, game.capacity, { weight: 1.5, maxNodes: 80_000 });
-	session.hintBusy = false;
-	if (version !== game.version) return 'busy';
+	/** @type {Awaited<ReturnType<typeof search>>} */
+	let result;
+	try {
+		result = await search(game.colorTubes, game.capacity, { weight: 1.5, maxNodes: 80_000 });
+	} finally {
+		// A canceled or superseded search must not unlock the next one's button.
+		if (mine === token && epoch === hintEpoch) session.hintBusy = false;
+	}
+	// A board left or changed while searching shows nothing, so nothing is charged.
+	if (mine !== token || epoch !== hintEpoch || version !== game.version) return 'busy';
 	if (result.status === 'solved' && result.moves.length) {
+		// Only the payment offered at the tap is charged, and only for a hint that is shown.
+		// Another open copy may have used it meanwhile.
+		if (withStock) {
+			if (profile.hints <= 0) return 'empty';
+			profile.hints--;
+		} else if (!spend(HINT_PRICE)) return 'empty';
 		const [from, to] = result.moves[0];
 		game.selected = -1;
 		game.hint = { from, to };
-		profile.hints--;
 		game.hintsUsed++;
 		profile.stats.hintsUsed++;
 		save();
@@ -424,6 +440,12 @@ export async function requestHint() {
 		return 'deadEnd';
 	}
 	return 'unknown';
+}
+
+/** Drops a hint still being searched for, as when the player leaves the puzzle screen. */
+export function cancelHint() {
+	hintEpoch++;
+	session.hintBusy = false;
 }
 
 /** @returns {'ok' | 'empty' | 'max'} */
