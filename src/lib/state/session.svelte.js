@@ -100,8 +100,8 @@ async function begin(mode, spec, seed, ready) {
 
 /**
  * Picks up a saved game for the same puzzle when there is one.
- * A damaged seed falls back to the puzzle's own. The color count, boss flag, and mystery
- * flag come from the board and the puzzle, never from the save, since they feed rewards.
+ * A damaged seed falls back to the puzzle's own. The color count comes from the board, and
+ * the boss and mystery flags from the puzzle, never from the save, since they feed rewards.
  * @param {(saved: any) => boolean} matches
  * @param {Spec} spec the puzzle the save is for
  * @param {number} seed the puzzle's seed
@@ -118,7 +118,7 @@ function resume(matches, spec, seed) {
 		seed: Number.isInteger(saved.seed) && saved.seed >= 0 ? saved.seed : seed,
 		colors: new Set(game.start.flat().map((ball) => ball.color)).size,
 		boss: !!spec.boss,
-		mystery: game.start.some((tube) => tube.some((ball) => ball.hidden)),
+		mystery: !!spec.mystery,
 		result: null,
 		loading: false
 	});

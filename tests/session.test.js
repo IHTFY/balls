@@ -175,6 +175,31 @@ test('a saved boss or mystery flag does not change the rewards of an ordinary le
 	assert.equal(profile.stats.mysterySolved, 0);
 });
 
+test('hidden balls in a saved board do not make an ordinary level a Mystery', async () => {
+	await resumeDamagedSave({});
+	finish(solveCurrentBoard());
+	const honest = { score: session.result?.score, coins: session.result?.coins };
+	resetProfile();
+	profile.score = 12345;
+	startLevel(1);
+	await settle();
+	const [from, to] = usefulMoves(game.colorTubes, game.capacity)[0];
+	game.tap(from);
+	game.tap(to);
+	save();
+	// A forged flag on a board that otherwise stays valid.
+	const saved = /** @type {any} */ (profile.saved);
+	for (const tubes of [saved.game.start, saved.game.tubes])
+		for (const tube of tubes) for (const ball of tube) ball.hidden = true;
+	startLevel(2);
+	startLevel(1);
+	assert.equal(session.loading, false, 'the save resumed');
+	assert.equal(session.mystery, false);
+	finish(solveCurrentBoard());
+	assert.deepEqual({ score: session.result?.score, coins: session.result?.coins }, honest);
+	assert.equal(profile.stats.mysterySolved, 0);
+});
+
 test("a saved color count that does not match the board is replaced by the board's own", async () => {
 	await resumeDamagedSave({});
 	finish(solveCurrentBoard());
@@ -186,8 +211,10 @@ test("a saved color count that does not match the board is replaced by the board
 });
 
 test('replaying a resumed Zen game with a damaged seed plays the same puzzle', async (t) => {
-	// A seed whose first useful move leaves the board unsolvable, so the first move comes from the solver.
-	t.mock.method(Math, 'random', () => 42813 / 2 ** 32);
+	// The first seed's first useful move leaves the board unsolvable, so the first move comes from
+	// the solver. Later calls, such as the fallback when the save resumes, get a different board.
+	let calls = 0;
+	t.mock.method(Math, 'random', () => (calls++ === 0 ? 42813 : 7) / 2 ** 32);
 	resetProfile();
 	startZen('easy');
 	await settle();
