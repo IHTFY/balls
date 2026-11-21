@@ -10,7 +10,8 @@ test('the policy allows each inline script by its hash', () => {
 	const scriptSrc = policy.split(';').find((d) => d.trim().startsWith('script-src')) ?? '';
 	const inline = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)]
 		.filter((m) => !/\ssrc=/.test(m[1]))
-		.map((m) => m[2]);
+		// The HTML parser turns CRLF into LF before the browser hashes a script.
+		.map((m) => m[2].replaceAll('\r\n', '\n'));
 	assert.ok(inline.length > 0);
 	for (const body of inline) {
 		const hash = createHash('sha256').update(body).digest('base64');
