@@ -148,6 +148,12 @@
 			0 30px 80px rgb(0 0 0 / 0.45),
 			inset 0 2px 0 rgb(255 255 255 / 0.14);
 	}
+	/* The panel is opaque, so a pane's own blur has nothing to show but the panel's gradient. It
+	   costs a full backdrop read and blur on every frame of the rise, so it is left out here. */
+	.panel :global(.pane) {
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
 	.panel.wide {
 		width: min(560px, 100%);
 	}
