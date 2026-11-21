@@ -27,7 +27,9 @@
 		<link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
 		<style>
 			/* Installed-app launch: the first paint copies Chrome's launch screen (manifest background,
-			   maskable icon at 128px, name near the bottom), then launchExit() animates out of it. */
+			   maskable icon at 128px), then launchExit() animates out of it. Chrome lays out its name
+			   against the whole screen, bars included, which the page can't measure, so the copy leaves
+			   the name out and Chrome's own fades out in place. */
 			#launch {
 				display: none;
 			}
@@ -48,16 +50,6 @@
 			#launch-icon .cap {
 				transform-box: fill-box;
 				transform-origin: center;
-			}
-			#launch-name {
-				position: absolute;
-				inset: auto 0 56px;
-				font:
-					24px/1 Roboto,
-					system-ui,
-					sans-serif;
-				text-align: center;
-				color: rgb(255 255 255 / 0.87);
 			}
 		</style>
 		<!-- The Content-Security-Policy above allows this script by its hash; a test checks it. -->
@@ -192,7 +184,6 @@
 					</g>
 				</g>
 			</svg>
-			<span id="launch-name">Balls · Sort Puzzle</span>
 		</div>
 		<div id="app"></div>
 		<script type="module" src="/src/main.js"></script>
