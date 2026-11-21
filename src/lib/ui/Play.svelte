@@ -476,7 +476,7 @@
 		backdrop-filter: none;
 	}
 	/* On a short screen the stats sit over the title (below), where the blur keeps them readable. */
-	@media (min-height: 521px) {
+	@media (height > 520px) {
 		.stats::before {
 			-webkit-backdrop-filter: none;
 			backdrop-filter: none;
