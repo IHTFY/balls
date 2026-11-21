@@ -73,13 +73,15 @@
 
 	// Offer the daily gift once per launch to returning players. The profile changes whenever
 	// this or another open copy saves, so the offer is remembered rather than made again.
+	// The installed app's launch (src/lib/ui/launch.js) runs about 1.3 s, so it waits that out.
 	let offered = false;
+	const giftDelay = document.documentElement.classList.contains('launching') ? 1400 : 900;
 	$effect(() => {
 		if (offered || !giftReady() || profile.stats.solved === 0) return;
 		const timer = setTimeout(() => {
 			offered = true;
 			if (nav.screen === 'home' && !nav.dialog) nav.dialog = 'gift';
-		}, 900);
+		}, giftDelay);
 		return () => clearTimeout(timer);
 	});
 
