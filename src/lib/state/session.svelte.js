@@ -100,8 +100,8 @@ async function begin(mode, spec, seed, ready) {
 
 /**
  * Picks up a saved game for the same puzzle when there is one.
- * A damaged seed or flag falls back to the puzzle's own value, and the color count is
- * always the board's own, since it feeds the score.
+ * A damaged seed falls back to the puzzle's own. The color count, boss flag, and mystery
+ * flag come from the board and the puzzle, never from the save, since they feed rewards.
  * @param {(saved: any) => boolean} matches
  * @param {Spec} spec the puzzle the save is for
  * @param {number} seed the puzzle's seed
@@ -117,8 +117,8 @@ function resume(matches, spec, seed) {
 	Object.assign(session, {
 		seed: Number.isInteger(saved.seed) && saved.seed >= 0 ? saved.seed : seed,
 		colors: new Set(game.start.flat().map((ball) => ball.color)).size,
-		boss: typeof saved.boss === 'boolean' ? saved.boss : !!spec.boss,
-		mystery: typeof saved.mystery === 'boolean' ? saved.mystery : !!spec.mystery,
+		boss: !!spec.boss,
+		mystery: game.start.some((tube) => tube.some((ball) => ball.hidden)),
 		result: null,
 		loading: false
 	});
@@ -378,7 +378,7 @@ function endBlitz() {
 	stats.blitzBest = Math.max(stats.blitzBest, b.score);
 	stats.blitzMostSolved = Math.max(stats.blitzMostSolved, b.solved);
 	const rankBefore = rankFor(profile.score);
-	profile.score += b.score;
+	profile.score = Math.min(MAX_SCORE, profile.score + b.score);
 	const coins = Math.floor(b.score / 150);
 	earn(coins);
 	const trophies = checkAchievements(true);

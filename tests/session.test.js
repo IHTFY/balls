@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import './helpers/runes-loader.js';
 
-const { game, session, startBlitz, startLevel, startZen, startDaily, replay, save, finish } =
+const { game, session, startBlitz, tick, startLevel, startZen, startDaily, replay, save, finish } =
 	await import('../src/lib/state/session.svelte.js');
 const { profile, resetProfile } = await import('../src/lib/state/profile.svelte.js');
 import { levelSeed } from '../src/lib/game/levels.js';
@@ -157,12 +157,22 @@ test('a saved game with other damaged fields falls back to the level', async () 
 	assert.equal(session.seed, levelSeed(1));
 });
 
-test('an intact saved game keeps its own seed, colors, and flags', async () => {
-	await resumeDamagedSave({ seed: 99, colors: 2, boss: true, mystery: true });
+test('an intact saved game keeps its own seed', async () => {
+	await resumeDamagedSave({ seed: 99 });
 	assert.equal(session.seed, 99);
-	assert.equal(session.colors, 2);
-	assert.equal(session.boss, true);
-	assert.equal(session.mystery, true);
+});
+
+test('a saved boss or mystery flag does not change the rewards of an ordinary level', async () => {
+	await resumeDamagedSave({});
+	finish(solveCurrentBoard());
+	const honest = { score: session.result?.score, coins: session.result?.coins };
+	await resumeDamagedSave({ boss: true, mystery: true });
+	assert.equal(session.boss, false);
+	assert.equal(session.mystery, false);
+	finish(solveCurrentBoard());
+	assert.deepEqual({ score: session.result?.score, coins: session.result?.coins }, honest);
+	assert.equal(profile.stats.bossesBeaten, 0);
+	assert.equal(profile.stats.mysterySolved, 0);
 });
 
 test("a saved color count that does not match the board is replaced by the board's own", async () => {
@@ -175,11 +185,15 @@ test("a saved color count that does not match the board is replaced by the board
 	assert.equal(session.result?.score, honest, 'points are for two colors, not 99');
 });
 
-test('replaying a resumed Zen game with a damaged seed plays the same puzzle', async () => {
+test('replaying a resumed Zen game with a damaged seed plays the same puzzle', async (t) => {
+	// A seed whose first useful move leaves the board unsolvable, so the first move comes from the solver.
+	t.mock.method(Math, 'random', () => 42813 / 2 ** 32);
 	resetProfile();
 	startZen('easy');
 	await settle();
-	const [from, to] = usefulMoves(game.colorTubes, game.capacity)[0];
+	const solution = solve(game.colorTubes, game.capacity);
+	assert.equal(solution.status, 'solved');
+	const [from, to] = solution.moves[0];
 	game.tap(from);
 	game.tap(to);
 	save();
@@ -202,5 +216,18 @@ test('lifetime points stop at the maximum when an award would pass it', async ()
 	startLevel(1);
 	await settle();
 	finish(solveCurrentBoard());
+	assert.equal(profile.score, MAX_SCORE);
+});
+
+test('Blitz points stop at the maximum lifetime score', async (t) => {
+	t.mock.timers.enable({ apis: ['setTimeout'] });
+	resetProfile();
+	profile.score = MAX_SCORE - 1;
+	startBlitz();
+	await settle();
+	session.blitz.score = 500;
+	session.blitz.left = 0;
+	tick(1);
+	assert.equal(session.blitz.over, true);
 	assert.equal(profile.score, MAX_SCORE);
 });
