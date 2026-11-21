@@ -33,6 +33,11 @@ body,
 	height: 100%;
 	margin: 0;
 	overflow: hidden;
+}
+
+/* On the root alone: there it stops pull-to-refresh, while on the boxes inside it would also stop
+   a zoomed-in page from being dragged around. */
+html {
 	overscroll-behavior: none;
 }
 
