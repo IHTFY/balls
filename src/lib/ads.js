@@ -81,35 +81,50 @@ const load = () =>
 		document.head.appendChild(script);
 	}));
 
-/** Whether this browser holds an ad-free token, unchecked; the loader checks it. */
-export function mayBeAdFree() {
-	let found = false;
+/**
+ * Every ad-free token this browser holds, unchecked, as one string (a sorted JSON list, which no
+ * single odd value can imitate); '' with none. The shared loader accepts the stored token and
+ * each `ihtfy-ad-free` cookie, so all of them are here.
+ */
+export function adFreeTokens() {
+	/** @type {Set<string>} */
+	const tokens = new Set();
 	try {
-		found = !!localStorage.getItem('ihtfy-ad-free');
+		const stored = localStorage.getItem('ihtfy-ad-free');
+		if (stored) tokens.add(stored);
 	} catch {
 		// Storage off: the cookie may still hold the token.
 	}
 	try {
-		found ||= /(?:^|;\s*)ihtfy-ad-free=/.test(document.cookie);
+		for (const [, token] of document.cookie.matchAll(/(?:^|;\s*)ihtfy-ad-free=([^;]+)/g))
+			tokens.add(token);
 	} catch {
 		// A sandboxed frame may not read cookies.
 	}
-	return found;
+	return tokens.size ? JSON.stringify([...tokens].sort()) : '';
 }
 
+/** Whether this browser holds an ad-free token, unchecked; the loader checks it. */
+export const mayBeAdFree = () => adFreeTokens() !== '';
+
 /**
- * Whether this visitor is a buyer once the shared loader has checked the token. It resolves
- * false at once with no token, and false when the loader says the token does not count. It
- * resolves true for a valid token, and also when the check cannot finish (the loader will
- * not load or throws), so the boxes stay collapsed rather than appear and stay empty.
- * @returns {Promise<boolean>}
+ * The shared loader's answer on the tokens held when it looked: whether they count. It resolves
+ * null at once with no token, and null when the check cannot finish (the loader will not load or
+ * throws), so the caller can ask again later.
+ * @returns {Promise<{ tokens: string, free: boolean } | null>}
  */
 export function checkAdFree() {
-	if (!mayBeAdFree()) return Promise.resolve(false);
+	if (!mayBeAdFree()) return Promise.resolve(null);
 	return load()
-		.then(() => /** @type {any} */ (window).ihtfyAds.adFree())
-		.then((free) => free !== false)
-		.catch(() => true);
+		.then(() => {
+			// The loader reads the tokens as its check starts, so the answer is for these.
+			const tokens = adFreeTokens();
+			return Promise.resolve(/** @type {any} */ (window).ihtfyAds.adFree()).then((free) => ({
+				tokens,
+				free: free !== false
+			}));
+		})
+		.catch(() => null);
 }
 
 /** Loads the loader now if this browser holds an ad-free token, so it can hide every ad box. */
