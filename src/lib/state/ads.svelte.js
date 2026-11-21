@@ -30,8 +30,10 @@ function recheck() {
 		again = true;
 		return;
 	}
+	// A check for other tokens that is still running may be waiting on the same load, which
+	// can fail for both.
+	again = asking !== '';
 	asking = held;
-	again = false;
 	checkAdFree().then((answer) => {
 		if (asking === held) asking = '';
 		if (answer) answers = [...answers, [answer.tokens, answer.free]];
@@ -40,10 +42,12 @@ function recheck() {
 	});
 }
 
-// At startup, when the tab returns (a purchase in another tab arrives as a new token), and when
-// the connection comes back (a check that could not finish can now).
+// At startup, when the tab returns or the window gets focus (a purchase in another tab or window
+// arrives as a new token), and when the connection comes back (a check that could not finish can
+// now).
 recheck();
 addEventListener('online', recheck);
+addEventListener('focus', recheck);
 document.addEventListener('visibilitychange', () => {
 	if (document.visibilityState === 'visible') recheck();
 });

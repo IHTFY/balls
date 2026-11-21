@@ -448,6 +448,20 @@ test('a purchase in another tab takes the box away from a screen opened with no 
 	await expect(page.locator('aside, .ad-box')).toHaveCount(0);
 });
 
+test('a purchase in a window beside this one takes the box away when this window gets focus', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 412, height: 800 });
+	await stubLoader(page, CHECKS);
+	await open(page);
+	await finishLevel(page);
+	await buyElsewhere(page);
+	await page.evaluate(() => {
+		dispatchEvent(new Event('focus'));
+	});
+	await expect(page.locator('aside, .ad-box')).toHaveCount(0);
+});
+
 test('a purchase check that fails after the connection returned runs once more', async ({
 	page
 }) => {
@@ -469,6 +483,34 @@ test('a purchase check that fails after the connection returned runs once more',
 	await expect(results(page)).toBeVisible();
 	await expect.poll(() => waiting.length).toBe(1);
 	await comeOnline(page);
+	await waiting[0].abort();
+	await loaded;
+	await expect(page.locator('.ad-box ins.adsbygoogle')).toHaveCount(1);
+});
+
+test('a check for new tokens that joined a failing load runs once more', async ({ page }) => {
+	await page.setViewportSize({ width: 412, height: 800 });
+	/** @type {import('@playwright/test').Route[]} */
+	const waiting = [];
+	// The first request for the loader hangs until the test fails it; later ones are answered.
+	await page.route('https://ihtfy.com/ads/v1.js', (route) =>
+		waiting.push(route) > 1
+			? route.fulfill({ contentType: 'text/javascript', body: loader() })
+			: undefined
+	);
+	await holdToken(page);
+	// The page's load event waits for the hanging loader, so the test goes on without it.
+	const loaded = open(page);
+	await page.getByRole('button', { name: /Play.*Level 1/ }).click();
+	await waitForBoard(page);
+	await solveBoard(page);
+	await expect(results(page)).toBeVisible();
+	await expect.poll(() => waiting.length).toBe(1);
+	// Another rejected token arrives while the loader is still on its way.
+	await page.evaluate(() => {
+		document.cookie = 'ihtfy-ad-free=other.y.z';
+	});
+	await returnToTab(page);
 	await waiting[0].abort();
 	await loaded;
 	await expect(page.locator('.ad-box ins.adsbygoogle')).toHaveCount(1);
