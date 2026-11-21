@@ -42,11 +42,14 @@ export function playLaunch(reduced) {
 			delay,
 			duration
 		) => el.animate({ opacity: [1, 0] }, { delay, duration, easing: 'ease-in', fill: 'both' });
+		const backdrop = overlay.animate(
+			{ backgroundColor: ['#07131d', 'rgb(7 19 29 / 0)'] },
+			{ duration: 700, easing: 'ease-in', fill: 'forwards' }
+		);
+		// Once the home screen shows through, taps reach it (and still skip what is left).
+		backdrop.finished.then(() => (overlay.style.pointerEvents = 'none'));
 		return [
-			overlay.animate(
-				{ backgroundColor: ['#07131d', 'rgb(7 19 29 / 0)'] },
-				{ duration: 700, easing: 'ease-in', fill: 'forwards' }
-			),
+			backdrop,
 			fade(/** @type {Element} */ (overlay.querySelector('#launch-name')), 0, 150),
 			fade(/** @type {Element} */ (icon.querySelector('.backdrop')), 100, 500),
 			fade(/** @type {Element} */ (icon.querySelector('.glass')), 250, 450),
