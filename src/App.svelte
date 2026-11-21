@@ -71,14 +71,16 @@
 		if (audioReady) setMusic(profile.settings.music);
 	});
 
+	// Offer the daily gift once per launch to returning players. The profile changes whenever
+	// this or another open copy saves, so the offer is remembered rather than made again.
+	let offered = false;
 	$effect(() => {
-		// Offer the daily gift once per launch to returning players.
-		if (giftReady() && profile.stats.solved > 0) {
-			const timer = setTimeout(() => {
-				if (nav.screen === 'home' && !nav.dialog) nav.dialog = 'gift';
-			}, 900);
-			return () => clearTimeout(timer);
-		}
+		if (offered || !giftReady() || profile.stats.solved === 0) return;
+		const timer = setTimeout(() => {
+			offered = true;
+			if (nav.screen === 'home' && !nav.dialog) nav.dialog = 'gift';
+		}, 900);
+		return () => clearTimeout(timer);
 	});
 
 	// The phone's back button steps back through the app instead of closing it. Away

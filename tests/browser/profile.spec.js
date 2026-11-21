@@ -130,6 +130,62 @@ test('resetting progress in one copy restarts another that still shows a board',
 	await expect.poll(async () => (await stored(playing)).saved?.level).toBe(1);
 });
 
+/** A player who has cleared a level and has not opened today's gift, so the prompt shows. */
+const giftWaiting = {
+	coins: 0,
+	gift: { last: '2020-01-01', streak: 3 },
+	stats: { solved: 1 },
+	achievements: { first: '2026-01-01' }
+};
+
+test('a gift prompt closed without opening stays closed when another copy saves', async ({
+	context
+}) => {
+	const page = await context.newPage();
+	await open(page, giftWaiting);
+	const prompt = page.getByRole('dialog', { name: 'Daily gift' });
+	await expect(prompt).toBeVisible();
+	await prompt.getByRole('button', { name: 'Close' }).click();
+	await expect(prompt).toHaveCount(0);
+
+	const other = await context.newPage();
+	await other.goto('/');
+	await other.evaluate(() => {
+		const saved = JSON.parse(localStorage.getItem('balls.profile.v1') ?? '{}');
+		saved.settings.sound = false;
+		localStorage.setItem('balls.profile.v1', JSON.stringify(saved));
+	});
+
+	// Longer than the prompt waits to show.
+	await page.waitForTimeout(1500);
+	await expect(prompt).toHaveCount(0);
+	// The save did reach this copy, and the gift is still there to open by hand.
+	await page.getByRole('button', { name: 'Settings' }).click();
+	await expect(page.getByRole('switch', { name: 'Sound effects' })).not.toBeChecked();
+	await page.getByRole('dialog').getByRole('button', { name: 'Close' }).click();
+	await page.getByRole('button', { name: 'Open your daily gift' }).click();
+	await prompt.getByRole('button', { name: 'Open gift' }).click();
+	await expect(prompt.getByRole('button', { name: 'Collect' })).toBeVisible();
+});
+
+test('a gift opened in one copy closes the gift prompt in another', async ({ context }) => {
+	const first = await context.newPage();
+	await open(first, giftWaiting);
+	const second = await context.newPage();
+	await open(second, giftWaiting);
+	const prompt = second.getByRole('dialog', { name: 'Daily gift' });
+	await expect(prompt).toBeVisible();
+
+	await first.getByRole('button', { name: 'Open gift' }).click();
+	await expect(first.getByRole('button', { name: 'Collect' })).toBeVisible();
+
+	// The other copy has no gift left to open today.
+	await expect(prompt).toHaveCount(0);
+	await expect(second.getByRole('button', { name: 'Open your daily gift' })).toHaveCount(0);
+	await expect(first.getByRole('button', { name: 'Collect' })).toBeVisible();
+	expect((await stored(second)).coins).toBe(30);
+});
+
 test('the home screen left open past midnight offers the new daily and gift', async ({ page }) => {
 	await page.clock.install({ time: new Date('2026-10-22T23:58:00') });
 	await open(page, {

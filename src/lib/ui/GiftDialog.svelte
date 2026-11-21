@@ -8,13 +8,18 @@
 	import { burst } from '../fx/particles.js';
 	import { sound } from '../fx/audio.js';
 	import { nav } from '../state/nav.svelte.js';
-	import { claimGift, giftDay, GIFTS } from '../state/session.svelte.js';
+	import { claimGift, giftDay, giftReady, GIFTS } from '../state/session.svelte.js';
 	import Coin from './Coin.svelte';
 	import Modal from './Modal.svelte';
 
 	const day = giftDay();
 	/** @type {(typeof GIFTS)[number] | null} */
 	let opened = $state(null);
+
+	// Another open copy of the game opened today's gift: nothing is left to open here.
+	$effect(() => {
+		if (!opened && !giftReady()) nav.dialog = '';
+	});
 
 	/** @param {MouseEvent} event */
 	function open(event) {
