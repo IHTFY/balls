@@ -1,5 +1,5 @@
 <script>
-	import { untrack } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import { fade, fly, scale } from 'svelte/transition';
 	import { backOut } from 'svelte/easing';
 	import House from '@lucide/svelte/icons/house';
@@ -24,6 +24,7 @@
 	import { search } from '../puzzles.js';
 	import {
 		addTube,
+		cancelHint,
 		checkDeadEnd,
 		findFinish,
 		finish,
@@ -46,6 +47,8 @@
 
 	/** @type {{ reduced: boolean }} */
 	let { reduced } = $props();
+
+	onDestroy(cancelHint);
 
 	const skin = $derived(skinById(profile.skin));
 	const liveStars = $derived(starsFor(game.moves, game.par));
@@ -101,6 +104,7 @@
 				profile.stats.undos++;
 				save();
 			} else if (e.type === 'restart') {
+				cancelHint();
 				sound.whoosh();
 				save();
 			} else if (e.type === 'addTube') sound.buy();
@@ -189,7 +193,13 @@
 	});
 
 	async function hint() {
-		const outcome = await requestHint();
+		/** @type {Awaited<ReturnType<typeof requestHint>> | undefined} */
+		let outcome;
+		try {
+			outcome = await requestHint();
+		} catch {
+			return;
+		}
 		if (outcome === 'ok') sound.hint();
 		else if (outcome === 'empty')
 			notify({
