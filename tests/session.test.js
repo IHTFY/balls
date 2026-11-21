@@ -12,7 +12,8 @@ const {
 	replay,
 	save,
 	finish,
-	requestHint
+	requestHint,
+	cancelHint
 } = await import('../src/lib/state/session.svelte.js');
 const { profile, resetProfile } = await import('../src/lib/state/profile.svelte.js');
 import { usefulMoves } from '../src/lib/game/rules.js';
@@ -161,4 +162,47 @@ test('a hint on the current board is still charged and shown', async () => {
 	assert.equal(profile.hints, hints - 1);
 	assert.equal(profile.stats.hintsUsed, 1);
 	assert.equal(game.hintsUsed, 1);
+});
+
+test('a hint refund never takes the hint count below zero', async () => {
+	resetProfile();
+	startLevel(1);
+	await settle();
+	profile.hints = 0;
+	profile.coins = 100;
+	const asked = requestHint();
+	// Another open copy used the bought hint and shared its balance meanwhile.
+	profile.hints = 0;
+	startLevel(2);
+	assert.equal(await asked, 'busy');
+	await settle();
+	assert.equal(profile.hints, 0);
+	assert.equal(profile.coins, 100 - HINT_PRICE, 'coins come back only with the hint');
+});
+
+test('a hint still being searched for when the play screen is left is not charged', async () => {
+	resetProfile();
+	startLevel(1);
+	await settle();
+	profile.hints = 0;
+	profile.coins = 100;
+	const asked = requestHint();
+	cancelHint();
+	assert.equal(await asked, 'busy');
+	await settle();
+	assert.equal(game.hint, null);
+	assert.equal(game.hintsUsed, 0);
+	assert.equal(profile.stats.hintsUsed, 0);
+	assert.equal(profile.hints, 0);
+	assert.equal(profile.coins, 100);
+	assert.equal(session.hintBusy, false);
+});
+
+test('leaving the play screen before any hint is asked does not block the next one', async () => {
+	resetProfile();
+	startLevel(1);
+	await settle();
+	cancelHint();
+	assert.equal(await requestHint(), 'ok');
+	assert.notEqual(game.hint, null);
 });

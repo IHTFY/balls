@@ -70,6 +70,7 @@ export const session = $state({
 let token = 0;
 let boardToken = -1;
 let finishedToken = -1;
+let hintEpoch = 0;
 /** @type {Promise<import('../puzzles.js').Puzzle> | null} */
 let upcoming = null;
 
@@ -407,12 +408,14 @@ export async function requestHint() {
 	}
 	session.hintBusy = true;
 	const mine = token;
+	const epoch = hintEpoch;
 	const version = game.version;
 	const result = await search(game.colorTubes, game.capacity, { weight: 1.5, maxNodes: 80_000 });
 	session.hintBusy = false;
-	if (mine !== token || version !== game.version) {
+	if (mine !== token || epoch !== hintEpoch || version !== game.version) {
 		// The board was left or changed while searching: the hint is not shown, so it costs nothing.
-		if (bought) {
+		// Another open copy may already have used the bought hint, so only a hint still there is taken back.
+		if (bought && profile.hints > 0) {
 			profile.hints--;
 			profile.coins += HINT_PRICE;
 		}
@@ -433,6 +436,11 @@ export async function requestHint() {
 		return 'deadEnd';
 	}
 	return 'unknown';
+}
+
+/** Drops a hint still being searched for, as when the player leaves the puzzle screen. */
+export function cancelHint() {
+	hintEpoch++;
 }
 
 /** @returns {'ok' | 'empty' | 'max'} */
