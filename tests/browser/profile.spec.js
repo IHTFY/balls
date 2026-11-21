@@ -86,7 +86,7 @@ test('a win in one copy and a setting changed in another are both kept', async (
 	await open(other);
 	await other.getByRole('button', { name: 'Settings' }).click();
 
-	// Finish the level, then change the setting in the other copy before the win is saved.
+	// Two real pages cannot fix which save lands first; tests/storage.test.js covers each order.
 	await solveBoard(playing);
 	await other.getByRole('switch', { name: 'Vibration' }).click();
 	await expect.poll(async () => (await stored(other)).settings.haptics).toBe(false);
