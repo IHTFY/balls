@@ -11,7 +11,7 @@ import {
 	ZEN_PRESETS
 } from '../game/levels.js';
 import { dateKey, isNextDay } from '../game/profile.js';
-import { dailyCoins, levelCoins, rankFor, scoreFor, starsFor } from '../game/scoring.js';
+import { dailyCoins, levelCoins, MAX_SCORE, rankFor, scoreFor, starsFor } from '../game/scoring.js';
 import { generate, search } from '../puzzles.js';
 import { Game } from './game.svelte.js';
 import { checkAchievements, earn, profile, spend } from './profile.svelte.js';
@@ -100,9 +100,13 @@ async function begin(mode, spec, seed, ready) {
 
 /**
  * Picks up a saved game for the same puzzle when there is one.
+ * A damaged seed falls back to the puzzle's own. The color count, boss flag, and mystery
+ * flag come from the board and the puzzle, never from the save, since they feed rewards.
  * @param {(saved: any) => boolean} matches
+ * @param {Spec} spec the puzzle the save is for
+ * @param {number} seed the puzzle's seed
  */
-function resume(matches) {
+function resume(matches, spec, seed) {
 	const saved = /** @type {any} */ (profile.saved);
 	if (!saved || !matches(saved)) return false;
 	token++;
@@ -111,10 +115,10 @@ function resume(matches) {
 		return false;
 	}
 	Object.assign(session, {
-		seed: saved.seed,
-		colors: saved.colors,
-		boss: saved.boss,
-		mystery: saved.mystery,
+		seed: Number.isInteger(saved.seed) && saved.seed >= 0 ? saved.seed : seed,
+		colors: new Set(game.start.flat().map((ball) => ball.color)).size,
+		boss: !!spec.boss,
+		mystery: game.start.some((tube) => tube.some((ball) => ball.hidden)),
 		result: null,
 		loading: false
 	});
@@ -126,24 +130,30 @@ function resume(matches) {
 export function startLevel(level) {
 	session.level = level;
 	session.mode = 'level';
-	if (resume((s) => s.mode === 'level' && s.level === level)) return;
-	begin('level', levelSpec(level), levelSeed(level));
+	const spec = levelSpec(level);
+	const seed = levelSeed(level);
+	if (resume((s) => s.mode === 'level' && s.level === level, spec, seed)) return;
+	begin('level', spec, seed);
 }
 
 export function startDaily() {
 	const today = dateKey();
 	session.date = today;
 	session.mode = 'daily';
-	if (resume((s) => s.mode === 'daily' && s.date === today)) return;
-	begin('daily', dailySpec(today), dailySeed(today));
+	const spec = dailySpec(today);
+	const seed = dailySeed(today);
+	if (resume((s) => s.mode === 'daily' && s.date === today, spec, seed)) return;
+	begin('daily', spec, seed);
 }
 
 /** @param {keyof typeof ZEN_PRESETS} preset */
 export function startZen(preset, fresh = false) {
 	session.preset = preset;
 	session.mode = 'zen';
-	if (!fresh && resume((s) => s.mode === 'zen' && s.preset === preset)) return;
-	begin('zen', ZEN_PRESETS[preset].spec, randomSeed());
+	const { spec } = ZEN_PRESETS[preset];
+	const seed = randomSeed();
+	if (!fresh && resume((s) => s.mode === 'zen' && s.preset === preset, spec, seed)) return;
+	begin('zen', spec, seed);
 }
 
 export function startBlitz() {
@@ -155,7 +165,6 @@ export function startBlitz() {
 /** Plays the same puzzle again from the start. */
 export function replay() {
 	if (session.mode === 'blitz') return startBlitz();
-	if (session.mode === 'zen') return begin('zen', ZEN_PRESETS[session.preset].spec, session.seed);
 	game.load(
 		game.start.map((t) => t.map((b) => b.color)),
 		game.capacity,
@@ -274,7 +283,7 @@ export function finish(version = game.version) {
 
 	const { lines, total } = scoreFor(r);
 	const rankBefore = rankFor(profile.score);
-	profile.score += total;
+	if (Number.isFinite(total)) profile.score = Math.min(MAX_SCORE, profile.score + total);
 	let coins = 0;
 	let previousStars = 0;
 	let newBest = false;
@@ -369,7 +378,7 @@ function endBlitz() {
 	stats.blitzBest = Math.max(stats.blitzBest, b.score);
 	stats.blitzMostSolved = Math.max(stats.blitzMostSolved, b.solved);
 	const rankBefore = rankFor(profile.score);
-	profile.score += b.score;
+	profile.score = Math.min(MAX_SCORE, profile.score + b.score);
 	const coins = Math.floor(b.score / 150);
 	earn(coins);
 	const trophies = checkAchievements(true);
