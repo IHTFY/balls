@@ -735,26 +735,42 @@ const view = (/** @type {import('@playwright/test').Page} */ page) =>
 	});
 
 /**
- * Two fingers on the middle of the element, moved apart or together. Touch points are measured
- * from the corner of the zoomed view, and both stay inside it.
+ * Two fingers at the height of the element's middle, moved apart or together. They sit as near
+ * its middle as lets both stay inside the zoomed view, which is also where touch points and the
+ * element's place are measured from.
  * @param {import('@playwright/test').Page} page
  * @param {import('@playwright/test').Locator} locator
  * @param {'apart' | 'together'} way
  */
 async function pinch(page, locator, way) {
+	// A pinch can leave the view gliding, which would move the element from under the fingers.
+	let seen = await view(page);
+	await expect(async () => {
+		const before = seen;
+		await page.waitForTimeout(100);
+		seen = await view(page);
+		expect(seen).toEqual(before);
+	}).toPass();
 	const box = await boxOf(locator);
-	const seen = await view(page);
-	const x = box.x + box.width / 2 - seen.left;
-	const y = box.y + box.height / 2 - seen.top;
-	const wide = Math.min(100, x - 4, seen.width - x - 4);
-	expect(wide, 'both fingers fit in the view').toBeGreaterThan(40);
-	expect(y, 'the fingers are in the view').toBeGreaterThan(0);
-	expect(y).toBeLessThan(seen.height);
+	const wide = Math.min(100, seen.width / 2 - 4);
+	const x = Math.min(Math.max(box.x + box.width / 2, wide + 4), seen.width - wide - 4);
+	const y = box.y + box.height / 2;
 	const fingers = (/** @type {number} */ gap) => [
 		{ x: x - gap, y, id: 0 },
 		{ x: x + gap, y, id: 1 }
 	];
 	const [from, to] = way === 'apart' ? [wide / 5, wide] : [wide, wide / 5];
+	// What matters under each finger is whether it is the play area, which takes no pinch.
+	const where = await locator.evaluate(
+		(el, points) =>
+			points.every(
+				([px, py]) =>
+					!!document.elementFromPoint(px, py)?.closest('.board-wrap') ===
+					!!el.closest('.board-wrap')
+			),
+		fingers(from).map((finger) => [seen.left + finger.x, seen.top + finger.y])
+	);
+	expect(where, 'both fingers start on the same side of the play area as the element').toBe(true);
 	const session = await page.context().newCDPSession(page);
 	await session.send('Input.dispatchTouchEvent', {
 		type: 'touchStart',
@@ -768,6 +784,23 @@ async function pinch(page, locator, way) {
 	}
 	await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 	await session.detach();
+}
+
+/**
+ * Pinches the element until the page is zoomed in past one and a half times ('apart') or is back
+ * at its own size ('together'). How far one pinch goes depends on how quickly the browser keeps
+ * up with the fingers, so it can take more than one.
+ * @param {import('@playwright/test').Page} page
+ * @param {import('@playwright/test').Locator} locator
+ * @param {'apart' | 'together'} way
+ */
+async function pinchUntilZoomed(page, locator, way) {
+	await expect(async () => {
+		await pinch(page, locator, way);
+		const scale = await zoom(page);
+		if (way === 'apart') expect(scale).toBeGreaterThan(1.5);
+		else expect(scale).toBe(1);
+	}).toPass();
 }
 
 const FINGERS = 'The fingers are sent through the Chromium debugging protocol.';
@@ -805,11 +838,9 @@ test('a pinch or a double tap on the board does not zoom it, and a pinch on the 
 	expect(await readBoard(page)).toEqual(before);
 
 	// The header zooms the page in and out, and the board plays on afterward.
-	const header = page.locator('.hud h1');
-	await pinch(page, header, 'apart');
-	expect(await zoom(page)).toBeGreaterThan(1.5);
-	await pinch(page, header, 'together');
-	expect(await zoom(page)).toBe(1);
+	const header = page.locator('.hud');
+	await pinchUntilZoomed(page, header, 'apart');
+	await pinchUntilZoomed(page, header, 'together');
 	await solveBoard(page);
 	await expect(results(page)).toBeVisible();
 });
@@ -852,8 +883,7 @@ test('zoomed in, one finger dragged up the board moves the view down the page', 
 	await open(page);
 	await page.getByRole('button', { name: /Play.*Level 1/ }).click();
 	await waitForBoard(page);
-	await pinch(page, page.locator('.hud h1'), 'apart');
-	expect(await zoom(page)).toBeGreaterThan(1.5);
+	await pinchUntilZoomed(page, page.locator('.hud'), 'apart');
 
 	const zoomed = await view(page);
 	const finger = { x: zoomed.width / 2, y: zoomed.height - 40 };
@@ -878,8 +908,7 @@ test('zoomed in on a dialog, one finger dragged down it moves the view up the pa
 		await page.waitForTimeout(100);
 		expect(await boxOf(title)).toEqual(before);
 	}).toPass();
-	await pinch(page, page.getByRole('dialog'), 'apart');
-	expect(await zoom(page)).toBeGreaterThan(1.5);
+	await pinchUntilZoomed(page, page.getByRole('dialog'), 'apart');
 
 	const zoomed = await view(page);
 	expect(zoomed.top, 'the view starts below the top of the page').toBeGreaterThan(40);
