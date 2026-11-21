@@ -12,23 +12,31 @@ import { adFreeTokens, checkAdFree, PLAY_AD_SIZES } from '../ads.js';
  */
 let answers = $state.raw([]);
 const answerFor = (/** @type {string} */ held) => answers.find(([tokens]) => tokens === held)?.[1];
-/** The tokens whose check is running. */
+/** The tokens found by the last look, so an open screen asks again when a look finds others. */
+let seen = $state(adFreeTokens());
+/** The tokens whose check is running, and whether it was asked for again while it ran. */
 let asking = '';
+let again = false;
 
 /**
  * Asks the loader about the tokens held now, unless it has answered for them. A check that cannot
- * finish (offline, or the loader will not load) leaves them unanswered for the next call.
+ * finish (offline, or the loader will not load) leaves them unanswered for the next call, and
+ * runs once more by itself when that call came while it was still on its way.
  */
 function recheck() {
-	const held = adFreeTokens();
-	if (!held || held === asking || answerFor(held) !== undefined) return;
+	const held = (seen = adFreeTokens());
+	if (!held || answerFor(held) !== undefined) return;
+	if (held === asking) {
+		again = true;
+		return;
+	}
 	asking = held;
+	again = false;
 	checkAdFree().then((answer) => {
 		if (asking === held) asking = '';
-		if (!answer) return;
-		answers = [...answers, [answer.tokens, answer.free]];
+		if (answer) answers = [...answers, [answer.tokens, answer.free]];
 		// The tokens may have changed while the loader was on its way.
-		recheck();
+		if (answer || again) recheck();
 	});
 }
 
@@ -46,6 +54,8 @@ document.addEventListener('visibilitychange', () => {
  * No box is reserved while a check is pending or could not finish.
  */
 export function isBuyer() {
+	// Read so that a screen opened with other tokens, or none, asks again once a look finds these.
+	void seen;
 	const held = adFreeTokens();
 	return held !== '' && answerFor(held) !== false;
 }

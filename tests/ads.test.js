@@ -401,7 +401,7 @@ test('the purchase check waits for the shared check, then gives its answer', asy
 	assert.equal(settled, 'pending');
 	answer(false);
 	await check;
-	assert.deepEqual(settled, { tokens: 'x.y.z', free: false });
+	assert.deepEqual(settled, { tokens: '["x.y.z"]', free: false });
 });
 
 test('a token the shared check accepts counts', async () => {
@@ -409,7 +409,7 @@ test('a token the shared check accepts counts', async () => {
 	const { checkAdFree } = await loadAds();
 	const check = checkAdFree();
 	await answerCheck(async () => true);
-	assert.deepEqual(await check, { tokens: 'x.y.z', free: true });
+	assert.deepEqual(await check, { tokens: '["x.y.z"]', free: true });
 });
 
 test('a purchase check that cannot finish gives no answer', async () => {
@@ -430,9 +430,13 @@ test('the tokens held are the stored one and every cookie, in one order', async 
 	assert.equal(adFreeTokens(), '');
 	storage['ihtfy-ad-free'] = 'b.b.b';
 	cookie = 'ihtfy-ad-free=c.c.c; other=1; ihtfy-ad-free=a.a.a; ihtfy-ad-free=b.b.b';
-	assert.equal(adFreeTokens(), 'a.a.a b.b.b c.c.c');
+	assert.equal(adFreeTokens(), '["a.a.a","b.b.b","c.c.c"]');
 	cookie = 'ihtfy-ad-free=a.a.a; ihtfy-ad-free=c.c.c';
-	assert.equal(adFreeTokens(), 'a.a.a b.b.b c.c.c');
+	assert.equal(adFreeTokens(), '["a.a.a","b.b.b","c.c.c"]');
+	// One stored value with a space in it is not mistaken for two tokens.
+	storage['ihtfy-ad-free'] = 'a.a.a c.c.c';
+	cookie = '';
+	assert.equal(adFreeTokens(), '["a.a.a c.c.c"]');
 });
 
 test('the answer is for the tokens held when the shared check starts', async () => {
@@ -442,5 +446,5 @@ test('the answer is for the tokens held when the shared check starts', async () 
 	// A purchase lands while the loader is still on its way.
 	cookie = 'ihtfy-ad-free=new.n.n';
 	await answerCheck(async () => true);
-	assert.deepEqual(await check, { tokens: 'new.n.n old.o.o', free: true });
+	assert.deepEqual(await check, { tokens: '["new.n.n","old.o.o"]', free: true });
 });

@@ -82,8 +82,9 @@ const load = () =>
 	}));
 
 /**
- * Every ad-free token this browser holds, unchecked, as one string; '' with none. The shared
- * loader accepts the stored token and each `ihtfy-ad-free` cookie, so all of them are here.
+ * Every ad-free token this browser holds, unchecked, as one string (a sorted JSON list, which no
+ * single odd value can imitate); '' with none. The shared loader accepts the stored token and
+ * each `ihtfy-ad-free` cookie, so all of them are here.
  */
 export function adFreeTokens() {
 	/** @type {Set<string>} */
@@ -100,7 +101,7 @@ export function adFreeTokens() {
 	} catch {
 		// A sandboxed frame may not read cookies.
 	}
-	return [...tokens].sort().join(' ');
+	return tokens.size ? JSON.stringify([...tokens].sort()) : '';
 }
 
 /** Whether this browser holds an ad-free token, unchecked; the loader checks it. */
