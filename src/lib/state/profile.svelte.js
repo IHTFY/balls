@@ -60,7 +60,8 @@ export const profile = $state(load());
  */
 function sync() {
 	const current = localStorage.getItem(STORAGE_KEY);
-	if (current === null || current === stored) return;
+	// Nothing there (removed, or emptied by something else): the next save puts this copy's back.
+	if (!current || current === stored) return;
 	const theirs = parse(current);
 	// An unreadable save from the other copy: keep this one's.
 	if (!theirs) return;
@@ -141,7 +142,14 @@ export function checkAchievements(quiet = false) {
 
 /** Starts over. The count of resets goes up, which is how other open copies know to start over too. */
 export function resetProfile() {
-	Object.assign(profile, defaultProfile(), { resets: profile.resets + 1 });
+	let resets = profile.resets;
+	try {
+		// Another copy may have reset since this one last looked.
+		resets = Math.max(resets, parse(localStorage.getItem(STORAGE_KEY))?.resets ?? 0);
+	} catch {
+		/* Storage is blocked: no other copy can save either. */
+	}
+	Object.assign(profile, defaultProfile(), { resets: resets + 1 });
 	try {
 		write();
 	} catch {

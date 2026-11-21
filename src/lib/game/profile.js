@@ -196,7 +196,7 @@ const same = (/** @type {unknown} */ a, /** @type {unknown} */ b) =>
 /** @type {Rule} this copy's value when it changed here */
 const kept = (base, mine, theirs) => (same(base, mine) ? theirs : mine);
 /** @type {Rule} a count both copies add to or spend from */
-const added = (base, mine, theirs) => Math.max(0, theirs + mine - base);
+const added = (base, mine, theirs) => Math.max(0, theirs + (mine - base));
 /** @type {Rule} the higher of two records */
 const highest = (base, mine, theirs) =>
 	same(base, mine) ? theirs : Math.max(mine ?? 0, theirs ?? 0);
@@ -239,6 +239,8 @@ function each(base, mine, theirs, rule) {
  * back on top, where `base` is the save both started from. Totals such as coins take both
  * copies' changes, records keep the better value, and anything else changed here stays as it
  * is here. With nothing changed here the result is `theirs`, key for key.
+ * Changes are not matched up beyond that: a reward both copies earned, or coins both spent,
+ * in the half second before either saved counts twice.
  * @param {Profile} base
  * @param {Profile} mine
  * @param {Profile} theirs

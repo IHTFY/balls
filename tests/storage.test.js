@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import './helpers/runes-loader.js';
 import { defaultProfile, STORAGE_KEY } from '../src/lib/game/profile.js';
 
-const { profile, persist } = await import('../src/lib/state/profile.svelte.js');
+const { profile, persist, resetProfile } = await import('../src/lib/state/profile.svelte.js');
 
 /** @param {string | null} newValue */
 function notify(newValue) {
@@ -114,6 +114,9 @@ test('a removed or unreadable save leaves this copy as it is', () => {
 	localStorage.setItem(STORAGE_KEY, '{not json');
 	notify('{not json');
 	assert.equal(profile.coins, 31);
+	localStorage.setItem(STORAGE_KEY, '');
+	notify('');
+	assert.equal(profile.coins, 31);
 });
 
 test('a level finished here survives a save from another copy that arrives before autosave', () => {
@@ -200,4 +203,13 @@ test("taking another copy's save does not write it back", () => {
 	localStorage.setItem = setItem;
 	assert.deepEqual(writes, []);
 	assert.equal(localStorage.getItem(STORAGE_KEY), other);
+});
+
+test('a reset here counts past a reset in another copy that this copy has not seen yet', () => {
+	persist();
+	const theirs = profile.resets + 1;
+	localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...defaultProfile(), resets: theirs }));
+	resetProfile();
+	assert.equal(profile.resets, theirs + 1);
+	assert.equal(saved().resets, theirs + 1);
 });

@@ -169,6 +169,10 @@ test('totals changed in two copies at once take both changes', () => {
 	assert.equal(mergeProfiles(base, spent, spent).coins, 0, 'coins never go below zero');
 	const rich = profileWith((p) => (p.score = MAX_SCORE - 10));
 	assert.equal(mergeProfiles(base, rich, theirs).score, MAX_SCORE);
+	// The top score in another copy is exact after a merge with nothing changed here.
+	const top = profileWith((p) => (p.score = MAX_SCORE));
+	const near = profileWith((p) => (p.score = MAX_SCORE - 1));
+	assert.equal(mergeProfiles(near, near, top).score, MAX_SCORE);
 });
 
 test('records changed in two copies at once keep the better one', () => {
