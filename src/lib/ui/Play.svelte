@@ -579,10 +579,13 @@
 		color: #ff4d5e;
 		animation: pulse 0.5s ease-in-out infinite alternate;
 	}
+	/* A pinch or a double tap on the board never zooms the page; around the board it can. One
+	   finger still drags a zoomed-in page. */
 	.board-wrap {
 		position: relative;
 		min-height: 0;
 		margin: 4px 0;
+		touch-action: pan-x pan-y;
 	}
 	.loading {
 		position: absolute;

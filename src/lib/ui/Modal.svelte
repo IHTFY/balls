@@ -138,7 +138,6 @@
 		width: min(420px, 100%);
 		max-height: min(88dvh, 760px);
 		overflow-y: auto;
-		overscroll-behavior: contain;
 		padding: 18px 18px 20px;
 		border-radius: 28px;
 		background: linear-gradient(180deg, rgb(255 255 255 / 0.08), transparent 120px), var(--panel);

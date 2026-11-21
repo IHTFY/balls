@@ -717,3 +717,158 @@ test('decorative loops pause after 15 seconds without input and resume on input'
 	await expect(app).not.toHaveClass(/idle/);
 	expect(await looping()).toBeGreaterThan(0);
 });
+
+test('the page lets people zoom', async ({ page }) => {
+	await open(page);
+	const viewport = await page.locator('meta[name="viewport"]').getAttribute('content');
+	expect(viewport).not.toMatch(/user-scalable|maximum-scale/);
+});
+
+const zoom = (/** @type {import('@playwright/test').Page} */ page) =>
+	page.evaluate(() => /** @type {VisualViewport} */ (visualViewport).scale);
+
+/**
+ * Two fingers on the middle of the element, moved apart or together.
+ * @param {import('@playwright/test').Page} page
+ * @param {import('@playwright/test').Locator} locator
+ * @param {'apart' | 'together'} way
+ */
+async function pinch(page, locator, way) {
+	const session = await page.context().newCDPSession(page);
+	const box = await boxOf(locator);
+	const x = box.x + box.width / 2;
+	const y = box.y + box.height / 2;
+	const fingers = (/** @type {number} */ gap) => [
+		{ x: x - gap, y, id: 0 },
+		{ x: x + gap, y, id: 1 }
+	];
+	const [from, to] = way === 'apart' ? [20, 100] : [100, 20];
+	await session.send('Input.dispatchTouchEvent', {
+		type: 'touchStart',
+		touchPoints: fingers(from)
+	});
+	for (let step = 1; step <= 10; step++) {
+		await session.send('Input.dispatchTouchEvent', {
+			type: 'touchMove',
+			touchPoints: fingers(from + ((to - from) * step) / 10)
+		});
+	}
+	await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+	await session.detach();
+}
+
+const FINGERS = 'The fingers are sent through the Chromium debugging protocol.';
+
+test('a pinch or a double tap on the board does not zoom it, and a pinch on the header does', async ({
+	page,
+	browserName
+}) => {
+	test.skip(browserName !== 'chromium', FINGERS);
+	await open(page);
+	await page.getByRole('button', { name: /Play.*Level 1/ }).click();
+	await waitForBoard(page);
+
+	await pinch(page, page.locator('.board'), 'apart');
+	expect(await zoom(page)).toBe(1);
+
+	// A double tap picks the top ball up and puts it back, at the same size.
+	const before = await readBoard(page);
+	const first = await boxOf(page.locator('[data-tube="0"]'));
+	await page.touchscreen.tap(first.x + first.width / 2, first.y + first.height / 2);
+	await page.touchscreen.tap(first.x + first.width / 2, first.y + first.height / 2);
+	await page.waitForTimeout(500);
+	expect(await zoom(page)).toBe(1);
+	expect(await readBoard(page)).toEqual(before);
+
+	// The header zooms the page in and out, and the board plays on afterward.
+	const header = page.locator('.hud h1');
+	await pinch(page, header, 'apart');
+	expect(await zoom(page)).toBeGreaterThan(1.5);
+	await pinch(page, header, 'together');
+	expect(await zoom(page)).toBe(1);
+	await solveBoard(page);
+	await expect(results(page)).toBeVisible();
+});
+
+/** The zoomed-in part of the page: where its corner is and how much of the page it shows. */
+const view = (/** @type {import('@playwright/test').Page} */ page) =>
+	page.evaluate(() => {
+		const { offsetLeft, offsetTop, width, height } = /** @type {VisualViewport} */ (visualViewport);
+		return { left: offsetLeft, top: offsetTop, width, height };
+	});
+
+/**
+ * One finger put down at a point of the zoomed view, measured from its corner, and dragged up or
+ * down. Resolves to whether it started on an element matching the selector.
+ * @param {import('@playwright/test').Page} page
+ * @param {{ x: number, y: number }} finger
+ * @param {number} dy
+ * @param {string} selector
+ */
+async function drag(page, finger, dy, selector) {
+	const { left, top } = await view(page);
+	const on = await page.evaluate(
+		([x, y, target]) => !!document.elementFromPoint(+x, +y)?.closest(String(target)),
+		[left + finger.x, top + finger.y, selector]
+	);
+	const session = await page.context().newCDPSession(page);
+	await session.send('Input.dispatchTouchEvent', {
+		type: 'touchStart',
+		touchPoints: [{ ...finger, id: 0 }]
+	});
+	for (let step = 1; step <= 20; step++) {
+		await session.send('Input.dispatchTouchEvent', {
+			type: 'touchMove',
+			touchPoints: [{ x: finger.x, y: finger.y + (dy * step) / 20, id: 0 }]
+		});
+	}
+	await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+	await session.detach();
+	return on;
+}
+
+test('zoomed in, one finger dragged up the board moves the view down the page', async ({
+	page,
+	browserName
+}) => {
+	test.skip(browserName !== 'chromium', FINGERS);
+	await open(page);
+	await page.getByRole('button', { name: /Play.*Level 1/ }).click();
+	await waitForBoard(page);
+	await pinch(page, page.locator('.hud h1'), 'apart');
+	expect(await zoom(page)).toBeGreaterThan(1.5);
+
+	const zoomed = await view(page);
+	const finger = { x: zoomed.width / 2, y: zoomed.height - 40 };
+	expect(await drag(page, finger, -100, '.board-wrap'), 'the finger starts on the board').toBe(
+		true
+	);
+	await expect.poll(async () => (await view(page)).top).toBeGreaterThan(zoomed.top + 40);
+	expect(await zoom(page)).toBeGreaterThan(1.5);
+});
+
+test('zoomed in on a dialog, one finger dragged down it moves the view up the page', async ({
+	page,
+	browserName
+}) => {
+	test.skip(browserName !== 'chromium', FINGERS);
+	await open(page);
+	await page.getByRole('button', { name: 'Settings' }).click();
+	const title = page.getByRole('dialog').locator('h2');
+	// The sheet has finished rising once two readings of its place agree.
+	await expect(async () => {
+		const before = await boxOf(title);
+		await page.waitForTimeout(100);
+		expect(await boxOf(title)).toEqual(before);
+	}).toPass();
+	await pinch(page, title, 'apart');
+	expect(await zoom(page)).toBeGreaterThan(1.5);
+
+	const zoomed = await view(page);
+	expect(zoomed.top, 'the view starts below the top of the page').toBeGreaterThan(40);
+	const finger = { x: zoomed.width / 2, y: zoomed.height / 2 };
+	expect(await drag(page, finger, 100, '[role="dialog"]'), 'the finger starts on the dialog').toBe(
+		true
+	);
+	await expect.poll(async () => (await view(page)).top).toBeLessThan(zoomed.top - 40);
+});
