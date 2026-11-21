@@ -104,6 +104,7 @@
 				profile.stats.undos++;
 				save();
 			} else if (e.type === 'restart') {
+				cancelHint();
 				sound.whoosh();
 				save();
 			} else if (e.type === 'addTube') sound.buy();
