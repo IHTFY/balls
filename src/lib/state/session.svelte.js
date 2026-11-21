@@ -400,15 +400,24 @@ function endBlitz() {
  */
 export async function requestHint() {
 	if (session.hintBusy || game.won || session.loading) return 'busy';
-	if (profile.hints <= 0) {
+	const bought = profile.hints <= 0;
+	if (bought) {
 		if (!spend(HINT_PRICE)) return 'empty';
 		profile.hints++;
 	}
 	session.hintBusy = true;
+	const mine = token;
 	const version = game.version;
 	const result = await search(game.colorTubes, game.capacity, { weight: 1.5, maxNodes: 80_000 });
 	session.hintBusy = false;
-	if (version !== game.version) return 'busy';
+	if (mine !== token || version !== game.version) {
+		// The board was left or changed while searching: the hint is not shown, so it costs nothing.
+		if (bought) {
+			profile.hints--;
+			profile.coins += HINT_PRICE;
+		}
+		return 'busy';
+	}
 	if (result.status === 'solved' && result.moves.length) {
 		const [from, to] = result.moves[0];
 		game.selected = -1;

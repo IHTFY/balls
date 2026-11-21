@@ -2,8 +2,18 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import './helpers/runes-loader.js';
 
-const { game, session, startBlitz, startLevel, startDaily, replay, save, finish } =
-	await import('../src/lib/state/session.svelte.js');
+const {
+	HINT_PRICE,
+	game,
+	session,
+	startBlitz,
+	startLevel,
+	startDaily,
+	replay,
+	save,
+	finish,
+	requestHint
+} = await import('../src/lib/state/session.svelte.js');
 const { profile, resetProfile } = await import('../src/lib/state/profile.svelte.js');
 import { usefulMoves } from '../src/lib/game/rules.js';
 import { solve } from '../src/lib/game/solver.js';
@@ -108,4 +118,47 @@ test('a resumed board can still earn its own reward', async () => {
 	assert.equal(session.result?.title, 'Level 1');
 	await settle();
 	assert.equal(session.result?.title, 'Level 1');
+});
+
+test('a hint that arrives after leaving the board is not charged or shown', async () => {
+	resetProfile();
+	startLevel(1);
+	await settle();
+	const hints = profile.hints;
+	const asked = requestHint();
+	startLevel(2);
+	assert.equal(await asked, 'busy');
+	await settle();
+	assert.equal(game.hint, null);
+	assert.equal(game.hintsUsed, 0);
+	assert.equal(profile.hints, hints);
+	assert.equal(profile.stats.hintsUsed, 0);
+});
+
+test('a hint bought with coins for a discarded result is refunded', async () => {
+	resetProfile();
+	startLevel(1);
+	await settle();
+	profile.hints = 0;
+	profile.coins = 100;
+	const asked = requestHint();
+	assert.equal(profile.coins, 100 - HINT_PRICE);
+	startLevel(2);
+	assert.equal(await asked, 'busy');
+	await settle();
+	assert.equal(profile.coins, 100);
+	assert.equal(profile.hints, 0);
+	assert.equal(profile.stats.hintsUsed, 0);
+});
+
+test('a hint on the current board is still charged and shown', async () => {
+	resetProfile();
+	startLevel(1);
+	await settle();
+	const hints = profile.hints;
+	assert.equal(await requestHint(), 'ok');
+	assert.notEqual(game.hint, null);
+	assert.equal(profile.hints, hints - 1);
+	assert.equal(profile.stats.hintsUsed, 1);
+	assert.equal(game.hintsUsed, 1);
 });
