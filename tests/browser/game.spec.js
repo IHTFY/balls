@@ -504,6 +504,29 @@ test('keyboard focus stays inside Settings, so Restart cannot be pressed behind 
 	await expect(page.getByText('Moves', { exact: true }).locator('..')).toContainText('1');
 });
 
+test('focus stays in How to play when it replaces Settings, then returns to the toolbar', async ({
+	page
+}) => {
+	await open(page);
+	await page.getByRole('button', { name: /Play.*Level 1/ }).click();
+	await waitForBoard(page);
+	const opener = page.getByRole('button', { name: 'Settings' });
+	await opener.focus();
+	await page.keyboard.press('Enter');
+	const settings = page.getByRole('dialog', { name: 'Settings' });
+	await settings.getByRole('button', { name: 'How to play' }).focus();
+	await page.keyboard.press('Enter');
+	const help = page.getByRole('dialog', { name: 'How to play' });
+	await expect(help).toBeVisible();
+	// Settings has finished fading out, which is when it used to take focus back to the toolbar.
+	await expect(settings).toHaveCount(0);
+	await expect(help.getByRole('button', { name: 'Close' })).toBeFocused();
+	// Enter closes How to play instead of pressing the Settings button behind it.
+	await page.keyboard.press('Enter');
+	await expect(page.getByRole('dialog')).toHaveCount(0);
+	await expect(opener).toBeFocused();
+});
+
 test('the back button steps back through the app instead of leaving it', async ({ page }) => {
 	// A page before the game, for Back to leave to.
 	await page.goto('/icons/icon-192.png');
