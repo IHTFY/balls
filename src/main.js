@@ -4,6 +4,8 @@ import exoItalic from '@fontsource-variable/exo-2/files/exo-2-latin-wght-italic.
 import './app.css';
 import App from './App.svelte';
 import { loadForBuyer } from './lib/ads.js';
+import { playLaunch } from './lib/ui/launch.js';
+import { profile } from './lib/state/profile.svelte.js';
 import { registerServiceWorker } from './lib/state/updates.svelte.js';
 
 // Only the Latin subset is bundled, so the offline cache stays small. Titles use the
@@ -27,3 +29,4 @@ for (const font of fonts) {
 registerServiceWorker();
 loadForBuyer();
 mount(App, { target: /** @type {HTMLElement} */ (document.getElementById('app')) });
+playLaunch(profile.settings.reducedMotion);
