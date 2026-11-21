@@ -5,6 +5,7 @@ import './helpers/runes-loader.js';
 const { game, session, startBlitz, startLevel, startDaily, replay, save, finish } =
 	await import('../src/lib/state/session.svelte.js');
 const { profile, resetProfile } = await import('../src/lib/state/profile.svelte.js');
+import { levelSeed } from '../src/lib/game/levels.js';
 import { usefulMoves } from '../src/lib/game/rules.js';
 import { solve } from '../src/lib/game/solver.js';
 
@@ -108,4 +109,67 @@ test('a resumed board can still earn its own reward', async () => {
 	assert.equal(session.result?.title, 'Level 1');
 	await settle();
 	assert.equal(session.result?.title, 'Level 1');
+});
+
+/**
+ * Saves a move on level 1, damages the save with `patch`, leaves, and resumes it.
+ * @param {Record<string, unknown>} patch
+ */
+async function resumeDamagedSave(patch) {
+	resetProfile();
+	profile.score = 12345;
+	startLevel(1);
+	await settle();
+	const [from, to] = usefulMoves(game.colorTubes, game.capacity)[0];
+	game.tap(from);
+	game.tap(to);
+	save();
+	Object.assign(/** @type {object} */ (profile.saved), patch);
+	startLevel(2);
+	startLevel(1);
+	assert.equal(session.loading, false, 'the save resumed');
+}
+
+/** @type {[string, Record<string, unknown>][]} */
+const damagedColors = [
+	['colors missing', { colors: undefined }],
+	['colors not a number', { colors: 'many' }],
+	['colors not a whole number', { colors: 2.5 }],
+	['colors zero', { colors: 0 }]
+];
+
+for (const [name, patch] of damagedColors) {
+	test(`a saved game with ${name} still scores and keeps lifetime points`, async () => {
+		await resumeDamagedSave(patch);
+		assert.equal(session.colors, 2, "the level's own color count");
+		finish(solveCurrentBoard());
+		assert.equal(Number.isFinite(session.result?.score), true);
+		assert.ok(profile.score > 12345, 'the score was added to lifetime points');
+		assert.ok(Number.isFinite(profile.score));
+	});
+}
+
+test('a saved game with other damaged fields falls back to the level', async () => {
+	await resumeDamagedSave({ boss: 'yes', mystery: 1, seed: 'x' });
+	assert.equal(session.boss, false);
+	assert.equal(session.mystery, false);
+	assert.equal(session.seed, levelSeed(1));
+});
+
+test('an intact saved game keeps its own seed, colors, and flags', async () => {
+	await resumeDamagedSave({ seed: 99, colors: 2, boss: true, mystery: true });
+	assert.equal(session.seed, 99);
+	assert.equal(session.colors, 2);
+	assert.equal(session.boss, true);
+	assert.equal(session.mystery, true);
+});
+
+test('a score that is not a number is never added to lifetime points', async () => {
+	resetProfile();
+	profile.score = 500;
+	startLevel(1);
+	await settle();
+	session.colors = NaN;
+	finish(solveCurrentBoard());
+	assert.equal(profile.score, 500);
 });

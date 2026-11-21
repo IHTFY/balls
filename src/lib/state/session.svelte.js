@@ -100,9 +100,12 @@ async function begin(mode, spec, seed, ready) {
 
 /**
  * Picks up a saved game for the same puzzle when there is one.
+ * A damaged seed, color count, or flag falls back to the puzzle's own value.
  * @param {(saved: any) => boolean} matches
+ * @param {Spec} spec the puzzle the save is for
+ * @param {number} seed the puzzle's seed
  */
-function resume(matches) {
+function resume(matches, spec, seed) {
 	const saved = /** @type {any} */ (profile.saved);
 	if (!saved || !matches(saved)) return false;
 	token++;
@@ -111,10 +114,10 @@ function resume(matches) {
 		return false;
 	}
 	Object.assign(session, {
-		seed: saved.seed,
-		colors: saved.colors,
-		boss: saved.boss,
-		mystery: saved.mystery,
+		seed: Number.isInteger(saved.seed) && saved.seed >= 0 ? saved.seed : seed,
+		colors: Number.isInteger(saved.colors) && saved.colors > 0 ? saved.colors : spec.colors,
+		boss: typeof saved.boss === 'boolean' ? saved.boss : !!spec.boss,
+		mystery: typeof saved.mystery === 'boolean' ? saved.mystery : !!spec.mystery,
 		result: null,
 		loading: false
 	});
@@ -126,24 +129,30 @@ function resume(matches) {
 export function startLevel(level) {
 	session.level = level;
 	session.mode = 'level';
-	if (resume((s) => s.mode === 'level' && s.level === level)) return;
-	begin('level', levelSpec(level), levelSeed(level));
+	const spec = levelSpec(level);
+	const seed = levelSeed(level);
+	if (resume((s) => s.mode === 'level' && s.level === level, spec, seed)) return;
+	begin('level', spec, seed);
 }
 
 export function startDaily() {
 	const today = dateKey();
 	session.date = today;
 	session.mode = 'daily';
-	if (resume((s) => s.mode === 'daily' && s.date === today)) return;
-	begin('daily', dailySpec(today), dailySeed(today));
+	const spec = dailySpec(today);
+	const seed = dailySeed(today);
+	if (resume((s) => s.mode === 'daily' && s.date === today, spec, seed)) return;
+	begin('daily', spec, seed);
 }
 
 /** @param {keyof typeof ZEN_PRESETS} preset */
 export function startZen(preset, fresh = false) {
 	session.preset = preset;
 	session.mode = 'zen';
-	if (!fresh && resume((s) => s.mode === 'zen' && s.preset === preset)) return;
-	begin('zen', ZEN_PRESETS[preset].spec, randomSeed());
+	const { spec } = ZEN_PRESETS[preset];
+	const seed = randomSeed();
+	if (!fresh && resume((s) => s.mode === 'zen' && s.preset === preset, spec, seed)) return;
+	begin('zen', spec, seed);
 }
 
 export function startBlitz() {
@@ -274,7 +283,7 @@ export function finish(version = game.version) {
 
 	const { lines, total } = scoreFor(r);
 	const rankBefore = rankFor(profile.score);
-	profile.score += total;
+	if (Number.isFinite(total)) profile.score += total;
 	let coins = 0;
 	let previousStars = 0;
 	let newBest = false;
