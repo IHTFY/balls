@@ -89,10 +89,14 @@
 	$effect(() => {
 		if (offered || launching || !giftReady() || profile.stats.solved === 0) return;
 		const timer = setTimeout(() => {
+			if (!offered && nav.screen === 'home' && !nav.dialog) nav.dialog = 'gift';
 			offered = true;
-			if (nav.screen === 'home' && !nav.dialog) nav.dialog = 'gift';
 		}, 900);
 		return () => clearTimeout(timer);
+	});
+	// A gift opened by hand counts as the offer.
+	$effect(() => {
+		if (nav.dialog === 'gift') offered = true;
 	});
 
 	// The phone's back button steps back through the app instead of closing it. Away

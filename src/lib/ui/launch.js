@@ -16,8 +16,9 @@ export function playLaunch(reduced) {
 	/** @type {{ launchExit?: LaunchExit }} */ (globalThis).launchExit?.((overlay) => {
 		const word = document.querySelector('.logo .word');
 		if (reduced || !word) return [];
-		// The game can mount after the first paint, when part of Chrome's fade has already run.
-		const painted = performance.getEntriesByType('paint')[0]?.startTime ?? performance.now();
+		// The game can mount after the copy's first paint, when part of Chrome's fade has already run.
+		const painted =
+			performance.getEntriesByName('first-contentful-paint')[0]?.startTime ?? performance.now();
 		const hold = Math.max(0, CHROME_FADE - (performance.now() - painted));
 		const icon = /** @type {SVGSVGElement} */ (overlay.querySelector('#launch-icon'));
 		const target = word.getBoundingClientRect();
