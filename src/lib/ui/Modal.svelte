@@ -1,3 +1,11 @@
+<script module>
+	// The control that opened the first dialog, kept while one dialog replaces another so that
+	// focus returns to it only when the last one closes.
+	/** @type {HTMLElement | null} */
+	let opener = null;
+	let showing = 0;
+</script>
+
 <script>
 	import { fade } from 'svelte/transition';
 	import { cubicIn, cubicOut } from 'svelte/easing';
@@ -58,11 +66,16 @@
 	}
 
 	$effect(() => {
-		const previous = /** @type {HTMLElement | null} */ (document.activeElement);
+		if (showing++ === 0) opener = /** @type {HTMLElement | null} */ (document.activeElement);
 		/** @type {HTMLElement | null} */ (panel.querySelector('.primary, button'))?.focus({
 			preventScroll: true
 		});
-		return () => previous?.focus?.({ preventScroll: true });
+		// Runs once this dialog has faded out, by which time one that replaced it has focus.
+		return () => {
+			if (--showing > 0) return;
+			opener?.focus?.({ preventScroll: true });
+			opener = null;
+		};
 	});
 </script>
 
