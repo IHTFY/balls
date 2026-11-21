@@ -243,3 +243,43 @@ test('leaving the play screen before any hint is asked does not block the next o
 	assert.equal(await requestHint(), 'ok');
 	assert.notEqual(game.hint, null);
 });
+
+test('a hint paid for with stock is not charged to coins when the stock is used elsewhere meanwhile', async () => {
+	resetProfile();
+	startLevel(1);
+	await settle();
+	profile.hints = 1;
+	profile.coins = 100;
+	const asked = requestHint();
+	// Another open copy used the stocked hint meanwhile.
+	profile.hints = 0;
+	assert.equal(await asked, 'empty');
+	assert.equal(game.hint, null);
+	assert.equal(game.hintsUsed, 0);
+	assert.equal(profile.stats.hintsUsed, 0);
+	assert.equal(profile.hints, 0);
+	assert.equal(profile.coins, 100);
+	assert.equal(session.hintBusy, false);
+});
+
+test('a canceled hint search does not keep the next hint waiting', async () => {
+	resetProfile();
+	startLevel(1);
+	await settle();
+	profile.hints = 0;
+	profile.coins = 100;
+	const canceled = requestHint();
+	cancelHint();
+	assert.equal(session.hintBusy, false);
+	// The same board is picked up again at once.
+	startLevel(1);
+	await settle();
+	assert.equal(session.hintBusy, false);
+	const current = requestHint();
+	assert.equal(session.hintBusy, true);
+	assert.equal(await canceled, 'busy');
+	assert.equal(await current, 'ok');
+	assert.equal(session.hintBusy, false);
+	assert.equal(profile.coins, 100 - HINT_PRICE);
+	assert.equal(profile.stats.hintsUsed, 1);
+});

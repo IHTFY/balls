@@ -192,7 +192,13 @@
 	});
 
 	async function hint() {
-		const outcome = await requestHint();
+		/** @type {Awaited<ReturnType<typeof requestHint>> | undefined} */
+		let outcome;
+		try {
+			outcome = await requestHint();
+		} catch {
+			return;
+		}
 		if (outcome === 'ok') sound.hint();
 		else if (outcome === 'empty')
 			notify({
