@@ -58,7 +58,8 @@ export function playLaunch(reduced) {
 			{ backgroundColor: ['#07131d', 'rgb(7 19 29 / 0)'] },
 			{ duration: 700, delay: hold, easing: 'ease-in', fill: 'both' }
 		);
-		// Once the home screen shows through, taps reach it (and still skip what is left).
+		// Once the home screen shows through, the pointer reaches it, though a tap still only skips
+		// what is left (index.html).
 		backdrop.finished.then(() => (overlay.style.pointerEvents = 'none'));
 		return [
 			backdrop,

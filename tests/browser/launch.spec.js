@@ -63,23 +63,29 @@ test('a touch during the installed launch only skips it', async ({ browser }) =>
 	await context.close();
 });
 
-test('a mouse press held past the launch leaves the next click alone', async ({ page }) => {
-	await page.addInitScript(installedAndSlow);
-	await open(page);
-	await page.waitForFunction(
-		() => document.getElementById('launch')?.getAnimations({ subtree: true }).length
-	);
-	const settings = page.getByRole('button', { name: 'Settings' });
-	const box = /** @type {NonNullable<Awaited<ReturnType<typeof settings.boundingBox>>>} */ (
-		await settings.boundingBox()
-	);
-	await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-	await page.mouse.down();
-	await expect(page.locator('#launch')).toHaveCount(0, { timeout: 5000 });
-	// The press began on the copy, which is gone now, so no click follows the release.
-	await page.mouse.up();
-	await expect(page.getByRole('dialog')).toHaveCount(0);
+for (const next of ['click', 'Enter']) {
+	test(`a mouse press held past the launch leaves the next ${next} alone`, async ({ page }) => {
+		await page.addInitScript(installedAndSlow);
+		await open(page);
+		await page.waitForFunction(
+			() => document.getElementById('launch')?.getAnimations({ subtree: true }).length
+		);
+		const settings = page.getByRole('button', { name: 'Settings' });
+		const box = /** @type {NonNullable<Awaited<ReturnType<typeof settings.boundingBox>>>} */ (
+			await settings.boundingBox()
+		);
+		await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+		await page.mouse.down();
+		await expect(page.locator('#launch')).toHaveCount(0, { timeout: 5000 });
+		// The press began on the copy, which is gone now, so no click follows the release.
+		await page.mouse.up();
+		await expect(page.getByRole('dialog')).toHaveCount(0);
 
-	await settings.click();
-	await expect(page.getByRole('dialog')).toBeVisible();
-});
+		if (next === 'click') await settings.click();
+		else {
+			await settings.focus();
+			await page.keyboard.press('Enter');
+		}
+		await expect(page.getByRole('dialog')).toBeVisible();
+	});
+}
