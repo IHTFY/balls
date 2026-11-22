@@ -7,7 +7,7 @@
 		     consent message; these hosts are theirs (see README, "Ads"). -->
 		<meta
 			http-equiv="Content-Security-Policy"
-			content="default-src 'self'; script-src 'self' 'sha256-oGxDKYBw72zxGkbfThXW2F/lih9hJu8dGPqU6Cd5pAE=' https://ihtfy.com/ads/ https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://ep2.adtrafficquality.google https://fundingchoicesmessages.google.com; worker-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://lh3.googleusercontent.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://ep1.adtrafficquality.google https://fundingchoicesmessages.google.com; frame-src https://googleads.g.doubleclick.net https://ep2.adtrafficquality.google https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'none'"
+			content="default-src 'self'; script-src 'self' 'sha256-wnoCl7Yfr/He3VrL7nu6FJRBIaw28hPHhC5nIK130bs=' https://ihtfy.com/ads/ https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://ep2.adtrafficquality.google https://fundingchoicesmessages.google.com; worker-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://lh3.googleusercontent.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://ep1.adtrafficquality.google https://fundingchoicesmessages.google.com; frame-src https://googleads.g.doubleclick.net https://ep2.adtrafficquality.google https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'none'"
 		/>
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 		<title>Balls · Sort Puzzle</title>
@@ -81,31 +81,40 @@
 					if (event.type === 'pointerdown' && event.isPrimary && event.button === 0) guard(event);
 					skip();
 				};
-				const eat = (event) => {
-					event.preventDefault();
-					event.stopImmediatePropagation();
-				};
-				// Some browsers send no click after a pointerdown that skipped, so the guard lasts only
-				// until a second after the release, or the next press or key, and never takes a real tap.
-				let expire;
-				const disarm = () => {
-					clearTimeout(expire);
-					removeEventListener('click', eat, true);
-				};
+				// The guard eats only the skipping press's own click. Some browsers send none, so it
+				// lasts until a second after the release, or the next press or key after it.
+				let disarm = () => {};
 				const guard = ({ pointerId }) => {
-					clearTimeout(expire);
-					addEventListener('click', eat, { capture: true, once: true });
+					disarm();
+					let expire;
+					const eat = (event) => {
+						// A click from a key or assistive tech has no pointer, or another one.
+						if (event.pointerId !== undefined && event.pointerId !== pointerId) return;
+						event.preventDefault();
+						event.stopImmediatePropagation();
+						drop();
+					};
 					const release = (event) => {
 						if (event.pointerId !== pointerId) return;
+						if (event.type === 'pointercancel') return drop();
 						removeEventListener('pointerup', release, true);
 						removeEventListener('pointercancel', release, true);
-						if (event.type === 'pointercancel') disarm();
-						else expire = setTimeout(disarm, 1000);
+						expire = setTimeout(drop, 1000);
+						addEventListener('pointerdown', drop, true);
+						addEventListener('keydown', drop, true);
 					};
+					const drop = () => {
+						clearTimeout(expire);
+						removeEventListener('click', eat, true);
+						removeEventListener('pointerup', release, true);
+						removeEventListener('pointercancel', release, true);
+						removeEventListener('pointerdown', drop, true);
+						removeEventListener('keydown', drop, true);
+					};
+					disarm = drop;
+					addEventListener('click', eat, true);
 					addEventListener('pointerup', release, true);
 					addEventListener('pointercancel', release, true);
-					addEventListener('pointerdown', disarm, { capture: true, once: true });
-					addEventListener('keydown', disarm, { capture: true, once: true });
 				};
 				addEventListener('pointerdown', swallow, true);
 				addEventListener('keydown', swallow, true);
