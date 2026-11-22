@@ -73,14 +73,30 @@
 
 	// Offer the daily gift once per launch to returning players. The profile changes whenever
 	// this or another open copy saves, so the offer is remembered rather than made again.
+	// The installed app's launch (index.html) covers the home screen until its cleanup removes
+	// the launching class, so the offer waits for that.
 	let offered = false;
+	const root = document.documentElement;
+	let launching = $state(root.classList.contains('launching'));
+	if (root.classList.contains('launching')) {
+		const watch = new MutationObserver(() => {
+			if (root.classList.contains('launching')) return;
+			launching = false;
+			watch.disconnect();
+		});
+		watch.observe(root, { attributeFilter: ['class'] });
+	}
 	$effect(() => {
-		if (offered || !giftReady() || profile.stats.solved === 0) return;
+		if (offered || launching || !giftReady() || profile.stats.solved === 0) return;
 		const timer = setTimeout(() => {
+			if (!offered && nav.screen === 'home' && !nav.dialog) nav.dialog = 'gift';
 			offered = true;
-			if (nav.screen === 'home' && !nav.dialog) nav.dialog = 'gift';
 		}, 900);
 		return () => clearTimeout(timer);
+	});
+	// A gift opened by hand counts as the offer.
+	$effect(() => {
+		if (nav.dialog === 'gift') offered = true;
 	});
 
 	// The phone's back button steps back through the app instead of closing it. Away
