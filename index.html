@@ -7,7 +7,7 @@
 		     consent message; these hosts are theirs (see README, "Ads"). -->
 		<meta
 			http-equiv="Content-Security-Policy"
-			content="default-src 'self'; script-src 'self' 'sha256-Yxs3U5ocKKbNFQHjihJGDyjuazEk6ay65KjyrrTDEcU=' https://ihtfy.com/ads/ https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://ep2.adtrafficquality.google https://fundingchoicesmessages.google.com; worker-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://lh3.googleusercontent.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://ep1.adtrafficquality.google https://fundingchoicesmessages.google.com; frame-src https://googleads.g.doubleclick.net https://ep2.adtrafficquality.google https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'none'"
+			content="default-src 'self'; script-src 'self' 'sha256-Px1vF3ou0AtnUmZ+HlAHa2mbGL1YGDMx983DQVOS0VU=' https://ihtfy.com/ads/ https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://ep2.adtrafficquality.google https://fundingchoicesmessages.google.com; worker-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://lh3.googleusercontent.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://ep1.adtrafficquality.google https://fundingchoicesmessages.google.com; frame-src https://googleads.g.doubleclick.net https://ep2.adtrafficquality.google https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'none'"
 		/>
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 		<title>Balls · Sort Puzzle</title>
@@ -73,12 +73,32 @@
 					skipped = true;
 					animations.forEach((a) => a.finish());
 				};
-				addEventListener('pointerdown', skip, true);
-				addEventListener('keydown', skip, true);
+				// While the copy shows, a tap or key only skips it: nothing behind it reacts.
+				const swallow = (event) => {
+					event.preventDefault();
+					event.stopImmediatePropagation();
+					// A touch's click comes after the copy is gone, aimed at whatever is under the finger.
+					// Some browsers send no click after this pointerdown, so the next touch or a second
+					// later keeps the eater from taking a real tap.
+					if (event.type === 'pointerdown' && event.isPrimary && event.button === 0) {
+						const spare = () => removeEventListener('click', eat, true);
+						addEventListener('click', eat, { capture: true, once: true });
+						addEventListener('pointercancel', spare, { once: true });
+						addEventListener('pointerdown', spare, { capture: true, once: true });
+						setTimeout(spare, 1000);
+					}
+					skip();
+				};
+				const eat = (event) => {
+					event.preventDefault();
+					event.stopImmediatePropagation();
+				};
+				addEventListener('pointerdown', swallow, true);
+				addEventListener('keydown', swallow, true);
 				const end = () => {
 					clearTimeout(fallback);
-					removeEventListener('pointerdown', skip, true);
-					removeEventListener('keydown', skip, true);
+					removeEventListener('pointerdown', swallow, true);
+					removeEventListener('keydown', swallow, true);
 					root.classList.remove('launching');
 					document.getElementById('launch')?.remove();
 				};
