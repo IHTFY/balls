@@ -7,7 +7,7 @@
 		     consent message; these hosts are theirs (see README, "Ads"). -->
 		<meta
 			http-equiv="Content-Security-Policy"
-			content="default-src 'self'; script-src 'self' 'sha256-GFoIQE0mZI0pRABfAWAOJlFYFlBxgbWyMWOyYfWhiOQ=' https://ihtfy.com/ads/ https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://ep2.adtrafficquality.google https://fundingchoicesmessages.google.com; worker-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://lh3.googleusercontent.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://ep1.adtrafficquality.google https://fundingchoicesmessages.google.com; frame-src https://googleads.g.doubleclick.net https://ep2.adtrafficquality.google https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'none'"
+			content="default-src 'self'; script-src 'self' 'sha256-XWCSu9Gm0emhtYt1BOQkLOy9uYA3hDGm8NfGgwGv8DU=' https://ihtfy.com/ads/ https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://ep2.adtrafficquality.google https://fundingchoicesmessages.google.com; worker-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://lh3.googleusercontent.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://ep1.adtrafficquality.google https://fundingchoicesmessages.google.com; frame-src https://googleads.g.doubleclick.net https://ep2.adtrafficquality.google https://www.google.com; object-src 'none'; base-uri 'self'; form-action 'none'"
 		/>
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 		<title>Balls · Sort Puzzle</title>
@@ -87,15 +87,20 @@
 				const guard = ({ pointerId }) => {
 					disarm();
 					let expire;
+					let released = false;
 					const eat = (event) => {
-						// A click from a key or assistive tech has another pointer, or none and no press count.
-						if (event.pointerId === undefined ? event.detail === 0 : event.pointerId !== pointerId)
+						// A click from a key, assistive tech, or another pointer is left alone. Where clicks
+						// carry no pointer, the press's own click has a press count and follows its release.
+						if (
+							event.pointerId === undefined
+								? event.detail === 0 || !released
+								: event.pointerId !== pointerId
+						)
 							return;
 						event.preventDefault();
 						event.stopImmediatePropagation();
 						drop();
 					};
-					let released = false;
 					const release = (event) => {
 						if (event.pointerId !== pointerId) return;
 						if (event.type === 'pointercancel') return drop();
