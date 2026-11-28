@@ -10,7 +10,7 @@ import {
 } from '../src/lib/game/profile.js';
 import { chapterOf, mapChapters, MAX_LEVEL } from '../src/lib/game/levels.js';
 import { MAX_SCORE } from '../src/lib/game/scoring.js';
-import { validSnapshot } from '../src/lib/game/snapshot.js';
+import { resumeBoard } from '../src/lib/game/snapshot.js';
 
 test('missing or malformed saves fall back to defaults', () => {
 	for (const raw of [null, undefined, 42, 'text', [], {}]) {
@@ -260,8 +260,7 @@ test('saved games are only resumed when they are legal positions', () => {
 		color,
 		hidden: false
 	});
-	const valid = (/** @type {unknown} */ s) =>
-		validSnapshot(s, { colors: 2, capacity: 2, empty: 1 });
+	const valid = (/** @type {unknown} */ s) => resumeBoard(s, { colors: 2, capacity: 2, empty: 1 });
 	const start = [[ball(0, 0), ball(1, 1)], [ball(2, 1), ball(3, 0)], []];
 	const good = {
 		start,
@@ -366,10 +365,10 @@ test('a saved game is only resumed as a board dealt for its puzzle', () => {
 		};
 	};
 	const spec = { colors: 2, capacity: 2, empty: 1 };
-	assert.ok(validSnapshot(save([[0, 1], [1, 0], []]), spec));
-	assert.ok(validSnapshot(save([[0], [1, 1], [0]]), spec), 'a scrambled start');
+	assert.ok(resumeBoard(save([[0, 1], [1, 0], []]), spec));
+	assert.ok(resumeBoard(save([[0], [1, 1], [0]]), spec), 'a scrambled start');
 	assert.ok(
-		validSnapshot(save([[1, 0, 2], [2, 1, 0], [0, 2, 1], [], []], 3), {
+		resumeBoard(save([[1, 0, 2], [2, 1, 0], [0, 2, 1], [], []], 3), {
 			colors: 3,
 			capacity: 3,
 			empty: 2,
@@ -377,11 +376,11 @@ test('a saved game is only resumed as a board dealt for its puzzle', () => {
 		}),
 		'another shape'
 	);
-	assert.ok(!validSnapshot(save([[0]]), spec), 'a single tube with one ball: no move at all');
-	assert.ok(!validSnapshot(save([[0]], 3), { ...spec, capacity: 3 }), 'the right capacity alone');
-	assert.ok(!validSnapshot(save([[0, 1], [1, 0], []], 3), spec), 'another capacity');
+	assert.ok(!resumeBoard(save([[0]]), spec), 'a single tube with one ball: no move at all');
+	assert.ok(!resumeBoard(save([[0]], 3), { ...spec, capacity: 3 }), 'the right capacity alone');
+	assert.ok(!resumeBoard(save([[0, 1], [1, 0], []], 3), spec), 'another capacity');
 	assert.ok(
-		!validSnapshot(
+		!resumeBoard(
 			save([
 				[0, 1],
 				[1, 0]
@@ -390,19 +389,19 @@ test('a saved game is only resumed as a board dealt for its puzzle', () => {
 		),
 		'a tube missing'
 	);
-	assert.ok(!validSnapshot(save([[0, 1], [1, 0], [], []]), spec), 'a tube too many');
-	assert.ok(!validSnapshot(save([[0, 0], [0, 1], []]), spec), 'a color short');
-	assert.ok(!validSnapshot(save([[0, 1], [1, 0], [2]]), spec), 'a color the puzzle does not have');
-	assert.ok(!validSnapshot(save([[0, 1], [1, 2], []]), spec), 'a color replaced');
+	assert.ok(!resumeBoard(save([[0, 1], [1, 0], [], []]), spec), 'a tube too many');
+	assert.ok(!resumeBoard(save([[0, 0], [0, 1], []]), spec), 'a color short');
+	assert.ok(!resumeBoard(save([[0, 1], [1, 0], [2]]), spec), 'a color the puzzle does not have');
+	assert.ok(!resumeBoard(save([[0, 1], [1, 2], []]), spec), 'a color replaced');
 	assert.ok(
-		!validSnapshot(save([[1, 0], [2, 0], [1], [2]]), { colors: 3, capacity: 2, empty: 1 }),
+		!resumeBoard(save([[1, 0], [2, 0], [1], [2]]), { colors: 3, capacity: 2, empty: 1 }),
 		'the right shape with no move to make'
 	);
 	assert.ok(
-		!validSnapshot(save([[0, 0], [1, 1], []]), spec),
+		!resumeBoard(save([[0, 0], [1, 1], []]), spec),
 		'already sorted: only finished tubes to move'
 	);
 	const twins = save([[0, 1], [1, 0], []]);
 	twins.start[1][0].id = 0;
-	assert.ok(!validSnapshot(twins, spec), 'two balls with one id');
+	assert.ok(!resumeBoard(twins, spec), 'two balls with one id');
 });

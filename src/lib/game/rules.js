@@ -1,6 +1,8 @@
-// Pure rules on tubes of color numbers. Each tube lists balls bottom to top.
+// Pure rules on tubes of color numbers, or of balls where covers matter. Each tube
+// lists balls bottom to top.
 
 /** @typedef {number[][]} Tubes */
+/** @typedef {import('./snapshot.js').Ball} Ball */
 
 /** Empty tubes a player may add to one puzzle. */
 export const MAX_ADDED_TUBES = 2;
@@ -72,4 +74,45 @@ export function usefulMoves(tubes, capacity) {
 		}
 	}
 	return moves;
+}
+
+/**
+ * Covers a Mystery deal: every ball but each tube's top.
+ * @param {{ id: number, color: number }[][]} tubes
+ * @param {boolean} mystery
+ * @returns {Ball[][]}
+ */
+export const dealCovers = (tubes, mystery) =>
+	tubes.map((tube) =>
+		tube.map(({ id, color }, i) => ({ id, color, hidden: mystery && i < tube.length - 1 }))
+	);
+
+/**
+ * Moves the top `count` balls from one tube to another and uncovers what that
+ * shows: the ball left on top of the source, and every ball in a tube it finishes.
+ * @param {Ball[][]} tubes
+ * @param {number} from
+ * @param {number} to
+ * @param {number} count
+ * @param {number} capacity
+ */
+export function shiftBalls(tubes, from, to, count, capacity) {
+	const source = tubes[from];
+	const balls = source.slice(source.length - count);
+	const rest = source.slice(0, source.length - count);
+	const below = rest[rest.length - 1];
+	const revealed = !!below?.hidden;
+	if (revealed) rest[rest.length - 1] = { ...below, hidden: false };
+	// A finished tube shows its true color, so its hidden balls are revealed too.
+	let filled = [...tubes[to], ...balls];
+	const sealed =
+		isTubeComplete(
+			filled.map((b) => b.color),
+			capacity
+		) && filled.some((b) => b.hidden);
+	if (sealed) filled = filled.map((b) => (b.hidden ? { ...b, hidden: false } : b));
+	const next = [...tubes];
+	next[from] = rest;
+	next[to] = filled;
+	return { tubes: next, balls, revealed, sealed };
 }

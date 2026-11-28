@@ -399,6 +399,83 @@ test('a Mystery save that covers more balls than play can resumes with only thos
 	assert.equal(JSON.stringify(game.snapshot()), played, 'the covers play left');
 });
 
+/**
+ * A save of `start` (colors, bottom to top) after `history`, with the covers a deal leaves
+ * when `mystery`, as a hand edit could write it.
+ * @param {number[][]} start
+ * @param {{ from: number, to: number, count: number }[]} history
+ * @param {{ capacity: number, mystery?: boolean, tubesAdded?: number }} options
+ */
+function handSave(start, history, { capacity, mystery = false, tubesAdded = 0 }) {
+	let id = 0;
+	const dealt = start.map((tube) =>
+		tube.map((color, i) => ({ id: id++, color, hidden: mystery && i < tube.length - 1 }))
+	);
+	const tubes = [...dealt, ...Array.from({ length: tubesAdded }, () => [])].map((t) => [...t]);
+	for (const { from, to, count } of history)
+		tubes[to].push(...tubes[from].splice(tubes[from].length - count));
+	return {
+		start: dealt,
+		tubes,
+		history,
+		capacity,
+		par: 3,
+		moves: history.reduce((sum, h) => sum + h.count, 0),
+		seconds: 0,
+		undos: 0,
+		hintsUsed: 0,
+		tubesAdded,
+		bestCombo: 0
+	};
+}
+
+const { Game } = await import('../src/lib/state/game.svelte.js');
+const freshGame = () => new Game(() => ({ stacks: true, autoMove: false }));
+
+test('a resumed Mystery tube dealt finished stays covered, as when it was dealt', () => {
+	const spec = { colors: 2, capacity: 2, empty: 1, mystery: true };
+	const g = freshGame();
+	assert.ok(g.restore(handSave([[0, 0], [1], [1]], [], spec), spec));
+	assert.deepEqual(
+		g.tubes.map((tube) => tube.map((b) => b.hidden)),
+		[[true, false], [false], [false]]
+	);
+});
+
+test('a resumed Mystery ball that a saved move uncovered stays uncovered', () => {
+	const spec = { colors: 2, capacity: 3, empty: 1, mystery: true };
+	// The top ball leaves and comes back onto its twin, which the first move uncovered.
+	const history = [
+		{ from: 0, to: 2, count: 1 },
+		{ from: 2, to: 0, count: 1 }
+	];
+	const g = freshGame();
+	assert.ok(g.restore(handSave([[1, 0, 0], [0, 1, 1], []], history, spec), spec));
+	assert.deepEqual(
+		g.tubes[0].map((b) => b.hidden),
+		[true, false, false]
+	);
+});
+
+test('a save whose history moves a ball out of a finished tube starts fresh', () => {
+	const spec = { colors: 2, capacity: 2, empty: 1 };
+	const save = handSave([[0, 0], [1], [1]], [{ from: 0, to: 3, count: 1 }], {
+		...spec,
+		tubesAdded: 1
+	});
+	assert.equal(freshGame().restore(save, spec), false);
+});
+
+test('a save whose history lifts part of a run play would lift whole starts fresh', () => {
+	const spec = { colors: 2, capacity: 4, empty: 1 };
+	const start = [[1, 0, 0, 0], [0, 1, 1, 1], []];
+	const lift = (/** @type {number} */ count) =>
+		freshGame().restore(handSave(start, [{ from: 0, to: 2, count }], spec), spec);
+	assert.equal(lift(1), true, 'one ball, as with stacks off');
+	assert.equal(lift(3), true, 'the whole run');
+	assert.equal(lift(2), false, 'two of three with room for all');
+});
+
 test("a saved color count that does not match the board is replaced by the board's own", async () => {
 	await resumeDamagedSave({});
 	finish(solveCurrentBoard());
