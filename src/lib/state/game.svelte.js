@@ -1,6 +1,14 @@
 // One puzzle in play: the board, move history, and the events effects react to.
-import { canMove, isSolved, isTubeComplete, topRun, usefulMoves } from '../game/rules.js';
-import { validSnapshot } from '../game/snapshot.js';
+import {
+	canMove,
+	dealCovers,
+	isSolved,
+	isTubeComplete,
+	shiftBalls,
+	topRun,
+	usefulMoves
+} from '../game/rules.js';
+import { resumeBoard } from '../game/snapshot.js';
 
 /** @typedef {import('../game/snapshot.js').Ball} Ball */
 /** @typedef {import('../game/snapshot.js').HistoryEntry} HistoryEntry */
@@ -39,9 +47,6 @@ const COMBO_WINDOW = 4;
 
 /** @param {Ball[]} tube */
 const colorsOf = (tube) => tube.map((b) => b.color);
-
-/** @param {Ball[][]} tubes */
-const uncovered = (tubes) => tubes.map((tube) => tube.map((b) => ({ ...b, hidden: false })));
 
 export class Game {
 	/** @type {Ball[][]} */
@@ -120,8 +125,9 @@ export class Game {
 	 */
 	load(tubes, capacity, par, mystery) {
 		let id = 0;
-		this.start = tubes.map((tube) =>
-			tube.map((color, i) => ({ id: id++, color, hidden: mystery && i < tube.length - 1 }))
+		this.start = dealCovers(
+			tubes.map((tube) => tube.map((color) => ({ id: id++, color }))),
+			mystery
 		);
 		this.capacity = capacity;
 		this.par = par;
@@ -221,22 +227,14 @@ export class Game {
 	 * @param {number} to
 	 */
 	move(from, to) {
-		const source = this.tubes[from];
-		const target = this.tubes[to];
-		const count = Math.min(this.liftCount(from), this.capacity - target.length);
-		const balls = source.slice(source.length - count);
-		const rest = source.slice(0, source.length - count);
-		const uncovered = rest[rest.length - 1];
-		if (uncovered?.hidden) rest[rest.length - 1] = { ...uncovered, hidden: false };
-
-		// A finished tube shows its true color, so its hidden balls are revealed too.
-		let filled = [...target, ...balls];
-		const sealed = isTubeComplete(colorsOf(filled), this.capacity) && filled.some((b) => b.hidden);
-		if (sealed) filled = filled.map((b) => (b.hidden ? { ...b, hidden: false } : b));
-
-		const tubes = [...this.tubes];
-		tubes[from] = rest;
-		tubes[to] = filled;
+		const count = Math.min(this.liftCount(from), this.capacity - this.tubes[to].length);
+		const { tubes, balls, revealed, sealed } = shiftBalls(
+			this.tubes,
+			from,
+			to,
+			count,
+			this.capacity
+		);
 		this.tubes = tubes;
 		this.history = [...this.history, { from, to, count }];
 		this.moves += count;
@@ -246,7 +244,7 @@ export class Game {
 		this.version++;
 
 		this.emit({ type: 'move', from, to, balls });
-		if (uncovered?.hidden) this.emit({ type: 'reveal', tube: from });
+		if (revealed) this.emit({ type: 'reveal', tube: from });
 		if (sealed) this.emit({ type: 'reveal', tube: to });
 		if (this.isComplete(to)) {
 			this.combo = this.moves - this.lastComplete <= COMBO_WINDOW + count ? this.combo + 1 : 1;
@@ -314,14 +312,14 @@ export class Game {
 	 * @param {import('../game/generator.js').PuzzleSpec} spec the puzzle it is for
 	 */
 	restore(s, spec) {
-		if (!validSnapshot(s, spec)) return false;
-		// Only a Mystery puzzle covers balls; anywhere else they would turn off its move helpers.
-		this.start = spec.mystery ? s.start : uncovered(s.start);
+		const board = resumeBoard(s, spec);
+		if (!board) return false;
+		this.start = board.start;
 		this.capacity = s.capacity;
 		this.par = s.par;
 		this.tubesAdded = s.tubesAdded;
 		this.reset();
-		this.tubes = spec.mystery ? s.tubes : uncovered(s.tubes);
+		this.tubes = board.tubes;
 		this.history = s.history;
 		this.moves = s.moves;
 		this.seconds = s.seconds;

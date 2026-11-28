@@ -11,6 +11,7 @@ import {
 	ZEN_PRESETS
 } from '../game/levels.js';
 import { dateKey, isNextDay } from '../game/profile.js';
+import { MAX_ADDED_TUBES } from '../game/rules.js';
 import { dailyCoins, levelCoins, MAX_SCORE, rankFor, scoreFor, starsFor } from '../game/scoring.js';
 import { generate, search } from '../puzzles.js';
 import { Game } from './game.svelte.js';
@@ -21,7 +22,6 @@ import { checkAchievements, earn, profile, spend } from './profile.svelte.js';
 
 export const HINT_PRICE = 25;
 export const TUBE_PRICE = 100;
-export const MAX_ADDED_TUBES = 2;
 const BLITZ_SECONDS = 90;
 
 /**
