@@ -180,7 +180,11 @@ test('the canvas is shown only while particles are flying', async (t) => {
 		particles.burst(200, 400, ['#fff'], 2);
 		assert.equal(canvas.hidden, false, 'shown once a burst starts');
 		// Every particle lives at most one second, so a few frames of 50 ms each outlast them.
-		for (let now = 50; now <= 1500; now += 50) scheduled?.(now);
+		for (let now = 50; now <= 1500 && scheduled; now += 50) {
+			const callback = scheduled;
+			scheduled = undefined;
+			callback(now);
+		}
 		assert.equal(canvas.hidden, true, 'hidden again once the particles are gone');
 		particles.burst(200, 400, ['#fff'], 2);
 		assert.equal(canvas.hidden, false, 'shown again for the next burst');
