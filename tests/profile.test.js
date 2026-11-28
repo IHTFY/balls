@@ -260,6 +260,8 @@ test('saved games are only resumed when they are legal positions', () => {
 		color,
 		hidden: false
 	});
+	const valid = (/** @type {unknown} */ s) =>
+		validSnapshot(s, { colors: 2, capacity: 2, empty: 1 });
 	const start = [[ball(0, 0), ball(1, 1)], [ball(2, 1), ball(3, 0)], []];
 	const good = {
 		start,
@@ -274,29 +276,29 @@ test('saved games are only resumed when they are legal positions', () => {
 		tubesAdded: 0,
 		bestCombo: 0
 	};
-	assert.ok(validSnapshot(good));
-	assert.ok(validSnapshot({ ...good, tubes: [...good.tubes, []], tubesAdded: 1 }));
-	assert.ok(!validSnapshot(null));
-	assert.ok(!validSnapshot({ ...good, moves: -1 }), 'negative counts');
-	assert.ok(!validSnapshot({ ...good, tubes: good.tubes.slice(0, 2) }), 'a missing tube');
+	assert.ok(valid(good));
+	assert.ok(valid({ ...good, tubes: [...good.tubes, []], tubesAdded: 1 }));
+	assert.ok(!valid(null));
+	assert.ok(!valid({ ...good, moves: -1 }), 'negative counts');
+	assert.ok(!valid({ ...good, tubes: good.tubes.slice(0, 2) }), 'a missing tube');
 	assert.ok(
-		!validSnapshot({ ...good, tubes: [[ball(0, 0), ball(1, 1), ball(2, 1)], [ball(3, 0)], []] }),
+		!valid({ ...good, tubes: [[ball(0, 0), ball(1, 1), ball(2, 1)], [ball(3, 0)], []] }),
 		'an overfull tube'
 	);
 	assert.ok(
-		!validSnapshot({ ...good, tubes: [[ball(0, 1)], [ball(2, 1), ball(3, 0)], [ball(1, 1)]] }),
+		!valid({ ...good, tubes: [[ball(0, 1)], [ball(2, 1), ball(3, 0)], [ball(1, 1)]] }),
 		'a ball changed color'
 	);
 	assert.ok(
-		!validSnapshot({ ...good, history: [{ from: 0, to: 9, count: 1 }] }),
+		!valid({ ...good, history: [{ from: 0, to: 9, count: 1 }] }),
 		'history names a missing tube'
 	);
 	assert.ok(
-		!validSnapshot({ ...good, tubes: [[{ id: 0, color: 0 }], good.tubes[1], good.tubes[2]] }),
+		!valid({ ...good, tubes: [[{ id: 0, color: 0 }], good.tubes[1], good.tubes[2]] }),
 		'a malformed ball'
 	);
 	assert.ok(
-		validSnapshot({
+		valid({
 			...good,
 			tubes: [[ball(0, 0), ball(3, 0)], [ball(2, 1)], [ball(1, 1)]],
 			history: [...good.history, { from: 1, to: 0, count: 1 }],
@@ -305,15 +307,76 @@ test('saved games are only resumed when they are legal positions', () => {
 		'a longer game'
 	);
 	assert.ok(
-		!validSnapshot({ ...good, moves: 0 }),
+		!valid({ ...good, moves: 0 }),
 		'the move count does not match the history, so undo would go below zero'
 	);
 	assert.ok(
-		!validSnapshot({ ...good, moves: 2, history: [...good.history, { from: 0, to: 2, count: 1 }] }),
+		!valid({ ...good, moves: 2, history: [...good.history, { from: 0, to: 2, count: 1 }] }),
 		'history moves a ball that is not where it says'
 	);
 	assert.ok(
-		!validSnapshot({ ...good, history: [{ from: 1, to: 2, count: 1 }] }),
+		!valid({ ...good, history: [{ from: 1, to: 2, count: 1 }] }),
 		'history does not lead to this board'
 	);
+});
+
+test('a saved game is only resumed as a board dealt for its puzzle', () => {
+	/** @param {number[][]} board colors, bottom to top */
+	const save = (board, capacity = 2) => {
+		let id = 0;
+		const start = board.map((tube) => tube.map((color) => ({ id: id++, color, hidden: false })));
+		return {
+			start,
+			tubes: start,
+			history: [],
+			capacity,
+			par: 3,
+			moves: 0,
+			seconds: 0,
+			undos: 0,
+			hintsUsed: 0,
+			tubesAdded: 0,
+			bestCombo: 0
+		};
+	};
+	const spec = { colors: 2, capacity: 2, empty: 1 };
+	assert.ok(validSnapshot(save([[0, 1], [1, 0], []]), spec));
+	assert.ok(validSnapshot(save([[0], [1, 1], [0]]), spec), 'a scrambled start');
+	assert.ok(
+		validSnapshot(save([[1, 0, 2], [2, 1, 0], [0, 2, 1], [], []], 3), {
+			colors: 3,
+			capacity: 3,
+			empty: 2,
+			mystery: true
+		}),
+		'another shape'
+	);
+	assert.ok(!validSnapshot(save([[0]]), spec), 'a single tube with one ball: no move at all');
+	assert.ok(!validSnapshot(save([[0]], 3), { ...spec, capacity: 3 }), 'the right capacity alone');
+	assert.ok(!validSnapshot(save([[0, 1], [1, 0], []], 3), spec), 'another capacity');
+	assert.ok(
+		!validSnapshot(
+			save([
+				[0, 1],
+				[1, 0]
+			]),
+			spec
+		),
+		'a tube missing'
+	);
+	assert.ok(!validSnapshot(save([[0, 1], [1, 0], [], []]), spec), 'a tube too many');
+	assert.ok(!validSnapshot(save([[0, 0], [0, 1], []]), spec), 'a color short');
+	assert.ok(!validSnapshot(save([[0, 1], [1, 0], [2]]), spec), 'a color the puzzle does not have');
+	assert.ok(!validSnapshot(save([[0, 1], [1, 2], []]), spec), 'a color replaced');
+	assert.ok(
+		!validSnapshot(save([[1, 0], [2, 0], [1], [2]]), { colors: 3, capacity: 2, empty: 1 }),
+		'the right shape with no move to make'
+	);
+	assert.ok(
+		!validSnapshot(save([[0, 0], [1, 1], []]), spec),
+		'already sorted: only finished tubes to move'
+	);
+	const twins = save([[0, 1], [1, 0], []]);
+	twins.start[1][0].id = 0;
+	assert.ok(!validSnapshot(twins, spec), 'two balls with one id');
 });

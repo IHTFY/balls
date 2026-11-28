@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { generatePuzzle } from '../../src/lib/game/generator.js';
-import { dailySeed, dailySpec } from '../../src/lib/game/levels.js';
+import { dailySeed, dailySpec, levelSpec } from '../../src/lib/game/levels.js';
 import { open, readBoard, results, solveBoard, tap, waitForBoard } from './helpers.js';
 
 /**
@@ -98,81 +98,92 @@ test('an extra tube adds an empty tube', async ({ page }) => {
 	await expect(page.locator('[data-tube]')).toHaveCount(count + 1);
 });
 
-test('a stuck board says so', async ({ page }) => {
-	// Two colors in two full tubes with no space: nothing can move.
-	const ball = (/** @type {number} */ id, /** @type {number} */ color) => ({
-		id,
-		color,
-		hidden: false
-	});
-	const start = [
-		[ball(0, 0), ball(1, 1)],
-		[ball(2, 1), ball(3, 0)]
-	];
-	await open(page, {
-		unlocked: 3,
-		saved: {
-			mode: 'level',
-			level: 3,
-			seed: 1,
-			colors: 2,
-			boss: false,
-			mystery: false,
-			game: {
-				start,
-				tubes: start,
-				history: [],
-				capacity: 2,
-				par: 3,
-				moves: 0,
-				seconds: 0,
-				undos: 0,
-				hintsUsed: 0,
-				tubesAdded: 0,
-				bestCombo: 0
-			}
+/**
+ * A saved game on `level` before any move. Balls are [color, hidden] pairs, bottom to top. The
+ * colors `board` leaves out are added as finished tubes, then empty tubes up to the level's count.
+ * @param {number} level
+ * @param {[number, boolean][][]} board
+ */
+function levelSave(level, board) {
+	const spec = levelSpec(level);
+	const used = new Set(board.flat().map(([color]) => color));
+	const tubes = [...board];
+	for (let color = 0; color < spec.colors; color++)
+		if (!used.has(color)) tubes.push(Array.from({ length: spec.capacity }, () => [color, false]));
+	while (tubes.length < spec.colors + spec.empty) tubes.push([]);
+	let id = 0;
+	const start = tubes.map((tube) => tube.map(([color, hidden]) => ({ id: id++, color, hidden })));
+	return {
+		mode: 'level',
+		level,
+		seed: 1,
+		colors: spec.colors,
+		boss: spec.boss,
+		mystery: spec.mystery,
+		game: {
+			start,
+			tubes: start,
+			history: [],
+			capacity: spec.capacity,
+			par: 6,
+			moves: 0,
+			seconds: 0,
+			undos: 0,
+			hintsUsed: 0,
+			tubesAdded: 0,
+			bestCombo: 0
 		}
-	});
-	await page.getByRole('button', { name: /Level 3/ }).click();
+	};
+}
+
+/**
+ * A saved game with every ball in view.
+ * @param {number} level
+ * @param {number[][]} board colors, bottom to top
+ */
+function openSave(level, board) {
+	return levelSave(
+		level,
+		board.map((tube) => tube.map((c) => /** @type {[number, boolean]} */ ([c, false])))
+	);
+}
+
+/**
+ * Level 39 one move into a dead end: its last move put a 7 from tube 10 onto tube 11. Now the
+ * full tubes all end in color 9, and every other top is a color no other tube ends in.
+ */
+function stuckSave() {
+	const saved = openSave(39, [
+		[8, 8, 8, 9],
+		[8, 0, 0, 9],
+		[0, 1, 1, 9],
+		[1, 2, 2, 9],
+		[2, 3, 0],
+		[3, 3, 1],
+		[4, 4, 2],
+		[4, 5, 3],
+		[5, 5, 4],
+		[6, 6, 5],
+		[6, 7, 6, 7],
+		[7, 7]
+	]);
+	const tubes = saved.game.start.map((tube) => [...tube]);
+	tubes[11].push(...tubes[10].splice(-1));
+	return {
+		...saved,
+		game: { ...saved.game, tubes, history: [{ from: 10, to: 11, count: 1 }], moves: 1 }
+	};
+}
+
+test('a stuck board says so', async ({ page }) => {
+	await open(page, { unlocked: 39, saved: stuckSave() });
+	await page.getByRole('button', { name: /Level 39/ }).click();
 	await expect(page.getByRole('alert')).toContainText('No moves left');
 });
 
 test('the stuck banner lets taps through to the tubes under it', async ({ page }) => {
-	const ball = (/** @type {number} */ id, /** @type {number} */ color) => ({
-		id,
-		color,
-		hidden: false
-	});
-	// Eleven full tubes, each with a different color on top: nothing can move.
-	const start = Array.from({ length: 11 }, (_, i) => [
-		ball(i * 2, i),
-		ball(i * 2 + 1, (i + 1) % 11)
-	]);
-	await open(page, {
-		unlocked: 3,
-		saved: {
-			mode: 'level',
-			level: 3,
-			seed: 1,
-			colors: 11,
-			boss: false,
-			mystery: false,
-			game: {
-				start,
-				tubes: start,
-				history: [],
-				capacity: 2,
-				par: 3,
-				moves: 0,
-				seconds: 0,
-				undos: 0,
-				hintsUsed: 0,
-				tubesAdded: 0,
-				bestCombo: 0
-			}
-		}
-	});
-	await page.getByRole('button', { name: /Level 3/ }).click();
+	await open(page, { unlocked: 39, saved: stuckSave() });
+	await page.getByRole('button', { name: /Level 39/ }).click();
 	const banner = page.getByRole('alert');
 	await expect(banner).toContainText('No moves left');
 	// The banner's slide-in has to finish before its position is final.
@@ -362,41 +373,11 @@ test('other modes do not show the daily date', async ({ page }) => {
 	await expect(page.locator('.tags')).not.toContainText(/\d{4}-\d{2}-\d{2}/);
 });
 
-/**
- * A saved mystery game on level 18. Balls are [color, hidden] pairs, bottom to top.
- * @param {[number, boolean][][]} board
- */
-function mysterySave(board) {
-	let id = 0;
-	const start = board.map((tube) => tube.map(([color, hidden]) => ({ id: id++, color, hidden })));
-	return {
-		mode: 'level',
-		level: 18,
-		seed: 1,
-		colors: 2,
-		boss: false,
-		mystery: true,
-		game: {
-			start,
-			tubes: start,
-			history: [],
-			capacity: 4,
-			par: 6,
-			moves: 0,
-			seconds: 0,
-			undos: 0,
-			hintsUsed: 0,
-			tubesAdded: 0,
-			bestCombo: 0
-		}
-	};
-}
-
 test('move stacks never lifts hidden balls, even when they match', async ({ page }) => {
 	await open(page, {
 		unlocked: 18,
 		settings: { music: false, stacks: true },
-		saved: mysterySave([
+		saved: levelSave(18, [
 			[
 				[1, true],
 				[0, true],
@@ -423,7 +404,7 @@ test('move stacks never lifts hidden balls, even when they match', async ({ page
 test('finishing a tube reveals the hidden balls inside it', async ({ page }) => {
 	await open(page, {
 		unlocked: 18,
-		saved: mysterySave([
+		saved: levelSave(18, [
 			[
 				[1, true],
 				[0, false]
@@ -450,15 +431,6 @@ test('finishing a tube reveals the hidden balls inside it', async ({ page }) => 
 	await expect(page.locator('.ball.hidden')).toHaveCount(2);
 	expect((await readBoard(page)).tubes[1]).toEqual([0, 0, 0, 0]);
 });
-
-/**
- * A saved game on level 18 with every ball in view.
- * @param {number[][]} board colors, bottom to top
- */
-function openSave(board) {
-	const tubes = board.map((tube) => tube.map((c) => /** @type {[number, boolean]} */ ([c, false])));
-	return { ...mysterySave(tubes), mystery: false };
-}
 
 test('keyboard focus stays inside Settings, so Restart cannot be pressed behind it', async ({
 	page
@@ -634,7 +606,7 @@ test('a guard entry at the start of history with a later page clears instead of 
 });
 
 test('a picked-up ball lights up the tubes it can go to', async ({ page }) => {
-	await open(page, { unlocked: 18, saved: openSave([[0, 1], [1, 1, 1], [0, 0], []]) });
+	await open(page, { unlocked: 18, saved: openSave(18, [[0, 1], [1, 1, 1], [0, 0, 0], []]) });
 	await page.getByRole('button', { name: /Level 18/ }).click();
 	await waitForBoard(page);
 	await expect(page.locator('.tube.target')).toHaveCount(0);
@@ -645,22 +617,23 @@ test('a picked-up ball lights up the tubes it can go to', async ({ page }) => {
 });
 
 test('with only-move drop on, a ball with one place to go drops there', async ({ page }) => {
+	// Level 46 has a single empty tube, so this board has none.
 	await open(page, {
-		unlocked: 18,
+		unlocked: 46,
 		settings: { music: false, autoMove: true },
-		saved: openSave([
+		saved: openSave(46, [
 			[0, 1],
 			[1, 1, 1],
 			[0, 0, 0]
 		])
 	});
-	await page.getByRole('button', { name: /Level 18/ }).click();
+	await page.getByRole('button', { name: /Level 46/ }).click();
 	await waitForBoard(page);
 	await tap(page, 0);
 	await expect(page.getByText('Only move')).toBeVisible();
 	expect((await readBoard(page)).tubes[1]).toEqual([1, 1, 1, 1]);
 	await tap(page, 0);
-	await expect(results(page)).toContainText('Level 18');
+	await expect(results(page)).toContainText('Level 46');
 });
 
 test('only-move drop ignores an empty tube a one-color tube has no reason to use', async ({
@@ -669,7 +642,7 @@ test('only-move drop ignores an empty tube a one-color tube has no reason to use
 	await open(page, {
 		unlocked: 18,
 		settings: { music: false, autoMove: true },
-		saved: openSave([[1], [1, 1, 1], [0, 0, 0, 0], []])
+		saved: openSave(18, [[1], [1, 1, 1], [0, 0, 0, 0], []])
 	});
 	await page.getByRole('button', { name: /Level 18/ }).click();
 	await waitForBoard(page);
@@ -681,7 +654,7 @@ test('with auto-finish on, the game plays out the matching moves left', async ({
 	await open(page, {
 		unlocked: 18,
 		settings: { music: false, autoFinish: true },
-		saved: openSave([[0, 1], [1, 1, 1], [0, 0, 0], []])
+		saved: openSave(18, [[0, 1], [1, 1, 1], [0, 0, 0], []])
 	});
 	await page.getByRole('button', { name: /Level 18/ }).click();
 	await waitForBoard(page);

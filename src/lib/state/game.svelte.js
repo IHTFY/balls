@@ -40,6 +40,9 @@ const COMBO_WINDOW = 4;
 /** @param {Ball[]} tube */
 const colorsOf = (tube) => tube.map((b) => b.color);
 
+/** @param {Ball[][]} tubes */
+const uncovered = (tubes) => tubes.map((tube) => tube.map((b) => ({ ...b, hidden: false })));
+
 export class Game {
 	/** @type {Ball[][]} */
 	tubes = $state.raw([]);
@@ -306,15 +309,19 @@ export class Game {
 		};
 	}
 
-	/** @param {any} s a saved snapshot, checked before use */
-	restore(s) {
-		if (!validSnapshot(s)) return false;
-		this.start = s.start;
+	/**
+	 * @param {any} s a saved snapshot, checked before use
+	 * @param {import('../game/generator.js').PuzzleSpec} spec the puzzle it is for
+	 */
+	restore(s, spec) {
+		if (!validSnapshot(s, spec)) return false;
+		// Only a Mystery puzzle covers balls; anywhere else they would turn off its move helpers.
+		this.start = spec.mystery ? s.start : uncovered(s.start);
 		this.capacity = s.capacity;
 		this.par = s.par;
 		this.tubesAdded = s.tubesAdded;
 		this.reset();
-		this.tubes = s.tubes;
+		this.tubes = spec.mystery ? s.tubes : uncovered(s.tubes);
 		this.history = s.history;
 		this.moves = s.moves;
 		this.seconds = s.seconds;
