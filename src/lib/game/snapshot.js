@@ -115,14 +115,20 @@ export function resumeBoard(s, spec) {
 		)
 			return null;
 		board = shiftBalls(board, from, to, count, s.capacity).tubes;
+		// Play lifts only balls in view, so the balls this move lifted are in view from now on.
+		board[to] = board[to].map((b, i) =>
+			b.hidden && i >= board[to].length - count ? { ...b, hidden: false } : b
+		);
 	}
 	const key = (/** @type {Ball[]} */ tube) => tube.map((b) => `${b.id}:${b.color}`).join();
 	if (!board.every((tube, i) => key(tube) === key(s.tubes[i]))) return null;
-	// A ball stays covered only where both the replay and the save cover it.
+	// Covered balls only ever sit under other covered balls, and undo uncovers them from the
+	// top down, so a tube keeps the replay's covers up to the highest one the save also covers.
 	return {
 		start,
-		tubes: board.map((tube, i) =>
-			tube.map((b, j) => ({ ...b, hidden: b.hidden && s.tubes[i][j].hidden }))
-		)
+		tubes: board.map((tube, i) => {
+			const cover = tube.map((b, j) => b.hidden && s.tubes[i][j].hidden).lastIndexOf(true);
+			return tube.map((b, j) => ({ ...b, hidden: j <= cover }));
+		})
 	};
 }
