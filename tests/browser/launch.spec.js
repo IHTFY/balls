@@ -89,3 +89,22 @@ for (const next of ['click', 'Enter']) {
 		await expect(page.getByRole('dialog')).toBeVisible();
 	});
 }
+
+test('a click with no press before it, as a screen reader sends, only skips the launch', async ({
+	page
+}) => {
+	await page.addInitScript(installedAndSlow);
+	await open(page);
+	await page.waitForFunction(
+		() => document.getElementById('launch')?.getAnimations({ subtree: true }).length
+	);
+	const settings = page.getByRole('button', { name: 'Settings' });
+	// A click from script has no press count (detail 0), like an assistive technology's.
+	await settings.evaluate((button) => /** @type {HTMLElement} */ (button).click());
+	await expect(page.locator('#launch')).toHaveCount(0, { timeout: 5000 });
+	await expect(page.getByRole('dialog')).toHaveCount(0);
+
+	// The next click is a real one and opens Settings.
+	await settings.click();
+	await expect(page.getByRole('dialog')).toBeVisible();
+});
