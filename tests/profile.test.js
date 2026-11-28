@@ -372,6 +372,10 @@ test('a saved game is only resumed as a board dealt for its puzzle', () => {
 		!validSnapshot(save([[1, 0], [2, 0], [1], [2]]), { colors: 3, capacity: 2, empty: 1 }),
 		'the right shape with no move to make'
 	);
+	assert.ok(
+		!validSnapshot(save([[0, 0], [1, 1], []]), spec),
+		'already sorted: only finished tubes to move'
+	);
 	const twins = save([[0, 1], [1, 0], []]);
 	twins.start[1][0].id = 0;
 	assert.ok(!validSnapshot(twins, spec), 'two balls with one id');
