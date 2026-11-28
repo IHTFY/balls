@@ -318,6 +318,32 @@ test('saved games are only resumed when they are legal positions', () => {
 		!valid({ ...good, history: [{ from: 1, to: 2, count: 1 }] }),
 		'history does not lead to this board'
 	);
+	assert.ok(
+		!valid({
+			...good,
+			tubes: [[], [ball(2, 1), ball(3, 0)], [ball(0, 0), ball(1, 1)]],
+			history: [{ from: 0, to: 2, count: 2 }],
+			moves: 2
+		}),
+		'history moves two colors at once'
+	);
+	assert.ok(
+		!valid({
+			...good,
+			tubes: [[ball(0, 0)], [ball(2, 1)], [ball(1, 1), ball(3, 0)]],
+			history: [...good.history, { from: 1, to: 2, count: 1 }],
+			moves: 2
+		}),
+		'history drops a ball onto another color'
+	);
+	assert.ok(
+		valid({ ...good, tubes: [...good.tubes, [], []], tubesAdded: 2 }),
+		'every tube a puzzle can add'
+	);
+	assert.ok(
+		!valid({ ...good, tubes: [...good.tubes, [], [], []], tubesAdded: 3 }),
+		'more tubes added than a puzzle allows'
+	);
 });
 
 test('a saved game is only resumed as a board dealt for its puzzle', () => {

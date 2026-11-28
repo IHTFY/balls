@@ -2,6 +2,9 @@
 
 /** @typedef {number[][]} Tubes */
 
+/** Empty tubes a player may add to one puzzle. */
+export const MAX_ADDED_TUBES = 2;
+
 /** @param {number[]} tube */
 const top = (tube) => tube[tube.length - 1];
 

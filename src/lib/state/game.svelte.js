@@ -1,6 +1,6 @@
 // One puzzle in play: the board, move history, and the events effects react to.
 import { canMove, isSolved, isTubeComplete, topRun, usefulMoves } from '../game/rules.js';
-import { validSnapshot } from '../game/snapshot.js';
+import { mysteryCovers, validSnapshot } from '../game/snapshot.js';
 
 /** @typedef {import('../game/snapshot.js').Ball} Ball */
 /** @typedef {import('../game/snapshot.js').HistoryEntry} HistoryEntry */
@@ -316,12 +316,16 @@ export class Game {
 	restore(s, spec) {
 		if (!validSnapshot(s, spec)) return false;
 		// Only a Mystery puzzle covers balls; anywhere else they would turn off its move helpers.
-		this.start = spec.mystery ? s.start : uncovered(s.start);
+		// A Mystery board keeps only the covers play could have left.
+		const board = spec.mystery
+			? mysteryCovers(s.start, s.tubes, s.capacity)
+			: { start: uncovered(s.start), tubes: uncovered(s.tubes) };
+		this.start = board.start;
 		this.capacity = s.capacity;
 		this.par = s.par;
 		this.tubesAdded = s.tubesAdded;
 		this.reset();
-		this.tubes = spec.mystery ? s.tubes : uncovered(s.tubes);
+		this.tubes = board.tubes;
 		this.history = s.history;
 		this.moves = s.moves;
 		this.seconds = s.seconds;

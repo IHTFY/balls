@@ -379,6 +379,26 @@ test('hidden balls in a saved board do not make an ordinary level a Mystery', as
 	assert.equal(profile.stats.mysterySolved, 0);
 });
 
+test('a Mystery save that covers more balls than play can resumes with only those play covers', async () => {
+	resetProfile();
+	startLevel(18);
+	await settle();
+	assert.equal(session.mystery, true);
+	const [from, to] = usefulMoves(game.knownTubes, game.capacity)[0];
+	game.tap(from);
+	game.tap(to);
+	save();
+	const played = JSON.stringify(game.snapshot());
+	// A forged save that covers every ball, tops included, in the board and its start.
+	const saved = /** @type {any} */ (profile.saved);
+	for (const tubes of [saved.game.start, saved.game.tubes])
+		for (const tube of tubes) for (const ball of tube) ball.hidden = true;
+	startLevel(2);
+	startLevel(18);
+	assert.equal(session.loading, false, 'the save resumed');
+	assert.equal(JSON.stringify(game.snapshot()), played, 'the covers play left');
+});
+
 test("a saved color count that does not match the board is replaced by the board's own", async () => {
 	await resumeDamagedSave({});
 	finish(solveCurrentBoard());

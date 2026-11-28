@@ -14,7 +14,7 @@
 	import Icon from './Icon.svelte';
 	import { skinById } from '../game/cosmetics.js';
 	import { clock } from '../game/format.js';
-	import { canMove } from '../game/rules.js';
+	import { canMove, MAX_ADDED_TUBES } from '../game/rules.js';
 	import { starsFor } from '../game/scoring.js';
 	import { DROP_GAP, completeGap, sound } from '../fx/audio.js';
 	import { buzz, pulses } from '../fx/haptics.js';
@@ -30,7 +30,6 @@
 		finish,
 		game,
 		HINT_PRICE,
-		MAX_ADDED_TUBES,
 		next,
 		replay,
 		requestHint,

@@ -1,5 +1,5 @@
 // Checks a saved game before it is resumed.
-import { usefulMoves } from './rules.js';
+import { canMove, isTubeComplete, MAX_ADDED_TUBES, topRun, usefulMoves } from './rules.js';
 
 /** @typedef {{ id: number, color: number, hidden: boolean }} Ball */
 /** @typedef {{ from: number, to: number, count: number }} HistoryEntry */
@@ -12,8 +12,8 @@ const isBall = (/** @type {any} */ b) =>
 /**
  * A saved game is valid when its start could have been dealt for the puzzle it
  * is resumed as, and it is a legal position of that start: the same tubes plus
- * any added ones, nothing overfull, and a history that replays from the start to
- * this board.
+ * the added ones a puzzle allows, and a history of legal moves that replays from
+ * the start to this board.
  * @param {any} s
  * @param {PuzzleSpec} spec the puzzle the save is for
  */
@@ -51,7 +51,8 @@ export function validSnapshot(s, spec) {
 	// Every dealt puzzle opens with a move to make, and not out of a finished tube.
 	const colors = s.start.map((/** @type {Ball[]} */ tube) => tube.map((b) => b.color));
 	if (!usefulMoves(colors, s.capacity).length) return false;
-	if (s.tubes.length !== s.start.length + s.tubesAdded) return false;
+	if (s.tubesAdded > MAX_ADDED_TUBES || s.tubes.length !== s.start.length + s.tubesAdded)
+		return false;
 	if (
 		!Array.isArray(s.history) ||
 		!s.history.every(
@@ -74,9 +75,45 @@ export function validSnapshot(s, spec) {
 	/** @type {Ball[][]} */
 	const board = [...s.start, ...Array.from({ length: s.tubesAdded }, () => [])].map((t) => [...t]);
 	for (const { from, to, count } of history) {
-		if (board[from].length < count || board[to].length + count > s.capacity) return false;
+		// Each move lifts some or all of a same-color top run onto a matching top or an empty tube.
+		const tubes = board.map((tube) => tube.map((b) => b.color));
+		if (
+			!canMove(tubes, from, to, s.capacity) ||
+			count > topRun(tubes[from]) ||
+			board[to].length + count > s.capacity
+		)
+			return false;
 		board[to].push(...board[from].splice(board[from].length - count));
 	}
 	const key = (/** @type {Ball[]} */ tube) => tube.map((b) => `${b.id}:${b.color}`).join();
 	return board.every((tube, i) => key(tube) === key(s.tubes[i]));
+}
+
+/**
+ * The covers a resumed Mystery board keeps. Dealing covers every ball but each
+ * tube's top, and an uncovered ball stays uncovered, so a ball stays covered only
+ * where it was dealt covered, with only covered balls under it, never on top and
+ * never in a finished tube.
+ * @param {Ball[][]} start
+ * @param {Ball[][]} tubes
+ * @param {number} capacity
+ */
+export function mysteryCovers(start, tubes, capacity) {
+	return {
+		start: start.map((tube) => tube.map((b, i) => ({ ...b, hidden: i < tube.length - 1 }))),
+		tubes: tubes.map((tube, t) => {
+			let covered = !isTubeComplete(
+				tube.map((b) => b.color),
+				capacity
+			);
+			return tube.map((b, i) => {
+				covered &&=
+					b.hidden &&
+					i < tube.length - 1 &&
+					i < (start[t]?.length ?? 0) - 1 &&
+					start[t][i].id === b.id;
+				return { ...b, hidden: covered };
+			});
+		})
+	};
 }
