@@ -149,11 +149,11 @@ function openSave(level, board) {
 }
 
 /**
- * Level 39's ten colors in its twelve tubes with nothing left to move: the full tubes all end in
- * color 9, and every other top is a color no other tube ends in.
+ * Level 39 one move into a dead end: its last move put a 7 from tube 10 onto tube 11. Now the
+ * full tubes all end in color 9, and every other top is a color no other tube ends in.
  */
-const stuckSave = () =>
-	openSave(39, [
+function stuckSave() {
+	const saved = openSave(39, [
 		[8, 8, 8, 9],
 		[8, 0, 0, 9],
 		[0, 1, 1, 9],
@@ -164,9 +164,16 @@ const stuckSave = () =>
 		[4, 5, 3],
 		[5, 5, 4],
 		[6, 6, 5],
-		[6, 7, 6],
-		[7, 7, 7]
+		[6, 7, 6, 7],
+		[7, 7]
 	]);
+	const tubes = saved.game.start.map((tube) => [...tube]);
+	tubes[11].push(...tubes[10].splice(-1));
+	return {
+		...saved,
+		game: { ...saved.game, tubes, history: [{ from: 10, to: 11, count: 1 }], moves: 1 }
+	};
+}
 
 test('a stuck board says so', async ({ page }) => {
 	await open(page, { unlocked: 39, saved: stuckSave() });

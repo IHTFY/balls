@@ -372,6 +372,8 @@ test('hidden balls in a saved board do not make an ordinary level a Mystery', as
 	startLevel(1);
 	assert.equal(session.loading, false, 'the save resumed');
 	assert.equal(session.mystery, false);
+	assert.equal(game.hasHidden, false, 'every ball is in view');
+	assert.ok(game.start.flat().every((ball) => !ball.hidden));
 	finish(solveCurrentBoard());
 	assert.deepEqual({ score: session.result?.score, coins: session.result?.coins }, honest);
 	assert.equal(profile.stats.mysterySolved, 0);
@@ -431,12 +433,14 @@ const puzzles = [
 	['a Mystery level', () => startLevel(18)],
 	['a level with taller tubes', () => startLevel(31)],
 	['a level with one empty tube', () => startLevel(46)],
-	["today's Daily Challenge", startDaily],
+	['a Sunday Daily Challenge', startDaily],
 	['a Zen game', () => startZen('expert')]
 ];
 
 for (const [name, start] of puzzles) {
-	test(`${name} saved mid-game with a tube added and a hint used resumes`, async () => {
+	test(`${name} saved mid-game with a tube added and a hint used resumes`, async (t) => {
+		// A fixed day, so the Daily Challenge is still the same one when it resumes.
+		t.mock.timers.enable({ apis: ['Date'], now: new Date(2026, 10, 29, 23, 59, 59) });
 		resetProfile();
 		profile.tubes = 1;
 		start();

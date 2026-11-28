@@ -1,4 +1,5 @@
 // Checks a saved game before it is resumed.
+import { canMove } from './rules.js';
 
 /** @typedef {{ id: number, color: number, hidden: boolean }} Ball */
 /** @typedef {{ from: number, to: number, count: number }} HistoryEntry */
@@ -46,6 +47,11 @@ export function validSnapshot(s, spec) {
 		) ||
 		new Set(balls.map((b) => b.id)).size !== balls.length
 	)
+		return false;
+	// Every dealt puzzle opens with a move to make.
+	/** @type {number[][]} */
+	const colors = s.start.map((/** @type {Ball[]} */ tube) => tube.map((b) => b.color));
+	if (!colors.some((_, from) => colors.some((_, to) => canMove(colors, from, to, s.capacity))))
 		return false;
 	if (s.tubes.length !== s.start.length + s.tubesAdded) return false;
 	if (
