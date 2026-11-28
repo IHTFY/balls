@@ -306,9 +306,12 @@ export class Game {
 		};
 	}
 
-	/** @param {any} s a saved snapshot, checked before use */
-	restore(s) {
-		if (!validSnapshot(s)) return false;
+	/**
+	 * @param {any} s a saved snapshot, checked before use
+	 * @param {import('../game/generator.js').PuzzleSpec} spec the puzzle it is for
+	 */
+	restore(s, spec) {
+		if (!validSnapshot(s, spec)) return false;
 		this.start = s.start;
 		this.capacity = s.capacity;
 		this.par = s.par;

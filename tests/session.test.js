@@ -15,10 +15,11 @@ const {
 	save,
 	finish,
 	requestHint,
-	cancelHint
+	cancelHint,
+	addTube
 } = await import('../src/lib/state/session.svelte.js');
 const { profile, resetProfile } = await import('../src/lib/state/profile.svelte.js');
-import { levelSeed } from '../src/lib/game/levels.js';
+import { levelSeed, levelSpec } from '../src/lib/game/levels.js';
 import { MAX_SCORE } from '../src/lib/game/scoring.js';
 import { usefulMoves } from '../src/lib/game/rules.js';
 import { solve } from '../src/lib/game/solver.js';
@@ -385,6 +386,78 @@ test("a saved color count that does not match the board is replaced by the board
 	finish(solveCurrentBoard());
 	assert.equal(session.result?.score, honest, 'points are for two colors, not 99');
 });
+
+test('a saved level whose board is not the level starts the level fresh', async () => {
+	resetProfile();
+	const start = [[{ id: 0, color: 0, hidden: false }]];
+	profile.saved = {
+		mode: 'level',
+		level: 1,
+		seed: levelSeed(1),
+		colors: 1,
+		boss: false,
+		mystery: false,
+		game: {
+			start,
+			tubes: start,
+			history: [],
+			capacity: levelSpec(1).capacity,
+			par: 1,
+			moves: 0,
+			seconds: 0,
+			undos: 0,
+			hintsUsed: 0,
+			tubesAdded: 0,
+			bestCombo: 0
+		}
+	};
+	startLevel(1);
+	assert.equal(session.loading, true, 'the save was not resumed');
+	await settle();
+	assert.equal(session.loading, false);
+	assert.equal(game.tubes.length, 3);
+	assert.ok(usefulMoves(game.colorTubes, game.capacity).length > 0);
+	assert.equal(
+		/** @type {any} */ (profile.saved)?.game.start.length,
+		3,
+		'the fresh board replaced the damaged save'
+	);
+});
+
+/** @type {[string, () => void][]} */
+const puzzles = [
+	['an early level', () => startLevel(1)],
+	['a boss level', () => startLevel(10)],
+	['a Mystery level', () => startLevel(18)],
+	['a level with taller tubes', () => startLevel(31)],
+	['a level with one empty tube', () => startLevel(46)],
+	["today's Daily Challenge", startDaily],
+	['a Zen game', () => startZen('expert')]
+];
+
+for (const [name, start] of puzzles) {
+	test(`${name} saved mid-game with a tube added and a hint used resumes`, async () => {
+		resetProfile();
+		profile.tubes = 1;
+		start();
+		await settle();
+		assert.equal(session.loading, false);
+		const [from, to] = usefulMoves(game.colorTubes, game.capacity)[0];
+		game.tap(from);
+		game.tap(to);
+		assert.equal(addTube(), 'ok');
+		// A hint is saved only as this count; asking for one would depend on the solver's reach.
+		game.hintsUsed++;
+		save();
+		const played = JSON.stringify(game.snapshot());
+		startBlitz();
+		start();
+		assert.equal(session.loading, false, 'the save resumed');
+		assert.equal(JSON.stringify(game.snapshot()), played);
+		assert.equal(game.tubesAdded, 1);
+		assert.equal(game.hintsUsed, 1);
+	});
+}
 
 test('replaying a resumed Zen game with a damaged seed plays the same puzzle', async (t) => {
 	// The first seed's first useful move leaves the board unsolvable, so the first move comes from

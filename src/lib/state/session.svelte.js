@@ -113,7 +113,7 @@ function resume(matches, spec, seed) {
 	if (!saved || !matches(saved)) return false;
 	token++;
 	cancelHint();
-	if (!game.restore($state.snapshot(saved.game))) {
+	if (!game.restore($state.snapshot(saved.game), spec)) {
 		profile.saved = null;
 		return false;
 	}
