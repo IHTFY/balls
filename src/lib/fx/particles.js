@@ -16,6 +16,8 @@
  * @property {number} gravity
  */
 
+/** @type {HTMLCanvasElement | null} */
+let surface = null;
 /** @type {CanvasRenderingContext2D | null} */
 let ctx = null;
 /** @type {Particle[]} */
@@ -26,6 +28,10 @@ let reduced = false;
 
 /** @param {HTMLCanvasElement} canvas */
 export function attachCanvas(canvas) {
+	surface = canvas;
+	// An empty full-screen canvas still costs a layer upload on every frame that something else
+	// animates, so it is shown only while particles are flying.
+	canvas.hidden = true;
 	ctx = canvas.getContext('2d');
 	const resize = () => {
 		const dpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -38,6 +44,7 @@ export function attachCanvas(canvas) {
 	return () => {
 		removeEventListener('resize', resize);
 		cancelAnimationFrame(frame);
+		surface = null;
 		ctx = null;
 	};
 }
@@ -115,6 +122,7 @@ function loop(now) {
 	for (const p of particles) draw(ctx, p);
 	ctx.globalAlpha = 1;
 	frame = particles.length ? requestAnimationFrame(loop) : 0;
+	if (!frame && surface) surface.hidden = true;
 }
 
 /** @param {Partial<Particle> & { x: number, y: number }} p */
@@ -135,7 +143,8 @@ function add(p) {
 }
 
 function start() {
-	if (!frame && ctx) {
+	if (!frame && ctx && surface) {
+		surface.hidden = false;
 		last = performance.now();
 		frame = requestAnimationFrame(loop);
 	}
