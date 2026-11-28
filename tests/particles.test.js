@@ -151,3 +151,40 @@ test('stars and sparks keep their original 60 FPS path', async (t) => {
 		assert.ok(Math.abs(position.y - y) < 1e-9);
 	}
 });
+
+test('the canvas is shown only while particles are flying', async (t) => {
+	t.mock.method(Math, 'random', () => 0.5);
+	t.mock.method(performance, 'now', () => 0);
+	/** @type {FrameRequestCallback | undefined} */
+	let scheduled;
+	Object.assign(globalThis, {
+		window: { devicePixelRatio: 1 },
+		innerWidth: 400,
+		innerHeight: 800,
+		addEventListener: () => {},
+		removeEventListener: () => {},
+		cancelAnimationFrame: () => {},
+		requestAnimationFrame: (/** @type {FrameRequestCallback} */ callback) => {
+			scheduled = callback;
+			return 1;
+		}
+	});
+	const particles = await import(`../src/lib/fx/particles.js?${fresh++}`);
+	const context = new Proxy({}, { get: () => () => {} });
+	const canvas = /** @type {HTMLCanvasElement} */ (
+		/** @type {unknown} */ ({ getContext: () => context, hidden: false })
+	);
+	const detach = particles.attachCanvas(canvas);
+	try {
+		assert.equal(canvas.hidden, true, 'hidden while nothing is flying');
+		particles.burst(200, 400, ['#fff'], 2);
+		assert.equal(canvas.hidden, false, 'shown once a burst starts');
+		// Every particle lives at most one second, so a few frames of 50 ms each outlast them.
+		for (let now = 50; now <= 1500; now += 50) scheduled?.(now);
+		assert.equal(canvas.hidden, true, 'hidden again once the particles are gone');
+		particles.burst(200, 400, ['#fff'], 2);
+		assert.equal(canvas.hidden, false, 'shown again for the next burst');
+	} finally {
+		detach();
+	}
+});
